@@ -14,8 +14,8 @@ enum BundledFonts {
         registered = true
 
         // Manually locate Fonts/ instead of Bundle.module to avoid SwiftPM crash.
-        guard let fontsRoot = findFontsRoot() else {
-            Log.app.warning("BundledFonts: Fonts/ not found in main bundle; skipping registration")
+        guard let fontsRoot = BundledResource.url("Fonts") else {
+            Log.app.warning("BundledFonts: Fonts/ not found in bundled resources; skipping registration")
             return
         }
 
@@ -94,16 +94,6 @@ enum BundledFonts {
             .map { (name: $0, previewable: canPreviewText(family: $0)) }
         cachedSystemFamilies = result
         return result
-    }
-
-     // Handles both flattened and bundled Fonts/ layouts
-    private static func findFontsRoot() -> URL? {
-        guard let resourceURL = Bundle.main.resourceURL else { return nil }
-        let candidates = [
-            resourceURL.appendingPathComponent("Fonts"),
-            resourceURL.appendingPathComponent("PalmierPro_PalmierPro.bundle/Fonts"),
-        ]
-        return candidates.first { FileManager.default.fileExists(atPath: $0.path) }
     }
 
     /// False for symbol/emoji/dingbat fonts — they'd render the family name

@@ -272,15 +272,7 @@ private enum TourAssets {
     static let hero: NSImage? = load("tour-hero", ext: "jpg")
 
     private static func load(_ name: String, ext: String) -> NSImage? {
-        guard let root = Bundle.main.resourceURL else { return nil }
-        let candidates = [
-            root.appendingPathComponent("Images/\(name).\(ext)"),
-            root.appendingPathComponent("PalmierPro_PalmierPro.bundle/Images/\(name).\(ext)"),
-        ]
-        for url in candidates where FileManager.default.fileExists(atPath: url.path) {
-            return NSImage(contentsOf: url)
-        }
-        return nil
+        BundledResource.url("Images/\(name).\(ext)").flatMap(NSImage.init(contentsOf:))
     }
 }
 

@@ -49,15 +49,8 @@ final class ChangelogStore {
     }
 
     private func loadFeed() -> ChangelogFeed? {
-        guard let root = Bundle.main.resourceURL else { return nil }
-        let candidates = [
-            root.appendingPathComponent("Changelog/changelog.json"),
-            root.appendingPathComponent("PalmierPro_PalmierPro.bundle/Changelog/changelog.json"),
-        ]
-        for url in candidates where FileManager.default.fileExists(atPath: url.path) {
-            guard let data = try? Data(contentsOf: url) else { continue }
-            return try? JSONDecoder().decode(ChangelogFeed.self, from: data)
-        }
-        return nil
+        guard let url = BundledResource.url("Changelog/changelog.json"),
+              let data = try? Data(contentsOf: url) else { return nil }
+        return try? JSONDecoder().decode(ChangelogFeed.self, from: data)
     }
 }
