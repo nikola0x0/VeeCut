@@ -1,123 +1,44 @@
-<div align="center">
+# VeeCut
 
-# Palmier Pro
+**Point at your video. Say what you want. Get a real, editable edit.**
 
-**The video editor built for AI.**
+VeeCut is a creator-first video editor for macOS. Draw on the preview to pick a person, the sky, or a product; Meta's SAM 3.1 segments and tracks it through the clip. Then type or say what you want, and Meta's models turn it into masked color grades, effects, and animated text or stickers that stay fully adjustable and undoable.
 
-<a href="https://github.com/palmier-io/palmier-pro/releases/latest/download/PalmierPro.dmg">
-  <img src="./assets/macos-badge.png" alt="Download Palmier Pro for macOS" width="180" />
-</a>
+Built for the Meta Global AI Developer Hackathon (Oct 27 – Nov 4, 2026), Indie Developer track.
 
-<sub><i>Requires macOS 26 (Tahoe) on Apple Silicon</i></sub>
+> Requires macOS 26 (Tahoe) on Apple Silicon.
 
-<a href="https://x.com/Palmier_io"><img src="https://img.shields.io/badge/Follow-%40Palmier__io-000000?style=flat&logo=x&logoColor=white" alt="Follow on X" /></a>
-<a href="https://discord.com/invite/SMVW6pKYmg"><img src="https://img.shields.io/badge/Join-Discord-5865F2?style=flat&logo=discord&logoColor=white" alt="Join Discord" /></a>
-<a href="https://www.ycombinator.com/companies/palmier"><img src="https://img.shields.io/badge/Y%20Combinator-S24-orange" alt="Y Combinator S24" /></a>
-<br />
-<a href="https://trendshift.io/repositories/41342?utm_source=repository-badge&amp;utm_medium=badge&amp;utm_campaign=badge-repository-41342" target="_blank" rel="noopener noreferrer"><img src="https://trendshift.io/api/badge/repositories/41342" alt="palmier-io%2Fpalmier-pro | Trendshift" width="250" height="55"/></a>
+## What was built during the hackathon
 
-<p>
-  <strong>English</strong> ·
-  <a href="docs/readme/README.es.md">Español</a> ·
-  <a href="docs/readme/README.zh-CN.md">简体中文</a> ·
-  <a href="docs/readme/README.zh-TW.md">繁體中文</a> ·
-  <a href="docs/readme/README.ja.md">日本語</a> ·
-  <a href="docs/readme/README.ko.md">한국어</a> ·
-  <a href="docs/readme/README.vi.md">Tiếng Việt</a> ·
-  <a href="docs/readme/README.hi.md">हिन्दी</a> ·
-  <a href="docs/readme/README.bn.md">বাংলা</a> ·
-  <a href="docs/readme/README.ar.md">العربية</a> ·
-  <a href="docs/readme/README.it.md">Italiano</a> ·
-  <a href="docs/readme/README.pt-BR.md">Português (Brasil)</a> ·
-  <a href="docs/readme/README.fr.md">Français</a> ·
-  <a href="docs/readme/README.ru.md">Русский</a> ·
-  <a href="docs/readme/README.tr.md">Türkçe</a>
-</p>
+Everything after the [`hackathon-baseline`](../../tree/hackathon-baseline) tag was built during the event (Oct 27 – Nov 4, 2026). Compare: [`hackathon-baseline...main`](../../compare/hackathon-baseline...main).
 
-</div>
+_This section is filled in as features land._
 
-<img src="./assets/palmier-ui.png" alt="Palmier Pro UI" width="900" />
+## Pre-hackathon base (not part of the submission)
 
----
+- **Palmier Pro.** VeeCut is a fork of [Palmier Pro](https://github.com/palmier-io/palmier-pro) by palmier-io, from its last GPLv3 source release (tag `last-gpl-source`, commit `8805801`). The editor, timeline, effects pipeline, agent panel, and MCP server come from Palmier Pro. VeeCut is not affiliated with or endorsed by Palmier.
+- **Environment setup before the event:**
+  - `b9be9f2`: resource lookup fix so the app builds and tests pass under Xcode 27 / Swift 6.4.
+  - Removal of Palmier-specific docs, release tooling, and this README rewrite.
 
-Palmier Pro is an open source video editor for Mac. You and your agent can generate and edit videos together inside the timeline.
+## Build
 
-### Swift-native video editor
+```bash
+swift build
+swift run
+swift test
+```
 
-We built Palmier Pro from scratch with Swift. The north star is Premiere Pro, with our take on integrating AI into the workflow.
-
-### Built-in Generative AI
-
-Generate videos and images with SOTA models like Seedance, Kling, Nano Banana Pro inside the timeline editor.
-
-### Integrates with your agents
-
-Connects your Claude/Codex/Cursor via MCP, or use the in-app agent to work on the same project together.
+Requires Xcode 26 or later with the Metal toolchain (`xcodebuild -downloadComponent MetalToolchain`). Use `swift build --traits BundledSpeech` for on-device speech features.
 
 ## MCP server
 
-When the app is open, it exposes an MCP server at `http://127.0.0.1:19789/mcp` via HTTP. To connect:
+While the app is open, it exposes an MCP server at `http://127.0.0.1:19789/mcp`:
 
-**Claude Code**
 ```bash
-claude mcp add --transport http palmier-pro http://127.0.0.1:19789/mcp
+claude mcp add --transport http veecut http://127.0.0.1:19789/mcp
 ```
-
-**Codex**
-```bash
-codex mcp add palmier-pro --url http://127.0.0.1:19789/mcp
-```
-
-**Cursor**
-
-The easiest way is go inside the app `Help` -> `MCP Instructions` -> `Install in Cursor`, or install manually by adding this to `~/.cursor/mcp.json`:
-
-```
-{
-  "mcpServers": {
-    "palmier-pro": {
-      "type": "http",
-      "url": "http://127.0.0.1:19789/mcp"
-    }
-  }
-}
-```
-
-**Claude Desktop**
-
-We bundle a [mcpb](https://github.com/modelcontextprotocol/mcpb) with the app that allows a one click install Desktop Extension on Claude Desktop. Go to `Help` -> `MCP Instructions` -> `Install in Claude Desktop`
-
-## FAQ
-
-**Is Palmier Pro fully open source?**
-
-The video editor (without the generative AI features) is fully open source. The MCP server and the agent chat are also open source. The only thing that is closed source is the generative AI processing.
-
-**Is it free?**
-
-The editor is free. You can download it with no login required, and use it as a video editor like CapCut or Adobe Premiere. You can also use the MCP server for free, and start experimenting using Claude Code/Desktop or Cursor to interact with your timeline editor.
-
-Generative AI features require login and subscription.
-
-**What platforms does it support?**
-
-macOS 26 (Tahoe) on Apple Silicon only.
-
-See [FAQ.md](FAQ.md) for more.
-
-## Development
-
-See [CONTRIBUTING.md](CONTRIBUTING.md)
-
-## Community &amp; Support
-
-- **Discord:** Join the community on **[Discord](https://discord.com/invite/SMVW6pKYmg)**.
-- **Twitter / X:** Follow **[@Palmier_io](https://x.com/Palmier_io)** for updates and announcements.
-- **Instagram:** Follow [@palmier.io](https://www.instagram.com/palmier.io) 
-- **Feedback &amp; Support:** Create a [Github Issue](https://github.com/palmier-io/palmier-pro/issues) or email us at founders@palmier.io
 
 ## License
 
-Copyright (C) 2026 Palmier, Inc.
-
-Palmier Pro is open source under [GPLv3](LICENSE).
+GPLv3, see [LICENSE](LICENSE). Modified from Palmier Pro since October 2026; see the git history for changes.
