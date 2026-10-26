@@ -1,8 +1,8 @@
 # VeeCut
 
-**Point at your video. Say what you want. Get a real, editable edit.**
+**The friendly AI video editor anyone can use, from first-time creators to pros.**
 
-VeeCut is a creator-first video editor for macOS. Draw on the preview to pick a person, the sky, or a product; Meta's SAM 3.1 segments and tracks it through the clip. Then type or say what you want, and Meta's models turn it into masked color grades, effects, and animated text or stickers that stay fully adjustable and undoable.
+VeeCut pushes AI as far as it goes to cut out the manual work of editing. Draw on the preview to point at a person, the sky, or a product, and Meta's SAM 3.1 selects it and tracks it through the clip. Then type or say what you want, and Meta's models turn it into color grades, effects, and animated text or stickers. Beginners get a great result in one step. Pros can still fine-tune every edit and undo it.
 
 Built for the Meta Global AI Developer Hackathon (Oct 27 – Nov 4, 2026), Indie Developer track.
 
