@@ -135,11 +135,13 @@ final class EditorUndo {
         history.append(UndoHistoryEntry(actionName: actionName, date: .now))
         if history.count > Self.historyLimit { history.removeFirst(history.count - Self.historyLimit) }
         historyPosition = history.count
+        Log.editor.debug("undo history commit action=\(actionName) position=\(self.historyPosition)")
     }
 
     /// Mirrors an undo or redo performed through the manager (menu, ⌘Z, agent) when it is an editor action.
     private func followManager(step: Int) {
         guard let manager else { return }
+        Log.editor.debug("undo history notified step=\(step) undo=\(manager.undoActionName) redo=\(manager.redoActionName) position=\(self.historyPosition)/\(self.history.count)")
         if step < 0, historyPosition > 0, manager.redoActionName == history[historyPosition - 1].actionName {
             historyPosition -= 1
             lastStep = UndoStepEvent(direction: .undo, actionName: history[historyPosition].actionName,
