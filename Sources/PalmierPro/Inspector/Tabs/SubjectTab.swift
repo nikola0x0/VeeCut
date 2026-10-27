@@ -5,38 +5,74 @@ struct SubjectTab: View {
     @Environment(EditorViewModel.self) private var editor
     let clip: Clip
 
-    private var maskIds: [String] {
-        var ids: [String] = []
-        if let subject = editor.canvasSubject, subject.clipId == clip.id { ids.append(subject.maskId) }
-        for region in clip.effectRegions ?? [] where !ids.contains(region.matte.maskId) {
-            ids.append(region.matte.maskId)
-        }
-        return ids
+    /// Subjects tracked on this clip's media, the one just selected on the canvas first.
+    private var masks: [TrackedMask] {
+        let all = editor.trackedMasks(forMedia: clip.mediaRef)
+        guard let current = editor.canvasSubject, current.clipId == clip.id,
+              let index = all.firstIndex(where: { $0.id == current.maskId }) else { return all }
+        var ordered = all
+        ordered.insert(ordered.remove(at: index), at: 0)
+        return ordered
     }
 
     var body: some View {
-        ForEach(maskIds, id: \.self) { maskId in
-            subjectGroup(maskId: maskId)
+        if masks.isEmpty {
+            emptyState
+        } else {
+            ForEach(masks) { mask in
+                subjectGroup(mask)
+            }
         }
     }
 
-    private func subjectGroup(maskId: String) -> some View {
-        let regions = (clip.effectRegions ?? []).filter { $0.matte.maskId == maskId }
-        return EditorPanelGroup(title(maskId: maskId)) {
-            if !regions.isEmpty {
-                Button {
-                    editor.removeSubject(clipId: clip.id, maskId: maskId)
-                } label: {
-                    Image(systemName: "trash")
-                        .font(.system(size: AppTheme.FontSize.sm))
-                        .foregroundStyle(AppTheme.Text.tertiaryColor)
-                        .frame(width: AppTheme.IconSize.sm, height: AppTheme.IconSize.sm)
-                        .hoverHighlight()
-                }
-                .buttonStyle(.plain)
-                .help(L10n.string("Remove all looks on this subject"))
+    private var emptyState: some View {
+        VStack(spacing: AppTheme.Spacing.mdLg) {
+            Image(systemName: "person.crop.rectangle")
+                .font(.system(size: AppTheme.FontSize.title1))
+                .foregroundStyle(AppTheme.Accent.canvasAI)
+            Text(L10n.string("No subjects yet"))
+                .font(.system(size: AppTheme.FontSize.md, weight: AppTheme.FontWeight.semibold))
+                .foregroundStyle(AppTheme.Text.primaryColor)
+            Text(L10n.string("Scribble over, circle, or click someone in the preview. VeeCut tracks them through the clip so you can change just them or just the background."))
+                .font(.system(size: AppTheme.FontSize.sm))
+                .foregroundStyle(AppTheme.Text.secondaryColor)
+                .multilineTextAlignment(.center)
+                .fixedSize(horizontal: false, vertical: true)
+            Button {
+                if !editor.subjectSelectionActive { editor.toggleSubjectSelection() }
+            } label: {
+                Label(L10n.string("Select Subject"), systemImage: "scribble")
             }
+            .buttonStyle(.capsule(.prominent, size: .regular))
+            .disabled(editor.isSubjectTracking)
+        }
+        .frame(maxWidth: .infinity)
+        .padding(AppTheme.Spacing.xl)
+    }
+
+    private func subjectGroup(_ mask: TrackedMask) -> some View {
+        let maskId = mask.id
+        let regions = (clip.effectRegions ?? []).filter { $0.matte.maskId == maskId }
+        return EditorPanelGroup(mask.label) {
+            Button {
+                editor.deleteSubject(maskId: maskId)
+            } label: {
+                Image(systemName: "trash")
+                    .font(.system(size: AppTheme.FontSize.sm))
+                    .foregroundStyle(AppTheme.Text.tertiaryColor)
+                    .frame(width: AppTheme.IconSize.sm, height: AppTheme.IconSize.sm)
+                    .hoverHighlight()
+            }
+            .buttonStyle(.plain)
+            .help(L10n.string("Delete this subject and its looks"))
         } content: {
+            HStack(spacing: AppTheme.Spacing.sm) {
+                Text(L10n.string("Name"))
+                    .font(.system(size: AppTheme.FontSize.sm))
+                    .foregroundStyle(AppTheme.Text.secondaryColor)
+                    .frame(width: AppTheme.Slider.labelColumn, alignment: .leading)
+                SubjectNameField(name: mask.label) { editor.renameSubject(maskId: maskId, to: $0) }
+            }
             Text(L10n.string("Tracked with SAM 3.1"))
                 .font(.system(size: AppTheme.FontSize.xs))
                 .foregroundStyle(AppTheme.Text.tertiaryColor)
@@ -50,12 +86,6 @@ struct SubjectTab: View {
                 regionSection(region)
             }
         }
-    }
-
-    private func title(maskId: String) -> String {
-        guard let label = editor.trackedMasks.first(where: { $0.id == maskId })?.label,
-              label != EditorViewModel.subjectMaskLabel else { return L10n.string("Subject") }
-        return label
     }
 
     // MARK: - Quick actions
@@ -217,5 +247,26 @@ struct SubjectTab: View {
             .fill(Color(outside ? AppTheme.Palette.peach : AppTheme.Palette.lilac))
             .frame(width: AppTheme.ComponentSize.subjectSideSwatch, height: AppTheme.ComponentSize.subjectSideSwatch)
             .accessibilityHidden(true)
+    }
+}
+
+/// Editable subject name; commits on Return or when focus leaves.
+private struct SubjectNameField: View {
+    let name: String
+    let onCommit: (String) -> Void
+    @State private var draft = ""
+    @FocusState private var focused: Bool
+
+    var body: some View {
+        TextField(String(), text: $draft)
+            .textFieldStyle(.roundedBorder)
+            .font(.system(size: AppTheme.FontSize.sm))
+            .controlSize(.small)
+            .focused($focused)
+            .onSubmit { onCommit(draft) }
+            .onChange(of: focused) { _, isFocused in if !isFocused { onCommit(draft) } }
+            .onChange(of: name, initial: true) { _, newName in draft = newName }
+            .onExitCommand { draft = name; focused = false }
+            .accessibilityLabel(L10n.string("Subject name"))
     }
 }

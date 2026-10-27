@@ -61,6 +61,10 @@ struct SubjectLookTests {
         let editor = EditorViewModel()
         editor.timeline = Fixtures.timeline(tracks: [Fixtures.videoTrack(clips: [Fixtures.clip(id: "clip", start: 0, duration: 30)])])
         editor.undo.attach(undoManager)
+        editor.registerTrackedMask(
+            TrackedMask(id: "mask", mediaRef: "media-1", label: "Subject 1", sourceFPS: 30, sourceWidth: 64, sourceHeight: 48),
+            frames: [:], file: Data()
+        )
         editor.canvasSubject = CanvasSubject(clipId: "clip", maskId: "mask")
         return editor
     }
@@ -116,23 +120,50 @@ struct SubjectLookTests {
         #expect(editor.clipFor(id: "clip")?.effectRegions == nil)
     }
 
-    @Test func removeSubjectDropsItsRegionsInOneUndoStepAndClearsTheCanvasSubject() {
+    @Test func deletingASubjectRemovesItAndItsLooksInOneUndoStep() {
         let editor = editorWithSubject()
         editor.applySubjectLook(.popSubject, clipId: "clip", maskId: "mask")
         editor.applySubjectLook(.darkenBackground, clipId: "clip", maskId: "mask")
-        editor.removeSubject(clipId: "clip", maskId: "mask")
+        editor.deleteSubject(maskId: "mask")
         #expect(editor.clipFor(id: "clip")?.effectRegions == nil)
+        #expect(editor.trackedMasks.isEmpty)
         #expect(editor.canvasSubject == nil)
 
         undoManager.undo()
         #expect(editor.clipFor(id: "clip")?.effectRegions?.count == 2)
+        #expect(editor.trackedMask(id: "mask") != nil)
+        undoManager.redo()
+        #expect(editor.trackedMasks.isEmpty)
     }
 
-    @Test func removingAnUnknownSubjectIsANoOp() {
+    @Test func undoingALookKeepsTheSubject() {
         let editor = editorWithSubject()
-        editor.removeSubject(clipId: "clip", maskId: "other")
+        editor.applySubjectLook(.blurBackground, clipId: "clip", maskId: "mask")
+        undoManager.undo()
+        #expect(editor.clipFor(id: "clip")?.effectRegions == nil)
+        #expect(editor.trackedMask(id: "mask") != nil)
+    }
+
+    @Test func renamingASubjectIsUndoableAndIgnoresBlankNames() {
+        let editor = editorWithSubject()
+        editor.renameSubject(maskId: "mask", to: "  ")
         #expect(!undoManager.canUndo)
-        #expect(editor.canvasSubject != nil)
+        editor.renameSubject(maskId: "mask", to: " Me ")
+        #expect(editor.trackedMask(id: "mask")?.label == "Me")
+        undoManager.undo()
+        #expect(editor.trackedMask(id: "mask")?.label == "Subject 1")
+    }
+
+    @Test func subjectsWithoutLooksAreStillSaved() {
+        let editor = editorWithSubject()
+        editor.mediaAssets = [MediaAsset(id: "media-1", url: URL(fileURLWithPath: "/tmp/x.mov"), type: .video, name: "x", duration: 1)]
+        #expect(editor.savedTrackedMasks()?.map(\.id) == ["mask"])
+    }
+
+    @Test func newSubjectsAreNumberedPerMedia() {
+        let editor = editorWithSubject()
+        #expect(editor.nextSubjectName(mediaRef: "media-1") == "Subject 2")
+        #expect(editor.nextSubjectName(mediaRef: "other") == "Subject 1")
     }
 
     @Test func escapeDismissesSelectionModeBeforeSubject() {

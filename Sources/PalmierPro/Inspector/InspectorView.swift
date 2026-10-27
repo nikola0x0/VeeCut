@@ -335,11 +335,11 @@ struct InspectorView: View {
         return tabs
     }
 
-    /// The single selected visual clip when it has a tracked subject to show.
+    /// The single selected video clip; subjects are tracked on video only.
     private func subjectClip(in selection: InspectorClipSelection) -> Clip? {
-        guard selection.clipCount == 1, let clip = selection.nonTextVisualClips.first else { return nil }
-        let hasRegions = !(clip.effectRegions ?? []).isEmpty
-        return hasRegions || editor.canvasSubject?.clipId == clip.id ? clip : nil
+        guard selection.clipCount == 1, let clip = selection.nonTextVisualClips.first,
+              clip.mediaType == .video else { return nil }
+        return clip
     }
 
     private func selectedMulticamGroupId(for selection: InspectorClipSelection) -> String? {

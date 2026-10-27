@@ -7,18 +7,15 @@ extension EditorViewModel {
         trackedMasks.first { $0.id == id }
     }
 
-    func referencedMaskIds() -> Set<String> {
-        Set(timelines.flatMap { timeline in
-            timeline.tracks.flatMap { track in
-                track.clips.flatMap { $0.effectRegions?.map(\.matte.maskId) ?? [] }
-            }
-        })
+    /// Subjects tracked on `mediaRef`, oldest first.
+    func trackedMasks(forMedia mediaRef: String) -> [TrackedMask] {
+        trackedMasks.filter { $0.mediaRef == mediaRef }
     }
 
-    /// Masks referenced by an effect; unreferenced tracking results are not persisted.
+    /// Every subject whose media is still in the project, looks or not.
     func savedTrackedMasks() -> [TrackedMask]? {
-        let referenced = referencedMaskIds()
-        let saved = trackedMasks.filter { referenced.contains($0.id) && trackedMaskFiles[$0.id] != nil }
+        let mediaRefs = Set(mediaAssets.map(\.id))
+        let saved = trackedMasks.filter { mediaRefs.contains($0.mediaRef) && trackedMaskFiles[$0.id] != nil }
         return saved.isEmpty ? nil : saved
     }
 

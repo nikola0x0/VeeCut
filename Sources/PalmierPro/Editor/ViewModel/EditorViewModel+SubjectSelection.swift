@@ -44,7 +44,6 @@ enum SubjectLook: CaseIterable {
 
 /// Canvas subject selection: draw on the preview, track with SAM 3.1, apply looks to the result.
 extension EditorViewModel {
-    static let subjectMaskLabel = "subject"
     static let subjectFeather = 6.0
 
     var isSubjectTracking: Bool { subjectTrackingTask != nil }
@@ -83,6 +82,7 @@ extension EditorViewModel {
         guard !isSubjectTracking, let clip = clipFor(id: clipId), clip.contains(timelineFrame: activeFrame),
               let seconds = clip.sourceSeconds(atTimelineFrame: activeFrame, fps: timeline.fps) else { return }
         let target = TrackingTarget(sourceSeconds: seconds, box: box, points: points)
+        let label = nextSubjectName(mediaRef: clip.mediaRef)
         subjectSelectionActive = false
         subjectTrackingFailure = nil
         canvasSubject = nil
@@ -94,7 +94,7 @@ extension EditorViewModel {
                 self.subjectTrackingClipId = nil
             }
             do {
-                let result = try await self.trackObject(clipId: clipId, prompt: .target(target), label: Self.subjectMaskLabel)
+                let result = try await self.trackObject(clipId: clipId, prompt: .target(target), label: label)
                 guard !Task.isCancelled, self.clipFor(id: clipId) != nil else { return }
                 self.canvasSubject = CanvasSubject(clipId: clipId, maskId: result.mask.id)
                 self.selectedClipIds = [clipId]
@@ -150,13 +150,51 @@ extension EditorViewModel {
         }
     }
 
-    /// Removes every look tied to `maskId` on the clip as one undoable edit.
-    func removeSubject(clipId: String, maskId: String) {
-        guard clipFor(id: clipId)?.effectRegions?.contains(where: { $0.matte.maskId == maskId }) == true else { return }
-        let actionName = L10n.string("Remove Subject Looks")
-        undo.perform(actionName) {
-            mutateClips(ids: [clipId], actionName: actionName) { $0.removeRegions(maskId: maskId) }
+    func nextSubjectName(mediaRef: String) -> String {
+        L10n.string("Subject \(trackedMasks(forMedia: mediaRef).count + 1)")
+    }
+
+    /// Renames a subject as one undoable edit. Blank or unchanged names are ignored.
+    func renameSubject(maskId: String, to name: String) {
+        let name = name.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard !name.isEmpty, let index = trackedMasks.firstIndex(where: { $0.id == maskId }),
+              trackedMasks[index].label != name else { return }
+        var masks = trackedMasks
+        masks[index].label = name
+        let actionName = L10n.string("Rename Subject")
+        undo.perform(actionName) { replaceTrackedMasks(with: masks, actionName: actionName) }
+    }
+
+    /// Deletes a subject and every look on it in the active timeline as one undoable edit.
+    /// The mask is kept while another timeline still uses it.
+    func deleteSubject(maskId: String) {
+        guard trackedMask(id: maskId) != nil else { return }
+        let clipIds = timeline.tracks.flatMap(\.clips)
+            .filter { $0.effectRegions?.contains { $0.matte.maskId == maskId } == true }
+            .map(\.id)
+        let usedElsewhere = timelines.contains { other in
+            other.id != timeline.id && other.tracks.contains { track in
+                track.clips.contains { $0.effectRegions?.contains { $0.matte.maskId == maskId } == true }
+            }
         }
-        if canvasSubject == CanvasSubject(clipId: clipId, maskId: maskId) { canvasSubject = nil }
+        let actionName = L10n.string("Delete Subject")
+        undo.perform(actionName) {
+            if !clipIds.isEmpty {
+                mutateClips(ids: Set(clipIds), actionName: actionName) { $0.removeRegions(maskId: maskId) }
+            }
+            if !usedElsewhere {
+                replaceTrackedMasks(with: trackedMasks.filter { $0.id != maskId }, actionName: actionName)
+            }
+        }
+        if canvasSubject?.maskId == maskId { canvasSubject = nil }
+    }
+
+    /// Swaps the subject list, registering the inverse so undo and redo restore it exactly.
+    private func replaceTrackedMasks(with masks: [TrackedMask], actionName: String) {
+        let previous = trackedMasks
+        trackedMasks = masks
+        undo.register(actionName, withTarget: self) { editor in
+            editor.replaceTrackedMasks(with: previous, actionName: actionName)
+        }
     }
 }

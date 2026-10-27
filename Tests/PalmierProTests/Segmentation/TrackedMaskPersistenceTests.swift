@@ -46,17 +46,16 @@ private func sampleMask() -> TrackedMask {
 }
 
 @MainActor
-@Test func onlyMasksReferencedByEffectsAreSaved() {
+@Test func subjectsAreSavedUntilTheirMediaLeavesTheProject() {
     let editor = EditorViewModel()
-    let used = sampleMask()
-    let unused = sampleMask()
-    editor.registerTrackedMask(used, frames: sampleFrames(), file: Data("used".utf8))
-    editor.registerTrackedMask(unused, frames: sampleFrames(), file: Data("unused".utf8))
+    let kept = sampleMask()
+    var orphaned = sampleMask()
+    orphaned.mediaRef = "removed-media"
+    editor.registerTrackedMask(kept, frames: sampleFrames(), file: Data("kept".utf8))
+    editor.registerTrackedMask(orphaned, frames: sampleFrames(), file: Data("orphaned".utf8))
     defer { editor.releaseTrackedMasks() }
-    var clip = Fixtures.clip(mediaRef: used.mediaRef, start: 0, duration: 30)
-    clip.effectRegions = [EffectRegion(matte: EffectMatte(maskId: used.id), effects: [Effect.make("color.exposure", ["ev": -1])])]
-    editor.timelines = [Fixtures.timeline(tracks: [Fixtures.videoTrack(clips: [clip])])]
+    editor.mediaAssets = [MediaAsset(id: kept.mediaRef, url: URL(fileURLWithPath: "/tmp/kept.mov"), type: .video, name: "kept", duration: 1)]
 
-    #expect(editor.savedTrackedMasks() == [used])
-    #expect(editor.trackedMaskFileSnapshot().map(\.name) == [TrackedMaskFile.fileName(maskId: used.id)])
+    #expect(editor.savedTrackedMasks() == [kept])
+    #expect(editor.trackedMaskFileSnapshot().map(\.name) == [TrackedMaskFile.fileName(maskId: kept.id)])
 }

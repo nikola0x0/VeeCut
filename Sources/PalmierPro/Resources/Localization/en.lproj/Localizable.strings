@@ -30,6 +30,7 @@
 "%lld images are ready in VeeCut." = "%lld images are ready in VeeCut.";
 "%lld items" = "%lld items";
 "%lld media files are missing and will be skipped." = "%lld media files are missing and will be skipped.";
+"%lld of %lld" = "%lld of %lld";
 "%lld of %lld credits remaining this period" = "%lld of %lld credits remaining this period";
 "%lld selected" = "%lld selected";
 "%lld subtitle files are ready in VeeCut." = "%lld subtitle files are ready in VeeCut.";
@@ -284,10 +285,12 @@
 "Delete Project?" = "Delete Project?";
 "Delete Selected Projects?" = "Delete Selected Projects?";
 "Delete Skill" = "Delete Skill";
+"Delete Subject" = "Delete Subject";
 "Delete Timeline" = "Delete Timeline";
 "Delete from history" = "Delete from history";
 "Delete keyframe" = "Delete keyframe";
 "Delete skill?" = "Delete skill?";
+"Delete this subject and its looks" = "Delete this subject and its looks";
 "Delete “%@”" = "Delete “%@”";
 "Delete “%@”?" = "Delete “%@”?";
 "Denoise" = "Denoise";
@@ -343,6 +346,7 @@
 "Edge Rounding" = "Edge Rounding";
 "Edge Softness" = "Edge Softness";
 "Edit" = "Edit";
+"Edit History" = "Edit History";
 "Edit crop on canvas" = "Edit crop on canvas";
 "Edit doesn't support Lottie" = "Edit doesn't support Lottie";
 "Edit doesn't support audio" = "Edit doesn't support audio";
@@ -666,6 +670,7 @@
 "No prompt needed" = "No prompt needed";
 "No speech detected." = "No speech detected.";
 "No subject found there. Try scribbling right on it." = "No subject found there. Try scribbling right on it.";
+"No subjects yet" = "No subjects yet";
 "No track" = "No track";
 "No video" = "No video";
 "No video clips" = "No video clips";
@@ -691,6 +696,7 @@
 "Open Timeline" = "Open Timeline";
 "Open the AI Edit tab to upscale, prompt-edit, create video from a frame, or generate music, SFX, cleanup, and dubbing from the clip." = "Open the AI Edit tab to upscale, prompt-edit, create video from a frame, or generate music, SFX, cleanup, and dubbing from the clip.";
 "OpenAI API Key" = "OpenAI API Key";
+"Opened project" = "Opened project";
 "Opening Google" = "Opening Google";
 "Opening Google…" = "Opening Google…";
 "Open…" = "Open…";
@@ -753,6 +759,7 @@
 "Redetect Beats" = "Redetect Beats";
 "Redo" = "Redo";
 "Redo (⇧⌘Z)" = "Redo (⇧⌘Z)";
+"Redo: %@" = "Redo: %@";
 "Reference" = "Reference";
 "Reference Image" = "Reference Image";
 "References" = "References";
@@ -775,8 +782,6 @@
 "Remove Dead Air" = "Remove Dead Air";
 "Remove Effect" = "Remove Effect";
 "Remove Marker" = "Remove Marker";
-"Remove Subject Looks" = "Remove Subject Looks";
-"Remove all looks on this subject" = "Remove all looks on this subject";
 "Remove background sound and keep speech" = "Remove background sound and keep speech";
 "Remove filler words" = "Remove filler words";
 "Remove from Queue" = "Remove from Queue";
@@ -789,6 +794,7 @@
 "Removing background noise…" = "Removing background noise…";
 "Rename" = "Rename";
 "Rename Skill" = "Rename Skill";
+"Rename Subject" = "Rename Subject";
 "Rename Track" = "Rename Track";
 "Rendering" = "Rendering";
 "Rendering…" = "Rendering…";
@@ -845,6 +851,7 @@
 "Screen" = "Screen";
 "Screenshot a frame" = "Screenshot a frame";
 "Scribble over the subject, circle it, or click it" = "Scribble over the subject, circle it, or click it";
+"Scribble over, circle, or click someone in the preview. VeeCut tracks them through the clip so you can change just them or just the background." = "Scribble over, circle, or click someone in the preview. VeeCut tracks them through the clip so you can change just them or just the background.";
 "Scroll Horizontally" = "Scroll Horizontally";
 "Scroll to latest" = "Scroll to latest";
 "Search" = "Search";
@@ -858,6 +865,7 @@
 "Select Forward on All Tracks" = "Select Forward on All Tracks";
 "Select Forward on Track" = "Select Forward on Track";
 "Select Range" = "Select Range";
+"Select Subject" = "Select Subject";
 "Select Subject — scribble over, circle, or click what to track" = "Select Subject — scribble over, circle, or click what to track";
 "Select compatible clips and paste settings again." = "Select compatible clips and paste settings again.";
 "Select media files or folders to import" = "Select media files or folders to import";
@@ -959,6 +967,8 @@
 "Style" = "Style";
 "Style instructions (optional). e.g., warm and slow, British accent." = "Style instructions (optional). e.g., warm and slow, British accent.";
 "Subject" = "Subject";
+"Subject %lld" = "Subject %lld";
+"Subject name" = "Subject name";
 "Subject tracked. Add looks in the Subject inspector." = "Subject tracked. Add looks in the Subject inspector.";
 "Subscribe" = "Subscribe";
 "Subscribe or add your own API key to use this model." = "Subscribe or add your own API key to use this model.";
@@ -1056,6 +1066,7 @@
 "Underline" = "Underline";
 "Undo" = "Undo";
 "Undo (⌘Z)" = "Undo (⌘Z)";
+"Undo: %@" = "Undo: %@";
 "Ungroup Multicam" = "Ungroup Multicam";
 "Unlink" = "Unlink";
 "Untitled" = "Untitled";
