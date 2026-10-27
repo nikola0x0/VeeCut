@@ -176,3 +176,16 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         editor.tour.start(in: editor)
     }
 }
+
+extension AppDelegate: NSMenuItemValidation {
+    @objc func toggleScrubAudio(_ sender: Any?) {
+        ScrubAudioPreference.toggle()
+    }
+
+    func validateMenuItem(_ menuItem: NSMenuItem) -> Bool {
+        if menuItem.action == #selector(toggleScrubAudio(_:)) {
+            menuItem.state = ScrubAudioPreference.isEnabled ? .on : .off
+        }
+        return true
+    }
+}

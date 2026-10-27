@@ -730,6 +730,7 @@
 "Pick a replacement for \"%@\"" = "Pick a replacement for \"%@\"";
 "Place on timeline" = "Place on timeline";
 "Play / Pause" = "Play / Pause";
+"Play Audio While Scrubbing" = "Play Audio While Scrubbing";
 "Playback" = "Playback";
 "Playback Speed" = "Playback Speed";
 "Playback previews, waveforms, filmstrip thumbnails, and transcripts. Safe to clear; files rebuild as needed." = "Playback previews, waveforms, filmstrip thumbnails, and transcripts. Safe to clear; files rebuild as needed.";

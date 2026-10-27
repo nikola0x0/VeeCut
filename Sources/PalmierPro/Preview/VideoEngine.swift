@@ -140,7 +140,9 @@ final class VideoEngine {
             cancelInteractiveSeek()
             performSeek(time: time, tolerance: tolerance)
         case .interactiveScrub:
-            scrubAudioEngine.scrub(to: time)
+            if ScrubAudioPreference.isEnabled {
+                scrubAudioEngine.scrub(to: time)
+            }
             enqueueInteractiveSeek(time: time, tolerance: tolerance)
         case .audibleStepForward, .audibleStepBackward:
             if editor.isPlaying { pause() }

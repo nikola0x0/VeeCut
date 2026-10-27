@@ -141,6 +141,10 @@ enum MainMenuBuilder {
         menu.addItem(maximizeItem)
 
         menu.addItem(.separator())
+        let scrubAudioItem = NSMenuItem(title: L10n.string("Play Audio While Scrubbing"), action: #selector(AppDelegate.toggleScrubAudio(_:)), keyEquivalent: "")
+        menu.addItem(scrubAudioItem)
+
+        menu.addItem(.separator())
         menu.addItem(layoutSubmenuItem())
         menu.addItem(.separator())
         menu.addItem(withTitle: L10n.string("Enter Full Screen"), action: #selector(NSWindow.toggleFullScreen(_:)), keyEquivalent: "f")
