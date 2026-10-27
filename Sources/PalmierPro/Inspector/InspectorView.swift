@@ -13,6 +13,14 @@ struct InspectorClipSelection {
 
     var firstAudioClip: Clip? { audioClips.first }
 
+    /// The one selected video clip, counting its own linked audio as part of it.
+    func singleVideoClip(linkedPartnerIds: (String) -> [String]) -> Clip? {
+        guard textClips.isEmpty, nonTextVisualClips.count == 1,
+              let clip = nonTextVisualClips.first, clip.mediaType == .video else { return nil }
+        let partners = Set(linkedPartnerIds(clip.id))
+        return audioClips.allSatisfy { partners.contains($0.id) } ? clip : nil
+    }
+
     static func resolve(timeline: Timeline, selectedIds: Set<String>) -> InspectorClipSelection {
         guard !selectedIds.isEmpty else { return InspectorClipSelection() }
         var selection = InspectorClipSelection()
@@ -335,11 +343,8 @@ struct InspectorView: View {
         return tabs
     }
 
-    /// The single selected video clip; subjects are tracked on video only.
     private func subjectClip(in selection: InspectorClipSelection) -> Clip? {
-        guard selection.clipCount == 1, let clip = selection.nonTextVisualClips.first,
-              clip.mediaType == .video else { return nil }
-        return clip
+        selection.singleVideoClip { editor.linkedPartnerIds(of: $0) }
     }
 
     private func selectedMulticamGroupId(for selection: InspectorClipSelection) -> String? {
