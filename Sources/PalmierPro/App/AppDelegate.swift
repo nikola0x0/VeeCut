@@ -16,6 +16,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         // Activate the app (required when launched from CLI, not a .app bundle)
         NSApp.setActivationPolicy(.regular)
         NSApp.activate(ignoringOtherApps: true)
+        showDockIconWhenUnbundled()
 
         HomeWindowController.shared.showWindow(nil)
         SkillStore.shared.startSkillSync()
@@ -32,6 +33,17 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
             try? await Task.sleep(for: .seconds(3))
             guard let self, !self.isTerminating else { return }
             _ = NSOpenPanel()
+        }
+    }
+
+    // `swift run` has no bundle icon, so the Dock would show a generic executable.
+    private func showDockIconWhenUnbundled() {
+        guard Bundle.main.bundleURL.pathExtension != "app" else { return }
+        Task { @MainActor in
+            let image = await Task.detached(priority: .utility) {
+                BundledResource.url("Images/AppIcon.png").flatMap(NSImage.init(contentsOf:))
+            }.value
+            if let image { NSApp.applicationIconImage = image }
         }
     }
 
