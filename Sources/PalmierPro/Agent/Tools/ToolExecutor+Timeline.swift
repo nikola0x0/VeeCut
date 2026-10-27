@@ -201,6 +201,29 @@ extension ToolExecutor {
         return obj
     }()
 
+    /// Masked edits in tool vocabulary: the tracked target, side, and its grade/effects.
+    static func regionObjects(_ regions: [EffectRegion]?, editor: EditorViewModel) -> [[String: Any]]? {
+        guard let regions, !regions.isEmpty else { return nil }
+        return regions.map { region in
+            var out: [String: Any] = [
+                "maskId": region.matte.maskId,
+                "side": region.matte.invert ? "outside" : "inside",
+            ]
+            if let label = editor.trackedMask(id: region.matte.maskId)?.label { out["target"] = label }
+            if region.matte.feather > 0 { out["feather"] = region.matte.feather }
+            if let color = colorObject(from: region.effects) { out["color"] = color }
+            let fx = region.effects.filter { !$0.type.hasPrefix("color.") }.map { effect -> [String: Any] in
+                var e: [String: Any] = ["type": effect.type]
+                let params = effect.params.compactMapValues(\.value)
+                if !params.isEmpty { e["params"] = params }
+                if !effect.enabled { e["enabled"] = false }
+                return e
+            }
+            if !fx.isEmpty { out["effects"] = fx }
+            return out
+        }
+    }
+
     static func compactTracks(
         _ tracks: [[String: Any]], editor: EditorViewModel, window: Range<Int>?, captionDetail: Bool
     ) -> [[String: Any]] {
@@ -208,7 +231,10 @@ extension ToolExecutor {
         var grades: [String: [String: Any]] = [:]
         for track in editor.timeline.tracks {
             for clip in track.clips {
-                if let c = colorObject(from: clip.effects) { grades[clip.id] = c }
+                var derived: [String: Any] = [:]
+                if let c = colorObject(from: clip.effects) { derived["color"] = c }
+                if let regions = regionObjects(clip.effectRegions, editor: editor) { derived["regions"] = regions }
+                if !derived.isEmpty { grades[clip.id] = derived }
             }
         }
         return tracks.indices.map { i in
@@ -368,7 +394,8 @@ extension ToolExecutor {
             out.removeValue(forKey: "trimEndFrame")
         }
         out = strippingDefaults(out, clipDefaults)
-        if let id = out["id"] as? String, let grade = grades[id] { out["color"] = grade }
+        out.removeValue(forKey: "effectRegions")
+        if let id = out["id"] as? String, let derived = grades[id] { out.merge(derived) { _, new in new } }
         if let fx = out["effects"] as? [[String: Any]] {
             let isText = out["mediaType"] as? String == ClipType.text.rawValue
             let cleaned = compactEffects(fx).filter {

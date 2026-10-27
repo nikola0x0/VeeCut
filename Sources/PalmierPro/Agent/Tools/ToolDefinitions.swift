@@ -59,6 +59,7 @@ enum ToolName: String, CaseIterable, Sendable {
     // Color & effects
     case applyColor = "apply_color"
     case applyEffect = "apply_effect"
+    case trackObject = "track_object"
     case inspectColor = "inspect_color"
     case denoiseAudio = "denoise_audio"
 
@@ -995,6 +996,7 @@ enum ToolDefinitions {
                             "strength": ["type": "number", "description": "Dry/wet mix 0-1 (default 1)."],
                         ],
                     ],
+                    "region": regionSchema,
                 ],
                 required: ["clipIds"]
             )
@@ -1031,8 +1033,29 @@ enum ToolDefinitions {
                         ),
                     ],
                     "remove": ["type": "array", "items": ["type": "string"], "description": "Effect type ids to remove from the clips."],
+                    "region": regionSchema,
                 ],
                 required: ["clipIds"]
+            )
+        ),
+        AgentTool(
+            name: .trackObject,
+            description: """
+            Find an object in a video clip and track it through every frame the clip uses, with Meta SAM 3.1. \
+            Returns a maskId. Pass {maskId, side} as `region` to apply_color or apply_effect to edit only that \
+            object (side "inside") or everything except it (side "outside", e.g. darken or blur the background \
+            while the subject stays untouched). Name the object with a short noun phrase ("person", "red car", \
+            "dog"); when several match, the one visible in the most frames is kept. Takes roughly 10–60 seconds \
+            and uses Meta Model API credits. Needs a Meta Model API key in Settings. Tracking alone changes \
+            nothing on the timeline; masks not used by a region are not saved with the project.
+            """,
+            inputSchema: objectSchema(
+                properties: [
+                    "clipId": ["type": "string", "description": "Video clip id from get_timeline."],
+                    "object": ["type": "string", "description": "Short noun phrase naming what to track, e.g. \"person\" or \"white dog\"."],
+                    "label": ["type": "string", "description": "Optional display name for the target. Defaults to object."],
+                ],
+                required: ["clipId", "object"]
             )
         ),
         AgentTool(
@@ -1167,6 +1190,19 @@ enum ToolDefinitions {
     ]
 
     /// One line per non-color effect for apply_effect's description, generated from the registry.
+    private static var regionSchema: [String: Any] {
+        [
+            "type": "object",
+            "description": "Optional. Limit this edit to a tracked object from track_object. Edits merge into that region's own stack; the clip's whole-frame stack is untouched.",
+            "properties": [
+                "maskId": ["type": "string", "description": "maskId returned by track_object (also listed under a clip's regions in get_timeline)."],
+                "side": ["type": "string", "enum": ["inside", "outside"], "description": "inside = the tracked object (default); outside = everything except it, e.g. the background."],
+                "feather": ["type": "number", "description": "Edge softness in source pixels, 0–50. Default 0."],
+            ],
+            "required": ["maskId"],
+        ]
+    }
+
     private static func effectCatalog() -> String {
         func n(_ v: Double) -> String { v == v.rounded() ? String(Int(v)) : String(format: "%g", v) }
         return EffectRegistry.all

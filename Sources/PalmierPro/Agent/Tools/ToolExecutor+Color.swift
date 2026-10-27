@@ -34,8 +34,9 @@ extension ToolExecutor {
         let blueCurve: [[Double]]?
         let hueCurves: HueCurvesInput?
         let lut: LutInput?
+        let region: RegionInput?
         static let allowedKeys: Set<String> = [
-            "clipIds", "reset", "exposure", "contrast", "saturation", "vibrance", "temperature", "tint",
+            "clipIds", "reset", "region", "exposure", "contrast", "saturation", "vibrance", "temperature", "tint",
             "highlights", "shadows", "blacks", "whites",
             "shadowsHue", "shadowsAmount", "shadowsLum",
             "midsHue", "midsAmount", "midsGamma",
@@ -54,7 +55,7 @@ extension ToolExecutor {
     }
 
     static let colorObjectAllowedKeys: Set<String> = ApplyColorInput.allowedKeys
-        .subtracting(["clipIds", "reset", "hueCurves"])
+        .subtracting(["clipIds", "reset", "hueCurves", "region"])
         .union(["hueCurvesRaw"])
 
     /// The clip's grade in apply_color vocabulary; nil when ungraded. Round-trips via
@@ -120,6 +121,7 @@ extension ToolExecutor {
                 throw ToolError("Clip \(id) is a \(clip.mediaType.rawValue) clip; apply_color needs a video or image clip.")
             }
         }
+        let matte = try resolveRegion(input.region, clipIds: input.clipIds, editor: editor, path: "apply_color")
         // LUT file I/O up front so it can throw before mutating.
         func storeLUT(_ path: String) throws -> String {
             do { return try LUTLoader.store(path: path, projectId: editor.projectId) }
@@ -141,18 +143,23 @@ extension ToolExecutor {
         let actionName = input.clipIds.count == 1 ? "Color Grade (Agent)" : "Color Grade ×\(input.clipIds.count) (Agent)"
         editor.undo.perform(actionName) {
             editor.mutateClips(ids: Set(input.clipIds), actionName: actionName) { clip in
-                let nonColor = (clip.effects ?? []).filter { !$0.type.hasPrefix("color.") }
-                if let pastedStack {
-                    clip.effects = nonColor + pastedStack
-                    return
+                func regraded(_ effects: [Effect]) -> [Effect] {
+                    let nonColor = effects.filter { !$0.type.hasPrefix("color.") }
+                    if let pastedStack { return nonColor + pastedStack }
+                    let disabledColor = reset ? []
+                        : Set(effects.filter { $0.type.hasPrefix("color.") && !$0.enabled }.map(\.type))
+                    var state = GradeState(effects: reset ? nil : effects)
+                    state.apply(input, lutDestPath: lutDestPath)
+                    var color = state.buildStack()
+                    for i in color.indices where disabledColor.contains(color[i].type) { color[i].enabled = false }
+                    return nonColor + color
                 }
-                let disabledColor = reset ? []
-                    : Set((clip.effects ?? []).filter { $0.type.hasPrefix("color.") && !$0.enabled }.map(\.type))
-                var state = GradeState(effects: reset ? nil : clip.effects)
-                state.apply(input, lutDestPath: lutDestPath)
-                var color = state.buildStack()
-                for i in color.indices where disabledColor.contains(color[i].type) { color[i].enabled = false }
-                clip.effects = nonColor + color
+                if let matte {
+                    clip.updateRegion(matching: matte) { $0 = regraded($0) }
+                } else {
+                    let effects = regraded(clip.effects ?? [])
+                    clip.effects = effects.isEmpty ? nil : effects
+                }
             }
         }
         return mutationResult(editor, since: snapshot, touched: input.clipIds)
