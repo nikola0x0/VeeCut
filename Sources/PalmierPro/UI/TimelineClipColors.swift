@@ -26,12 +26,12 @@ enum TimelineClipColor: String, CaseIterable, Identifiable, Sendable {
 
     var defaultColor: NSColor {
         switch self {
-        case .video: NSColor(red: 0x1D/255.0, green: 0x58/255.0, blue: 0x78/255.0, alpha: 1)
-        case .audio: NSColor(red: 0x2E/255.0, green: 0x77/255.0, blue: 0x65/255.0, alpha: 1)
-        case .image: NSColor(red: 0x71/255.0, green: 0x54/255.0, blue: 0x86/255.0, alpha: 1)
-        case .text: NSColor(red: 0x71/255.0, green: 0x54/255.0, blue: 0x86/255.0, alpha: 1)
-        case .animation: NSColor(red: 0xA0/255.0, green: 0x78/255.0, blue: 0x22/255.0, alpha: 1)
-        case .sequence: NSColor(red: 0xB9/255.0, green: 0xB2/255.0, blue: 0x9A/255.0, alpha: 1)
+        case .video: AppTheme.Palette.lilac
+        case .audio: AppTheme.Palette.peach
+        case .image: NSColor(srgbRed: 217/255, green: 223/255, blue: 250/255, alpha: 1)
+        case .text: AppTheme.Palette.blush
+        case .animation: NSColor(srgbRed: 214/255, green: 240/255, blue: 232/255, alpha: 1)
+        case .sequence: NSColor(srgbRed: 228/255, green: 225/255, blue: 234/255, alpha: 1)
         }
     }
 

@@ -9,24 +9,36 @@ enum AppTheme {
         }
     }
 
+    /// VeeCut brand colors. Pastels mark meaning (clip kinds, subject vs. background); periwinkle marks selection.
+    enum Palette {
+        static let peach = NSColor(srgbRed: 252/255, green: 216/255, blue: 205/255, alpha: 1)
+        static let blush = NSColor(srgbRed: 254/255, green: 235/255, blue: 246/255, alpha: 1)
+        static let lilac = NSColor(srgbRed: 235/255, green: 214/255, blue: 251/255, alpha: 1)
+        static let periwinkle = NSColor(srgbRed: 104/255, green: 127/255, blue: 229/255, alpha: 1)
+        static let periwinkleDeep = NSColor(srgbRed: 74/255, green: 95/255, blue: 201/255, alpha: 1)
+        static let periwinkleLight = NSColor(srgbRed: 140/255, green: 158/255, blue: 240/255, alpha: 1)
+        static let ink = NSColor(srgbRed: 43/255, green: 37/255, blue: 64/255, alpha: 1)
+        static let paper = NSColor(srgbRed: 245/255, green: 240/255, blue: 252/255, alpha: 1)
+    }
+
     // MARK: - Backgrounds
 
     enum Background {
         static let base = AppTheme.adaptive(
-            light: NSColor(red: 241/255, green: 240/255, blue: 237/255, alpha: 1),
-            dark: NSColor(red: 24/255, green: 25/255, blue: 28/255, alpha: 1)
+            light: NSColor(srgbRed: 242/255, green: 240/255, blue: 246/255, alpha: 1),
+            dark: NSColor(srgbRed: 22/255, green: 20/255, blue: 28/255, alpha: 1)
         )
         static let surface = AppTheme.adaptive(
-            light: NSColor(red: 245/255, green: 244/255, blue: 241/255, alpha: 1),
-            dark: NSColor(red: 30/255, green: 31/255, blue: 35/255, alpha: 1)
+            light: NSColor(srgbRed: 247/255, green: 245/255, blue: 250/255, alpha: 1),
+            dark: NSColor(srgbRed: 28/255, green: 26/255, blue: 35/255, alpha: 1)
         )
         static let raised = AppTheme.adaptive(
-            light: NSColor(red: 249/255, green: 248/255, blue: 245/255, alpha: 1),
-            dark: NSColor(red: 38/255, green: 39/255, blue: 44/255, alpha: 1)
+            light: NSColor(srgbRed: 251/255, green: 250/255, blue: 253/255, alpha: 1),
+            dark: NSColor(srgbRed: 36/255, green: 33/255, blue: 44/255, alpha: 1)
         )
         static let prominent = AppTheme.adaptive(
-            light: NSColor(red: 252/255, green: 251/255, blue: 248/255, alpha: 1),
-            dark: NSColor(red: 48/255, green: 49/255, blue: 55/255, alpha: 1)
+            light: NSColor(srgbRed: 253/255, green: 252/255, blue: 255/255, alpha: 1),
+            dark: NSColor(srgbRed: 46/255, green: 42/255, blue: 56/255, alpha: 1)
         )
 
         /// Alias — empty media slot is a raised plate.
@@ -61,7 +73,7 @@ enum AppTheme {
             dark: .black
         )
         static let timelineClip = AppTheme.adaptive(light: .white, dark: .black)
-        static let timelineClipSelected = AppTheme.adaptive(light: .black, dark: .white)
+        static let timelineClipSelected = AppTheme.adaptive(light: Palette.periwinkle, dark: Palette.periwinkleLight)
         static let timelineMarker = AppTheme.adaptive(light: .white, dark: .black)
         static let timelineMarkerSelected = AppTheme.adaptive(light: .black, dark: .white)
 
@@ -82,43 +94,35 @@ enum AppTheme {
     // MARK: - Accent
 
     enum Accent {
-        static let canvasAINSColor = NSColor(srgbRed: 124/255, green: 92/255, blue: 255/255, alpha: 1)
+        static let canvasAINSColor = Palette.periwinkle
         static let canvasAI = Color(canvasAINSColor)
         static let canvasSelectionDash: [CGFloat] = [6, 4]
         static let timecodeNSColor = AppTheme.adaptive(
-            light: NSColor(red: 0.58, green: 0.29, blue: 0.02, alpha: 1),
-            dark: NSColor(red: 0.95, green: 0.6, blue: 0.2, alpha: 1)
+            light: NSColor(srgbRed: 164/255, green: 73/255, blue: 47/255, alpha: 1),
+            dark: Palette.peach
         )
         static let timecodeColor = Color(timecodeNSColor)
 
         static let primaryNSColor = AppTheme.adaptive(
-            light: NSColor(red: 48/255, green: 48/255, blue: 48/255, alpha: 1),
-            dark: NSColor(red: 236/255, green: 236/255, blue: 236/255, alpha: 1)
+            light: Palette.periwinkleDeep,
+            dark: Palette.periwinkleLight
         )
         static let primary = Color(primaryNSColor)
 
         static let playheadNSColor = AppTheme.adaptive(
-            light: NSColor(srgbRed: 1.0, green: 0.18, blue: 0.16, alpha: 1),
-            dark: NSColor(srgbRed: 1.0, green: 0.32, blue: 0.30, alpha: 1)
+            light: Palette.periwinkle,
+            dark: Palette.periwinkleLight
         )
 
         static let link = Color(nsColor: .linkColor)
 
         /// Vibrant highlight used by the onboarding tour spotlight.
-        static let spotlight = Color(red: 1.0, green: 0.27, blue: 0.27)
+        static let spotlight = Color(Palette.periwinkle)
         static let spotlightGradient = LinearGradient(
-            colors: [
-                Color(red: 1.0, green: 0.34, blue: 0.30),
-                Color(red: 0.95, green: 0.15, blue: 0.28),
-                Color(red: 1.0, green: 0.48, blue: 0.22),
-            ],
+            colors: [Color(Palette.periwinkle), Color(Palette.lilac), Color(Palette.peach)],
             startPoint: .topLeading,
             endPoint: .bottomTrailing
         )
-    }
-
-    enum Update {
-        static let accent = Accent.timecodeColor
     }
 
     // MARK: - Adjust sliders
@@ -227,20 +231,20 @@ enum AppTheme {
 
     enum Text {
         static let primary = AppTheme.adaptive(
-            light: NSColor.black.withAlphaComponent(0.92),
-            dark: NSColor.white.withAlphaComponent(0.98)
+            light: Palette.ink.withAlphaComponent(0.92),
+            dark: Palette.paper.withAlphaComponent(0.98)
         )
         static let secondary = AppTheme.adaptive(
-            light: NSColor.black.withAlphaComponent(0.78),
-            dark: NSColor.white.withAlphaComponent(0.84)
+            light: Palette.ink.withAlphaComponent(0.78),
+            dark: Palette.paper.withAlphaComponent(0.84)
         )
         static let tertiary = AppTheme.adaptive(
-            light: NSColor.black.withAlphaComponent(0.66),
-            dark: NSColor.white.withAlphaComponent(0.68)
+            light: Palette.ink.withAlphaComponent(0.66),
+            dark: Palette.paper.withAlphaComponent(0.68)
         )
         static let muted = AppTheme.adaptive(
-            light: NSColor.black.withAlphaComponent(0.46),
-            dark: NSColor.white.withAlphaComponent(0.46)
+            light: Palette.ink.withAlphaComponent(0.56),
+            dark: Palette.paper.withAlphaComponent(0.46)
         )
 
         static var primaryColor: Color { Color(primary) }

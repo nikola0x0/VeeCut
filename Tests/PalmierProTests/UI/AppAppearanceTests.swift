@@ -53,14 +53,14 @@ struct AppAppearanceTests {
         }
     }
 
-    @Test func clipSelectionBorderInvertsBetweenAppearances() throws {
+    @Test func clipSelectionBorderUsesTheSelectionAccentInEachAppearance() throws {
         let light = try #require(NSAppearance(named: .aqua))
         let dark = try #require(NSAppearance(named: .darkAqua))
 
         expectSameColor(resolved(AppTheme.Border.timelineClip, in: light), resolved(.white, in: light))
-        expectSameColor(resolved(AppTheme.Border.timelineClipSelected, in: light), resolved(.black, in: light))
+        expectSameColor(resolved(AppTheme.Border.timelineClipSelected, in: light), resolved(AppTheme.Palette.periwinkle, in: light))
         expectSameColor(resolved(AppTheme.Border.timelineClip, in: dark), resolved(.black, in: dark))
-        expectSameColor(resolved(AppTheme.Border.timelineClipSelected, in: dark), resolved(.white, in: dark))
+        expectSameColor(resolved(AppTheme.Border.timelineClipSelected, in: dark), resolved(AppTheme.Palette.periwinkleLight, in: dark))
     }
 
     @Test func lightPaletteMaintainsReadableContrast() throws {
