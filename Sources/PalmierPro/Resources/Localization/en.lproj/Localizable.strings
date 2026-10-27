@@ -169,6 +169,8 @@
 "Captured %@. The destination folder was removed, so the frame was saved at the top level of Media." = "Captured %@. The destination folder was removed, so the frame was saved at the top level of Media.";
 "Censor profanity" = "Censor profanity";
 "Center" = "Center";
+"Change %@" = "Change %@";
+"Change Edge Feather" = "Change Edge Feather";
 "Change aspect ratio and extend the frame with AI" = "Change aspect ratio and extend the frame with AI";
 "Change to Match" = "Change to Match";
 "Changes take effect after restarting VeeCut." = "Changes take effect after restarting VeeCut.";
@@ -191,6 +193,7 @@
 "Choose…" = "Choose…";
 "Chroma Key" = "Chroma Key";
 "Clarity" = "Clarity";
+"Clarity & Haze" = "Clarity & Haze";
 "Clean Up Voice…" = "Clean Up Voice…";
 "Clear Filters" = "Clear Filters";
 "Clear Finished" = "Clear Finished";
@@ -312,6 +315,7 @@
 "Detecting speech…" = "Detecting speech…";
 "Difference" = "Difference";
 "Dimensions" = "Dimensions";
+"Disable Effect" = "Disable Effect";
 "Discard Changes" = "Discard Changes";
 "Dismiss" = "Dismiss";
 "Documentation" = "Documentation";
@@ -323,7 +327,6 @@
 "Downloads a %@ on-device model so you can search media visually." = "Downloads a %@ on-device model so you can search media visually.";
 "Draft" = "Draft";
 "Draft already enhanced or cache unavailable" = "Draft already enhanced or cache unavailable";
-"Drag a box around the subject, or click it" = "Drag a box around the subject, or click it";
 "Drag to add or shape a point · double-click to remove" = "Drag to add or shape a point · double-click to remove";
 "Drop files here or import from disk" = "Drop files here or import from disk";
 "Dubbing" = "Dubbing";
@@ -336,6 +339,7 @@
 "Duplicate Clips to New Track" = "Duplicate Clips to New Track";
 "Duration" = "Duration";
 "Duration (%lld-%lld seconds)" = "Duration (%lld-%lld seconds)";
+"Edge Feather" = "Edge Feather";
 "Edge Rounding" = "Edge Rounding";
 "Edge Softness" = "Edge Softness";
 "Edit" = "Edit";
@@ -354,6 +358,7 @@
 "Effects" = "Effects";
 "Email (optional)" = "Email (optional)";
 "Empty" = "Empty";
+"Enable Effect" = "Enable Effect";
 "Enable: %@" = "Enable: %@";
 "Enhance" = "Enhance";
 "Enhance resolution or frame rate with AI" = "Enhance resolution or frame rate with AI";
@@ -418,6 +423,7 @@
 "Full changelog" = "Full changelog";
 "Gain" = "Gain";
 "Gamma" = "Gamma";
+"Gaussian Blur" = "Gaussian Blur";
 "General" = "General";
 "Generate" = "Generate";
 "Generate B-roll" = "Generate B-roll";
@@ -468,6 +474,7 @@
 "Highlight" = "Highlight";
 "Highlight Block" = "Highlight Block";
 "Highlights" = "Highlights";
+"Highlights & Shadows" = "Highlights & Shadows";
 "Hobbyist" = "Hobbyist";
 "Hold" = "Hold";
 "How did you find VeeCut?" = "How did you find VeeCut?";
@@ -506,6 +513,7 @@
 "Integration with your own agent" = "Integration with your own agent";
 "Integrations" = "Integrations";
 "Intensity" = "Intensity";
+"Invert" = "Invert";
 "Invert Colors" = "Invert Colors";
 "Inverted" = "Inverted";
 "Italic" = "Italic";
@@ -515,8 +523,10 @@
 "Keep Skill" = "Keep Skill";
 "Keep the best takes" = "Keep the best takes";
 "Keeps this much audio before and after detected speech." = "Keeps this much audio before and after detected speech.";
+"Key Hue" = "Key Hue";
 "Keyboard Shortcuts" = "Keyboard Shortcuts";
 "Keyframes" = "Keyframes";
+"LUT" = "LUT";
 "LUTs" = "LUTs";
 "Labels" = "Labels";
 "Language" = "Language";
@@ -655,7 +665,7 @@
 "No projects found" = "No projects found";
 "No prompt needed" = "No prompt needed";
 "No speech detected." = "No speech detected.";
-"No subject found there. Try a tighter box." = "No subject found there. Try a tighter box.";
+"No subject found there. Try scribbling right on it." = "No subject found there. Try scribbling right on it.";
 "No track" = "No track";
 "No video" = "No video";
 "No video clips" = "No video clips";
@@ -704,6 +714,7 @@
 "PiP Bottom Right" = "PiP Bottom Right";
 "PiP Top Left" = "PiP Top Left";
 "PiP Top Right" = "PiP Top Right";
+"Pick a quick action, then fine-tune it here." = "Pick a quick action, then fine-tune it here.";
 "Pick a replacement for \"%@\"" = "Pick a replacement for \"%@\"";
 "Place on timeline" = "Place on timeline";
 "Play / Pause" = "Play / Pause";
@@ -762,7 +773,10 @@
 "Remove %@" = "Remove %@";
 "Remove API key" = "Remove API key";
 "Remove Dead Air" = "Remove Dead Air";
+"Remove Effect" = "Remove Effect";
 "Remove Marker" = "Remove Marker";
+"Remove Subject Looks" = "Remove Subject Looks";
+"Remove all looks on this subject" = "Remove all looks on this subject";
 "Remove background sound and keep speech" = "Remove background sound and keep speech";
 "Remove filler words" = "Remove filler words";
 "Remove from Queue" = "Remove from Queue";
@@ -808,6 +822,7 @@
 "Roundness" = "Roundness";
 "Run this command once in Terminal." = "Run this command once in Terminal.";
 "Running on" = "Running on";
+"SAM couldn't follow that spot. Scribble across more of the subject, or try another frame." = "SAM couldn't follow that spot. Scribble across more of the subject, or try another frame.";
 "Safe Zones" = "Safe Zones";
 "Sample Key Color" = "Sample Key Color";
 "Sample Project" = "Sample Project";
@@ -829,6 +844,7 @@
 "Score my timeline" = "Score my timeline";
 "Screen" = "Screen";
 "Screenshot a frame" = "Screenshot a frame";
+"Scribble over the subject, circle it, or click it" = "Scribble over the subject, circle it, or click it";
 "Scroll Horizontally" = "Scroll Horizontally";
 "Scroll to latest" = "Scroll to latest";
 "Search" = "Search";
@@ -842,7 +858,7 @@
 "Select Forward on All Tracks" = "Select Forward on All Tracks";
 "Select Forward on Track" = "Select Forward on Track";
 "Select Range" = "Select Range";
-"Select Subject — drag a box or click on what to track" = "Select Subject — drag a box or click on what to track";
+"Select Subject — scribble over, circle, or click what to track" = "Select Subject — scribble over, circle, or click what to track";
 "Select compatible clips and paste settings again." = "Select compatible clips and paste settings again.";
 "Select media files or folders to import" = "Select media files or folders to import";
 "Select the timeline to add a marker." = "Select the timeline to add a marker.";
@@ -868,6 +884,7 @@
 "Shadows" = "Shadows";
 "Share usage data" = "Share usage data";
 "Sharpen" = "Sharpen";
+"Sharpness" = "Sharpness";
 "Short-form and social" = "Short-form and social";
 "Shortcuts" = "Shortcuts";
 "Show All Tabs" = "Show All Tabs";
@@ -907,6 +924,7 @@
 "Smart search" = "Smart search";
 "Smooth" = "Smooth";
 "Soft Light" = "Soft Light";
+"Softness" = "Softness";
 "Sound Effects" = "Sound Effects";
 "Source" = "Source";
 "Source Audio" = "Source Audio";
@@ -940,6 +958,8 @@
 "Student" = "Student";
 "Style" = "Style";
 "Style instructions (optional). e.g., warm and slow, British accent." = "Style instructions (optional). e.g., warm and slow, British accent.";
+"Subject" = "Subject";
+"Subject tracked. Add looks in the Subject inspector." = "Subject tracked. Add looks in the Subject inspector.";
 "Subscribe" = "Subscribe";
 "Subscribe or add your own API key to use this model." = "Subscribe or add your own API key to use this model.";
 "Subscription" = "Subscription";
@@ -962,6 +982,7 @@
 "Target Language" = "Target Language";
 "Tell us about your work" = "Tell us about your work";
 "Temperature" = "Temperature";
+"Temperature & Tint" = "Temperature & Tint";
 "Temporary files" = "Temporary files";
 "Text" = "Text";
 "Text to Music" = "Text to Music";
@@ -996,11 +1017,13 @@
 "Tint" = "Tint";
 "Tints waveforms by speaker. Voices are matched across clips using cloud transcripts." = "Tints waveforms by speaker. Voices are matched across clips using cloud transcripts.";
 "Title Safe" = "Title Safe";
+"Tolerance" = "Tolerance";
 "Tone" = "Tone";
 "Tools" = "Tools";
 "Top" = "Top";
 "Top / Bottom" = "Top / Bottom";
 "Track Name" = "Track Name";
+"Tracked with SAM 3.1" = "Tracked with SAM 3.1";
 "Tracking" = "Tracking";
 "Tracking failed. Try again." = "Tracking failed. Try again.";
 "Tracking subject…" = "Tracking subject…";

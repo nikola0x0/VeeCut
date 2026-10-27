@@ -21,6 +21,11 @@ enum AppTheme {
         static let paper = NSColor(srgbRed: 245/255, green: 240/255, blue: 252/255, alpha: 1)
     }
 
+    enum Canvas {
+        static let markerWidth: CGFloat = 5
+        static let markerGlow: CGFloat = 6
+    }
+
     enum Brand {
         static let wordmarkFontName = "Fredoka"
         static let markCornerRatio: CGFloat = 0.27
@@ -102,7 +107,6 @@ enum AppTheme {
     enum Accent {
         static let canvasAINSColor = Palette.periwinkle
         static let canvasAI = Color(canvasAINSColor)
-        static let canvasSelectionDash: [CGFloat] = [6, 4]
         static let timecodeNSColor = AppTheme.adaptive(
             light: NSColor(srgbRed: 164/255, green: 73/255, blue: 47/255, alpha: 1),
             dark: Palette.peach
@@ -451,6 +455,7 @@ enum AppTheme {
         static let timelineBadgePadV: CGFloat = 1
         static let timelineBadgeMinWidth: CGFloat = 16
         static let timelineDotSize: CGFloat = 5
+        static let subjectSideSwatch: CGFloat = 8
         static let updateOverlayWidth: CGFloat = 640
     }
 

@@ -44,6 +44,7 @@ struct InspectorView: View {
         case textAnimate
         case video
         case effects
+        case subject
         case audio
         case multicam
         case ai
@@ -54,6 +55,7 @@ struct InspectorView: View {
             case .textAnimate: L10n.key("Animate")
             case .video: L10n.key("Video")
             case .effects: L10n.key("Adjust")
+            case .subject: L10n.key("Subject")
             case .audio: L10n.key("Audio")
             case .multicam: L10n.key("Multicam")
             case .ai: L10n.key("AI Edit")
@@ -66,6 +68,7 @@ struct InspectorView: View {
             case .textAnimate: "diamond"
             case .video: "video"
             case .effects: "slider.horizontal.3"
+            case .subject: "person.crop.rectangle"
             case .audio: "waveform"
             case .multicam: "square.grid.2x2"
             case .ai: "wand.and.stars"
@@ -322,6 +325,7 @@ struct InspectorView: View {
             tabs.append(.video)
             tabs.append(.effects)
         }
+        if subjectClip(in: selection) != nil { tabs.append(.subject) }
         if !audios.isEmpty { tabs.append(.audio) }
         if selectedMulticamGroupId != nil { tabs.append(.multicam) }
         if aiEditEligible(selection: selection, resolvedClipAsset: resolvedClipAsset)
@@ -329,6 +333,13 @@ struct InspectorView: View {
             tabs.append(.ai)
         }
         return tabs
+    }
+
+    /// The single selected visual clip when it has a tracked subject to show.
+    private func subjectClip(in selection: InspectorClipSelection) -> Clip? {
+        guard selection.clipCount == 1, let clip = selection.nonTextVisualClips.first else { return nil }
+        let hasRegions = !(clip.effectRegions ?? []).isEmpty
+        return hasRegions || editor.canvasSubject?.clipId == clip.id ? clip : nil
     }
 
     private func selectedMulticamGroupId(for selection: InspectorClipSelection) -> String? {
@@ -406,6 +417,10 @@ struct InspectorView: View {
                             case .multicam:
                                 if let groupId = multicamGroupId {
                                     MulticamTab(groupId: groupId)
+                                }
+                            case .subject:
+                                if let clip = subjectClip(in: selection) {
+                                    SubjectTab(clip: clip)
                                 }
                             case .effects, .ai, .none:
                                 EmptyView()

@@ -21,6 +21,8 @@ struct EffectMatte: Codable, Sendable, Equatable {
     /// Edge softness in source pixels.
     var feather: Double = 0
 
+    static let featherRange: ClosedRange<Double> = 0...50
+
     func targetsSameRegion(as other: EffectMatte) -> Bool {
         maskId == other.maskId && invert == other.invert
     }

@@ -19,4 +19,17 @@ extension Clip {
         }
         effectRegions = regions.isEmpty ? nil : regions
     }
+
+    /// Edits one region by id, dropping it when its effect stack is emptied.
+    mutating func updateRegion(id: String, _ body: (inout EffectRegion) -> Void) {
+        guard var regions = effectRegions, let index = regions.firstIndex(where: { $0.id == id }) else { return }
+        body(&regions[index])
+        if regions[index].effects.isEmpty { regions.remove(at: index) }
+        effectRegions = regions.isEmpty ? nil : regions
+    }
+
+    mutating func removeRegions(maskId: String) {
+        effectRegions?.removeAll { $0.matte.maskId == maskId }
+        if effectRegions?.isEmpty == true { effectRegions = nil }
+    }
 }

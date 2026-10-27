@@ -9,6 +9,8 @@ struct CanvasSubject: Equatable {
 enum SubjectTrackingFailure: Equatable {
     case missingAPIKey
     case notFound
+    /// SAM accepted the request but could not follow the marked spot.
+    case modelFailed
     case failed
 }
 
@@ -19,6 +21,14 @@ enum SubjectLook: CaseIterable {
     case blurBackground
 
     var appliesOutside: Bool { self != .popSubject }
+
+    var titleKey: String {
+        switch self {
+        case .popSubject: L10n.key("Pop Subject")
+        case .darkenBackground: L10n.key("Darken Background")
+        case .blurBackground: L10n.key("Blur Background")
+        }
+    }
 
     var effects: [Effect] {
         switch self {
@@ -87,11 +97,18 @@ extension EditorViewModel {
                 let result = try await self.trackObject(clipId: clipId, prompt: .target(target), label: Self.subjectMaskLabel)
                 guard !Task.isCancelled, self.clipFor(id: clipId) != nil else { return }
                 self.canvasSubject = CanvasSubject(clipId: clipId, maskId: result.mask.id)
+                self.selectedClipIds = [clipId]
+                self.inspectorPanelVisible = true
+                self.inspectorClipTabRequest = .subject
             } catch is CancellationError {
             } catch MetaModelError.missingAPIKey {
                 self.subjectTrackingFailure = .missingAPIKey
             } catch TrackingError.objectNotFound {
                 self.subjectTrackingFailure = .notFound
+            } catch MetaModelError.streamFailed(let detail) {
+                guard !Task.isCancelled else { return }
+                Log.editor.error("subject tracking model failure clip=\(clipId) detail=\(detail)")
+                self.subjectTrackingFailure = .modelFailed
             } catch {
                 guard !Task.isCancelled else { return }
                 Log.editor.error("subject tracking failed clip=\(clipId) error=\(String(describing: error))")
@@ -101,12 +118,12 @@ extension EditorViewModel {
     }
 
     /// Merges a look into the subject's inside or outside region as one undoable edit.
-    func applySubjectLook(_ look: SubjectLook) {
-        guard let subject = canvasSubject, clipFor(id: subject.clipId) != nil else { return }
-        let matte = EffectMatte(maskId: subject.maskId, invert: look.appliesOutside, feather: Self.subjectFeather)
+    func applySubjectLook(_ look: SubjectLook, clipId: String, maskId: String) {
+        guard clipFor(id: clipId) != nil else { return }
+        let matte = EffectMatte(maskId: maskId, invert: look.appliesOutside, feather: Self.subjectFeather)
         let actionName = L10n.string("Apply Look")
         undo.perform(actionName) {
-            mutateClips(ids: [subject.clipId], actionName: actionName) { clip in
+            mutateClips(ids: [clipId], actionName: actionName) { clip in
                 clip.updateRegion(matching: matte) { stack in
                     for effect in look.effects {
                         stack.removeAll { $0.type == effect.type }
@@ -115,5 +132,31 @@ extension EditorViewModel {
                 }
             }
         }
+    }
+
+    /// Live (`commit == false`) or undoable edit of one subject region; an emptied region is removed.
+    func editSubjectRegion(
+        clipId: String,
+        regionId: String,
+        commit: Bool,
+        actionName: String,
+        _ body: @escaping (inout EffectRegion) -> Void
+    ) {
+        guard clipFor(id: clipId)?.effectRegions?.contains(where: { $0.id == regionId }) == true else { return }
+        if commit {
+            commitClipProperties(clipIds: [clipId], actionName: actionName) { $0.updateRegion(id: regionId, body) }
+        } else {
+            applyClipProperties(clipIds: [clipId]) { $0.updateRegion(id: regionId, body) }
+        }
+    }
+
+    /// Removes every look tied to `maskId` on the clip as one undoable edit.
+    func removeSubject(clipId: String, maskId: String) {
+        guard clipFor(id: clipId)?.effectRegions?.contains(where: { $0.matte.maskId == maskId }) == true else { return }
+        let actionName = L10n.string("Remove Subject Looks")
+        undo.perform(actionName) {
+            mutateClips(ids: [clipId], actionName: actionName) { $0.removeRegions(maskId: maskId) }
+        }
+        if canvasSubject == CanvasSubject(clipId: clipId, maskId: maskId) { canvasSubject = nil }
     }
 }

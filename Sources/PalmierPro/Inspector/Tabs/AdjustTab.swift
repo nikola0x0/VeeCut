@@ -685,11 +685,11 @@ extension InspectorView {
     }
 
     private func effectParamFormat(_ spec: EffectParamSpec) -> String {
-        (spec.range.upperBound - spec.range.lowerBound) <= 20 ? "%.2f" : "%.0f"
+        EffectParamDisplay.format(for: spec.range)
     }
 
     private func effectParamSensitivity(_ spec: EffectParamSpec) -> Double {
-        max(0.01, (spec.range.upperBound - spec.range.lowerBound) / 200)
+        EffectParamDisplay.dragSensitivity(for: spec.range)
     }
 
     /// Live edit (no undo entry) — mirrors applyClipProperty's refresh-only path.

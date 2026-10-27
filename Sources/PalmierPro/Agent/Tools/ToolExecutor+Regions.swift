@@ -20,7 +20,7 @@ extension ToolExecutor {
         case let other: throw ToolError("\(path).region.side must be 'inside' or 'outside', got '\(other)'.")
         }
         let feather = input.feather ?? 0
-        guard feather.isFinite, (0...50).contains(feather) else {
+        guard feather.isFinite, EffectMatte.featherRange.contains(feather) else {
             throw ToolError("\(path).region.feather must be between 0 and 50.")
         }
         for id in clipIds {

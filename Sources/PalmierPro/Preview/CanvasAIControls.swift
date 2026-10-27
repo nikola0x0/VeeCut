@@ -20,7 +20,7 @@ struct CanvasToolPalette: View {
             }
             .buttonStyle(.plain)
             .disabled(editor.isSubjectTracking)
-            .help(L10n.string("Select Subject — drag a box or click on what to track"))
+            .help(L10n.string("Select Subject — scribble over, circle, or click what to track"))
         }
         .padding(AppTheme.Spacing.xs)
         .background(
@@ -31,7 +31,7 @@ struct CanvasToolPalette: View {
     }
 }
 
-/// Floating bar over the preview: tracking progress, failures, then one-click looks.
+/// Floating bar over the preview: selection hint, tracking progress and failures.
 struct SubjectActionBar: View {
     @Environment(EditorViewModel.self) private var editor
 
@@ -42,9 +42,9 @@ struct SubjectActionBar: View {
             } else if let failure = editor.subjectTrackingFailure {
                 failureRow(failure)
             } else if editor.canvasSubject != nil {
-                looksRow
+                trackedRow
             } else if editor.subjectSelectionActive {
-                hint(L10n.string("Drag a box around the subject, or click it"))
+                hint(L10n.string("Scribble over the subject, circle it, or click it"))
             }
         }
         .padding(.bottom, AppTheme.Spacing.lgXl)
@@ -70,18 +70,11 @@ struct SubjectActionBar: View {
         }
     }
 
-    private var looksRow: some View {
+    private var trackedRow: some View {
         capsule {
-            barButton(L10n.string("Pop Subject"), prominent: true) { editor.applySubjectLook(.popSubject) }
-            barButton(L10n.string("Darken Background"), prominent: true) { editor.applySubjectLook(.darkenBackground) }
-            barButton(L10n.string("Blur Background"), prominent: true) { editor.applySubjectLook(.blurBackground) }
-            Button { editor.canvasSubject = nil } label: {
-                Image(systemName: "xmark")
-                    .font(.system(size: AppTheme.FontSize.sm, weight: AppTheme.FontWeight.semibold))
-                    .foregroundStyle(AppTheme.MediaOverlay.secondaryColor)
-            }
-            .buttonStyle(.plain)
-            .help(L10n.string("Done"))
+            Text(L10n.string("Subject tracked. Add looks in the Subject inspector."))
+                .foregroundStyle(AppTheme.MediaOverlay.primaryColor)
+            barButton(L10n.string("Done")) { editor.canvasSubject = nil }
         }
     }
 
@@ -94,7 +87,8 @@ struct SubjectActionBar: View {
     private func message(for failure: SubjectTrackingFailure) -> String {
         switch failure {
         case .missingAPIKey: L10n.string("Add a Meta Model API key in Settings to track subjects.")
-        case .notFound: L10n.string("No subject found there. Try a tighter box.")
+        case .notFound: L10n.string("No subject found there. Try scribbling right on it.")
+        case .modelFailed: L10n.string("SAM couldn't follow that spot. Scribble across more of the subject, or try another frame.")
         case .failed: L10n.string("Tracking failed. Try again.")
         }
     }
@@ -108,13 +102,13 @@ struct SubjectActionBar: View {
             .shadow(AppTheme.Shadow.md)
     }
 
-    private func barButton(_ title: String, prominent: Bool = false, action: @escaping () -> Void) -> some View {
+    private func barButton(_ title: String, action: @escaping () -> Void) -> some View {
         Button(action: action) {
             Text(verbatim: title)
                 .foregroundStyle(AppTheme.MediaOverlay.primaryColor)
                 .padding(.horizontal, AppTheme.Spacing.smMd)
                 .padding(.vertical, AppTheme.Spacing.xs)
-                .background(Capsule().fill(prominent ? AppTheme.Accent.canvasAI : AppTheme.MediaOverlay.primaryColor.opacity(AppTheme.Opacity.muted)))
+                .background(Capsule().fill(AppTheme.MediaOverlay.primaryColor.opacity(AppTheme.Opacity.muted)))
         }
         .buttonStyle(.plain)
     }

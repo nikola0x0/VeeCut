@@ -67,8 +67,8 @@ struct SubjectLookTests {
 
     @Test func eachLookIsOneUndoStepInItsRegion() throws {
         let editor = editorWithSubject()
-        editor.applySubjectLook(.darkenBackground)
-        editor.applySubjectLook(.popSubject)
+        editor.applySubjectLook(.darkenBackground, clipId: "clip", maskId: "mask")
+        editor.applySubjectLook(.popSubject, clipId: "clip", maskId: "mask")
 
         let regions = try #require(editor.clipFor(id: "clip")?.effectRegions)
         #expect(regions.count == 2)
@@ -83,9 +83,56 @@ struct SubjectLookTests {
 
     @Test func reapplyingALookDoesNotDuplicateEffects() throws {
         let editor = editorWithSubject()
-        editor.applySubjectLook(.blurBackground)
-        editor.applySubjectLook(.blurBackground)
+        editor.applySubjectLook(.blurBackground, clipId: "clip", maskId: "mask")
+        editor.applySubjectLook(.blurBackground, clipId: "clip", maskId: "mask")
         #expect(editor.clipFor(id: "clip")?.effectRegions?.first?.effects.count == 1)
+    }
+
+    @Test func draggingARegionSliderIsOneUndoStep() throws {
+        let editor = editorWithSubject()
+        editor.applySubjectLook(.blurBackground, clipId: "clip", maskId: "mask")
+        let region = try #require(editor.clipFor(id: "clip")?.effectRegions?.first)
+        for radius in [20.0, 30.0, 40.0] {
+            editor.editSubjectRegion(clipId: "clip", regionId: region.id, commit: false, actionName: "Change Radius") {
+                $0.effects[0].params[Effect.gaussianBlurRadiusKey] = EffectParam(value: radius)
+            }
+        }
+        editor.editSubjectRegion(clipId: "clip", regionId: region.id, commit: true, actionName: "Change Radius") {
+            $0.effects[0].params[Effect.gaussianBlurRadiusKey] = EffectParam(value: 40)
+        }
+        #expect(editor.clipFor(id: "clip")?.effectRegions?.first?.effects.first?.params[Effect.gaussianBlurRadiusKey]?.value == 40)
+
+        undoManager.undo()
+        #expect(editor.clipFor(id: "clip")?.effectRegions?.first?.effects.first?.params[Effect.gaussianBlurRadiusKey]?.value == 14)
+    }
+
+    @Test func removingTheLastEffectRemovesTheRegion() throws {
+        let editor = editorWithSubject()
+        editor.applySubjectLook(.blurBackground, clipId: "clip", maskId: "mask")
+        let region = try #require(editor.clipFor(id: "clip")?.effectRegions?.first)
+        editor.editSubjectRegion(clipId: "clip", regionId: region.id, commit: true, actionName: "Remove Effect") {
+            $0.effects.removeAll()
+        }
+        #expect(editor.clipFor(id: "clip")?.effectRegions == nil)
+    }
+
+    @Test func removeSubjectDropsItsRegionsInOneUndoStepAndClearsTheCanvasSubject() {
+        let editor = editorWithSubject()
+        editor.applySubjectLook(.popSubject, clipId: "clip", maskId: "mask")
+        editor.applySubjectLook(.darkenBackground, clipId: "clip", maskId: "mask")
+        editor.removeSubject(clipId: "clip", maskId: "mask")
+        #expect(editor.clipFor(id: "clip")?.effectRegions == nil)
+        #expect(editor.canvasSubject == nil)
+
+        undoManager.undo()
+        #expect(editor.clipFor(id: "clip")?.effectRegions?.count == 2)
+    }
+
+    @Test func removingAnUnknownSubjectIsANoOp() {
+        let editor = editorWithSubject()
+        editor.removeSubject(clipId: "clip", maskId: "other")
+        #expect(!undoManager.canUndo)
+        #expect(editor.canvasSubject != nil)
     }
 
     @Test func escapeDismissesSelectionModeBeforeSubject() {
