@@ -47,7 +47,6 @@ enum TrackingError: Error, Equatable {
 /// Runs one SAM 3.1 tracking job over the source range a clip uses.
 enum ObjectTracker {
     static let maxFrames = 15_000
-    private static let excerptPreset = AVAssetExportPreset1920x1080
 
     @concurrent
     static func track(
@@ -59,22 +58,18 @@ enum ObjectTracker {
         guard range.lowerBound.isFinite, range.upperBound.isFinite, range.lowerBound >= 0,
               range.upperBound > range.lowerBound else { throw TrackingError.invalidRange }
 
+        let upperBoundFrames = Int(((range.upperBound - range.lowerBound) * Double(TrackingExcerpt.maxFrameRate)).rounded(.up))
+        guard upperBoundFrames <= maxFrames else { throw TrackingError.tooLong(frames: upperBoundFrames) }
+
         let excerptURL = FileManager.default.temporaryDirectory
             .appending(path: "veecut-track-\(UUID().uuidString).mp4")
         defer { try? FileManager.default.removeItem(at: excerptURL) }
-        try await exportExcerpt(of: request.sourceURL, range: range, to: excerptURL)
+        let excerpt = try await TrackingExcerpt.write(sourceURL: request.sourceURL, range: range, to: excerptURL)
         try Task.checkCancellation()
-
-        let excerpt = AVURLAsset(url: excerptURL)
-        guard let track = try await excerpt.loadTracks(withMediaType: .video).first else { throw TrackingError.noVideoTrack }
-        let (naturalSize, transform, nominalRate) = try await track.load(.naturalSize, .preferredTransform, .nominalFrameRate)
-        let display = naturalSize.applying(transform)
-        let width = Int(abs(display.width).rounded())
-        let height = Int(abs(display.height).rounded())
-        let fps = Double(nominalRate)
-        guard width > 0, height > 0, fps > 0 else { throw TrackingError.noVideoTrack }
-        let expectedFrames = max(1, Int(((range.upperBound - range.lowerBound) * fps).rounded()))
-        guard expectedFrames <= maxFrames else { throw TrackingError.tooLong(frames: expectedFrames) }
+        let fps = Double(excerpt.fps)
+        let expectedFrames = excerpt.frameCount
+        let width = excerpt.width
+        let height = excerpt.height
 
         let promptText: String
         switch request.prompt {
@@ -142,21 +137,5 @@ enum ObjectTracker {
                                        isPositive: point.isPositive))
         }
         return SAMPromptBuilder.text(for: [prompt], sourceWidth: width, sourceHeight: height)
-    }
-
-    private static func exportExcerpt(of sourceURL: URL, range: ClosedRange<Double>, to outputURL: URL) async throws {
-        let asset = AVURLAsset(url: sourceURL)
-        guard let session = AVAssetExportSession(asset: asset, presetName: excerptPreset) else {
-            throw TrackingError.exportFailed("No export session for preset")
-        }
-        session.timeRange = CMTimeRange(
-            start: CMTime(seconds: range.lowerBound, preferredTimescale: 600),
-            end: CMTime(seconds: range.upperBound, preferredTimescale: 600)
-        )
-        do {
-            try await session.export(to: outputURL, as: .mp4)
-        } catch {
-            throw TrackingError.exportFailed(error.localizedDescription)
-        }
     }
 }
