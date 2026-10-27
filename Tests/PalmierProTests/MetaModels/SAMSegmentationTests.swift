@@ -83,3 +83,26 @@ func parserIgnoresNonRecordLines(line: String) throws {
         try SAMStreamEvents.frames(fromEventLine: #"data: {"type":"error","message":"quota"}"#)
     }
 }
+
+/// Recorded SAM 3.1 response for a 160x120 image with a light disk (center 80,60, radius 35) and a box prompt.
+/// Meta's reference decoder yields 4061 set pixels for this payload.
+private let recordedDiskEvent = #"data: {"content_index":0,"delta":"<0f>1<|box;x1=45;y1=24;x2=115;y2=95;w=160;h=120;c=0.92578125|><|mask;x=0;y=0;c=0.92578125;data=72,71,!!!!!mEHC/RoxTAU!z0[aJyW=0-ZtWp_^#ltTu1u=CcWSr#+`aO-vTsl:0`R=O]8V'T/JV*QaiL3heV-W+#w+If()f*!!!|>\n","item_id":"msg_9e43b866-5632-4f75-8d06-d116ad4a8cc4","logprobs":[],"output_index":0,"sequence_number":4,"type":"response.output_text.delta"}"#
+
+@Test func recordedSAMResponseDecodesToTheDisk() throws {
+    let frame = try #require(try SAMStreamEvents.frames(fromEventLine: recordedDiskEvent).first)
+    let object = try #require(frame.objects.first)
+    #expect(object.box == SAMBox(left: 45, top: 24, right: 116, bottom: 96, sourceWidth: 160, sourceHeight: 120))
+
+    let mask = object.mask
+    var agreeing = 0
+    for row in 0..<mask.height {
+        for column in 0..<mask.width {
+            let x = Double(object.box.left) + (Double(column) + 0.5) * Double(object.box.right - object.box.left) / Double(mask.width)
+            let y = Double(object.box.top) + (Double(row) + 0.5) * Double(object.box.bottom - object.box.top) / Double(mask.height)
+            let insideDisk = (x - 80) * (x - 80) + (y - 60) * (y - 60) < 35 * 35
+            if (mask.bits[row * mask.width + column] == 1) == insideDisk { agreeing += 1 }
+        }
+    }
+    #expect(Double(agreeing) / Double(mask.bits.count) > 0.95)
+    #expect(mask.bits.reduce(0) { $0 + Int($1) } == 4061)
+}
