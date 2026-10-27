@@ -827,3 +827,8 @@ enum CropAspectLock: Hashable, Sendable {
         } ?? .fixed(ratio)
     }
 }
+
+extension Track {
+    /// Muted (audio) or hidden (video): the track contributes nothing to playback or export.
+    var isSilencedOrHidden: Bool { type == .audio ? muted : hidden }
+}

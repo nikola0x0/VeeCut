@@ -446,6 +446,7 @@ final class TimelineInputController {
                 playheadFrame: editor.currentFrame,
                 excludeClipIds: allDraggedIds,
                 includePlayhead: true,
+                includeTimelineStart: true,
                 markerFrames: editor.timelineMarkerSnapFrames(),
                 beatFrames: editor.beatSnapFrames(for:)
             )
@@ -1270,26 +1271,15 @@ final class TimelineInputController {
 
     // MARK: - Zoom & pan
 
-    /// Option+scroll zooms; Cmd+scroll pans horizontally (maps vertical delta to X, for mouse wheels);
-    /// plain scroll pans (forwarded to the scroll view, both axes).
+    /// Cmd+scroll or Option+scroll zooms around the cursor; plain and Shift+scroll pan
+    /// (forwarded to the scroll view, which maps Shift+wheel to horizontal).
     func scrollWheel(with event: NSEvent, geometry: TimelineGeometry) {
         view.setHoveredClipId(nil)
-        if event.modifierFlags.contains(.option) {
+        if !event.modifierFlags.intersection([.command, .option]).isEmpty {
             let cursorDocX = view.convert(event.locationInWindow, from: nil).x
             applyZoom(factor: exp(event.scrollingDeltaY * Zoom.scrollSensitivity), anchorDocX: cursorDocX)
             return
         }
-
-        if event.modifierFlags.contains(.command), let scrollView = view.enclosingScrollView {
-            let raw = event.scrollingDeltaX != 0 ? event.scrollingDeltaX : event.scrollingDeltaY
-            let delta = raw * Zoom.panSpeed
-            let origin = scrollView.contentView.bounds.origin
-            let maxX = max(0, view.bounds.width - scrollView.contentView.bounds.width)
-            let scrollX = min(maxX, max(0, origin.x - delta))
-            scrollView.contentView.setBoundsOrigin(NSPoint(x: scrollX, y: origin.y))
-            return
-        }
-
         view.superview?.superview?.scrollWheel(with: event)
     }
 

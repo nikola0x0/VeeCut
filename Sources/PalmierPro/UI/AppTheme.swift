@@ -315,6 +315,8 @@ enum AppTheme {
         static let strong: Double = 0.55
         static let high: Double = 0.70
         static let prominent: Double = 0.80
+        /// Clips and labels on a muted audio track or hidden video track.
+        static let disabledTrack: Double = 0.4
     }
 
     // MARK: - Track type colors

@@ -67,7 +67,6 @@ enum Zoom {
     static let toolbarStepFactor: Double = 1.25
     static let scrollSensitivity: Double = 0.04
     static let magnifySensitivity: Double = 1.5 
-    static let panSpeed: Double = 5.0
     static let fitAllBuffer: Double = 3.0
 }
 

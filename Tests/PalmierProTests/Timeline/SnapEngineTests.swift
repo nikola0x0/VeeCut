@@ -10,6 +10,11 @@ struct SnapEngineTests {
 
     // MARK: - collectTargets
 
+    @Test func timelineStartIsATargetOnlyWhenRequested() {
+        #expect(SnapEngine.collectTargets(tracks: [], includeTimelineStart: true).map(\.kind) == [.timelineStart])
+        #expect(SnapEngine.collectTargets(tracks: [], includeTimelineStart: true).first?.frame == 0)
+    }
+
     @Test func collectTargetsEmptyTracksProducesNoTargets() {
         #expect(SnapEngine.collectTargets(tracks: [], includePlayhead: false).isEmpty)
     }

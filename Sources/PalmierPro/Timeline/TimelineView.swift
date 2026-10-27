@@ -777,7 +777,9 @@ final class TimelineView: NSView, NSPopoverDelegate {
                 clipDisplayRects[clip.id] = rect
                 guard rect.intersects(dirtyRect) else { continue }
                 ClipRenderer.draw(clip, type: clip.mediaType, in: rect,
-                                  isSelected: isSelected, isHovered: hoveredClipId == clip.id, context: ctx,
+                                  isSelected: isSelected, isHovered: hoveredClipId == clip.id,
+                                  opacity: track.isSilencedOrHidden ? AppTheme.Opacity.disabledTrack : AppTheme.Opacity.opaque,
+                                  context: ctx,
                                   cache: editor.mediaVisualCache,
                                   deadAirRanges: displayedDeadAirRanges(for: clip),
                                   displayName: displayName(clip, in: rect, isSelected: isSelected),
@@ -1968,6 +1970,7 @@ final class TimelineView: NSView, NSPopoverDelegate {
             .reduce(0) { $0 + editor.clipDurationFrames(for: $1, segment: externalDragSegments[$1.id]) }
         let targets = SnapEngine.collectTargets(
             tracks: editor.timeline.tracks,
+            includeTimelineStart: true,
             markerFrames: editor.timelineMarkerSnapFrames(),
             beatFrames: editor.beatSnapFrames(for:)
         )

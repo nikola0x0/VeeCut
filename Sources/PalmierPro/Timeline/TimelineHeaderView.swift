@@ -310,6 +310,9 @@ final class TimelineHeaderView: NSView {
         context: CGContext,
         drawsName: Bool
     ) -> NSRect {
+        context.saveGState()
+        defer { context.restoreGState() }
+        if track.isSilencedOrHidden { context.setAlpha(AppTheme.Opacity.disabledTrack) }
         let designation = NSAttributedString(
             string: editor.timelineTrackDisplayLabel(at: trackIndex),
             attributes: labelAttrs

@@ -30,9 +30,9 @@ struct ShortcutsPane: View {
             ("Drag Range Edge", L10n.string("Adjust Range")),
             ("I", L10n.string("Mark Range Start")),
             ("O", L10n.string("Mark Range End")),
-            ("Opt + Scroll", L10n.string("Zoom to Cursor")),
+            ("Cmd + Scroll", L10n.string("Zoom to Cursor")),
             ("Pinch", L10n.string("Zoom to Cursor")),
-            ("Cmd + Scroll", L10n.string("Scroll Horizontally")),
+            ("Shift + Scroll", L10n.string("Scroll Horizontally")),
         ]),
         ShortcutGroup(title: L10n.string("File"), shortcuts: [
             ("Cmd + N", L10n.string("New")),
