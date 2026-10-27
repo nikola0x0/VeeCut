@@ -1,6 +1,6 @@
 import Foundation
 
-/// One entry in the published catalog.json. `sha` is a content hash of the SKILL.md
+/// One entry in the bundled catalog.json. `sha` is a content hash of the SKILL.md
 /// and is the version anchor: a changed sha means an update is available.
 struct SkillCatalogEntry: Codable, Identifiable, Sendable {
     let id: String
@@ -10,69 +10,53 @@ struct SkillCatalogEntry: Codable, Identifiable, Sendable {
     let path: String
 }
 
-/// Fetches the community skill catalog from the palmier-skills repo (raw GitHub CDN)
+enum SkillCatalogError: Error {
+    case missingResource(String)
+}
+
+/// Skills bundled under Resources/Skills, sourced from palmier-io/palmier-skills (Apache-2.0).
 @Observable
 @MainActor
 final class SkillCatalog {
     static let shared = SkillCatalog()
 
-    /// Catalog source. Override with the PALMIER_SKILLS_BASE env var to test against a
-    /// local clone, e.g. file:///path/to/palmier-skills.
-    static var base: String {
-        ProcessInfo.processInfo.environment["PALMIER_SKILLS_BASE"]
-            ?? "https://raw.githubusercontent.com/palmier-io/palmier-skills/main"
-    }
+    nonisolated private static let resourceDirectory = "Skills"
 
     private(set) var entries: [SkillCatalogEntry] = []
     private(set) var isLoading = false
     private(set) var lastError: String?
 
-    private static var cacheURL: URL {
-        DiskCache.rootDirectory.appendingPathComponent("skills-catalog.json")
-    }
-
-    private init() { loadCache() }
+    private init() {}
 
     func entry(id: String) -> SkillCatalogEntry? { entries.first { $0.id == id } }
 
-    static func bodyURL(path: String) -> URL? { URL(string: "\(base)/\(path)") }
-
-    private func loadCache() {
-        guard let data = try? Data(contentsOf: Self.cacheURL),
-              let decoded = try? JSONDecoder().decode([SkillCatalogEntry].self, from: data)
-        else { return }
-        entries = decoded
-    }
-
     @discardableResult
     func refresh() async -> Bool {
-        guard !isLoading, let url = URL(string: "\(Self.base)/catalog.json") else { return false }
+        guard !isLoading else { return false }
         isLoading = true
         defer { isLoading = false }
         do {
-            let data = try await Self.fetch(url)
+            let data = try await Self.resource("catalog.json")
             entries = try JSONDecoder().decode([SkillCatalogEntry].self, from: data)
             lastError = nil
-            try? FileManager.default.createDirectory(
-                at: Self.cacheURL.deletingLastPathComponent(), withIntermediateDirectories: true
-            )
-            try? data.write(to: Self.cacheURL)
-            Log.agent.notice("skill catalog loaded \(self.entries.count) entries from \(Self.base)")
             return true
         } catch {
-            lastError = error.localizedDescription
-            Log.agent.error("skill catalog refresh failed (\(Self.base)): \(error.localizedDescription)")
+            lastError = L10n.string("The bundled skills could not be loaded.")
+            Log.agent.error("skill catalog load failed: \(String(describing: error))")
             return false
         }
     }
 
-    /// Reads a catalog/body URL. File URLs are read directly
-    static func fetch(_ url: URL) async throws -> Data {
-        if url.isFileURL { return try Data(contentsOf: url) }
-        let (data, response) = try await URLSession.shared.data(from: url)
-        if let http = response as? HTTPURLResponse, http.statusCode != 200 {
-            throw URLError(.badServerResponse)
-        }
-        return data
+    @concurrent
+    static func body(of entry: SkillCatalogEntry) async throws -> Data {
+        try await resource(entry.path)
+    }
+
+    @concurrent
+    private static func resource(_ path: String) async throws -> Data {
+        let relative = "\(resourceDirectory)/\(path)"
+        guard !path.split(separator: "/").contains(".."),
+              let url = BundledResource.url(relative) else { throw SkillCatalogError.missingResource(relative) }
+        return try Data(contentsOf: url)
     }
 }

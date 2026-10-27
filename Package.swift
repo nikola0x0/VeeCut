@@ -75,6 +75,7 @@ let package = Package(
                 .copy("Resources/MCPB/palmier-pro.mcpb"),
                 .copy("Resources/Images"),
                 .copy("Resources/Changelog"),
+                .copy("Resources/Skills"),
                 .process("Resources/Localization"),
                 .copy("Resources/Models"),
             ],

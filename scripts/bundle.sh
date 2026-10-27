@@ -183,6 +183,12 @@ else
   echo "!! missing Changelog/ in SwiftPM resource bundle at $RES_BUNDLE" >&2
   exit 1
 fi
+if [ -d "$RES_BUNDLE/Skills" ]; then
+  cp -R "$RES_BUNDLE/Skills" "$APP/Contents/Resources/"
+else
+  echo "!! missing Skills/ in SwiftPM resource bundle at $RES_BUNDLE" >&2
+  exit 1
+fi
 if [ -d "$RES_BUNDLE/Models" ]; then
   cp -R "$RES_BUNDLE/Models" "$APP/Contents/Resources/"
 else

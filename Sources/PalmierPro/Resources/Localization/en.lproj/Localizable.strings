@@ -977,6 +977,7 @@
 "Text to speak" = "Text to speak";
 "Text to speak (minimum %lld characters)" = "Text to speak (minimum %lld characters)";
 "Thanks for the feedback." = "Thanks for the feedback.";
+"The bundled skills could not be loaded." = "The bundled skills could not be loaded.";
 "The clip you're adding has different settings than the current project." = "The clip you're adding has different settings than the current project.";
 "The export" = "The export";
 "The marker comment changed while you were editing. Review it and try again." = "The marker comment changed while you were editing. Review it and try again.";

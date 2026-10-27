@@ -20,6 +20,7 @@ _This section is filled in as features land._
 - **Environment setup before the event:**
   - `b9be9f2`: resource lookup fix so the app builds and tests pass under Xcode 27 / Swift 6.4.
   - Removal of Palmier-specific docs, release tooling, and this README rewrite.
+- **Agent skills.** The skills under `Sources/PalmierPro/Resources/Skills` are copied unmodified from [palmier-io/palmier-skills](https://github.com/palmier-io/palmier-skills) (commit `040e82f`). VeeCut bundles them in the app instead of downloading them.
 
 ## Build
 
@@ -44,3 +45,5 @@ claude mcp add --transport http veecut http://127.0.0.1:19789/mcp
 GPLv3, see [LICENSE](LICENSE). Modified from Palmier Pro since October 2026; see the git history for changes.
 
 Exception: `Sources/PalmierPro/MetaModels/SAMMaskCodec.swift` is a Swift port of Meta's SAM 3.1 mask decoder (meta-sam-parser) and is licensed under the [SAM License](ThirdPartyLicenses/SAM-LICENSE.txt), not GPLv3.
+
+Exception: the files in `Sources/PalmierPro/Resources/Skills` come from palmier-io/palmier-skills and are licensed under the [Apache License 2.0](Sources/PalmierPro/Resources/Skills/LICENSE).
