@@ -132,7 +132,7 @@ class VideoProject: NSDocument {
         }
 
         var maskFiles: [String: Data] = [:]
-        for mask in projectFile.trackedMasks ?? [] {
+        for mask in projectFile.trackedMasks ?? [] where !mask.isDrawnArea {
             let name = "\(TrackedMaskFile.directoryName)/\(TrackedMaskFile.fileName(maskId: mask.id))"
             if let data = try optionalData(name, in: url) {
                 maskFiles[mask.id] = data

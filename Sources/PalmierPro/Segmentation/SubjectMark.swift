@@ -56,3 +56,32 @@ enum SubjectMark: Equatable {
         return result
     }
 }
+
+/// What a drag on the preview draws in area mode, in view points:
+/// a closed loop is a freehand outline, any other drag is the rectangle it spans.
+enum AreaMark {
+    static let maxOutlinePoints = 64
+    /// Smallest drawn area, as a fraction of the source frame on each side.
+    static let minSourceExtent: CGFloat = 0.01
+
+    static func outline(_ stroke: [CGPoint]) -> [CGPoint]? {
+        guard case .loop(let loop)? = SubjectMark.classify(stroke) else {
+            let box = SubjectMark.boundingBox(stroke)
+            guard !box.isNull, min(box.width, box.height) >= SubjectMark.tapLength else { return nil }
+            return [
+                CGPoint(x: box.minX, y: box.minY), CGPoint(x: box.maxX, y: box.minY),
+                CGPoint(x: box.maxX, y: box.maxY), CGPoint(x: box.minX, y: box.maxY),
+            ]
+        }
+        return SubjectMark.resample(loop, count: min(loop.count, maxOutlinePoints))
+    }
+
+    /// The outline in 0…1 source coordinates when it is finite and encloses a usable area.
+    static func validatedSourceOutline(_ outline: [CGPoint]) -> [CGPoint]? {
+        guard outline.count >= 3, outline.allSatisfy({ $0.x.isFinite && $0.y.isFinite }) else { return nil }
+        let clamped = outline.map { CGPoint(x: min(max($0.x, 0), 1), y: min(max($0.y, 0), 1)) }
+        let box = SubjectMark.boundingBox(clamped)
+        guard box.width >= minSourceExtent, box.height >= minSourceExtent else { return nil }
+        return clamped
+    }
+}

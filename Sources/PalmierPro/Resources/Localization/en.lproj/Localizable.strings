@@ -70,6 +70,7 @@
 "Add Marker (M)" = "Add Marker (M)";
 "Add Range to Chat" = "Add Range to Chat";
 "Add Text" = "Add Text";
+"Add a Meta Model API key in Settings to describe looks." = "Add a Meta Model API key in Settings to describe looks.";
 "Add a Meta Model API key in Settings to track subjects." = "Add a Meta Model API key in Settings to track subjects.";
 "Add a Meta Model API key in Settings to use Muse Spark." = "Add a Meta Model API key in Settings to use Muse Spark.";
 "Add a comment" = "Add a comment";
@@ -115,8 +116,16 @@
 "Anthropic API Key" = "Anthropic API Key";
 "App version %@ and macOS %@ are included." = "App version %@ and macOS %@ are included.";
 "Appearance" = "Appearance";
+"Applied “%@”. Tune it below." = "Applied “%@”. Tune it below.";
+"Applied “%@”. Tune it in the Adjust tab." = "Applied “%@”. Tune it in the Adjust tab.";
+"Applies to %@ and the background." = "Applies to %@ and the background.";
+"Applies to the subject and the background." = "Applies to the subject and the background.";
+"Applies to the whole clip. Tune it in the Adjust tab." = "Applies to the whole clip. Tune it in the Adjust tab.";
 "Apply" = "Apply";
+"Apply %@" = "Apply %@";
 "Apply Look" = "Apply Look";
+"Area %lld" = "Area %lld";
+"Area added. Add looks in the Subject inspector." = "Area added. Add looks in the Subject inspector.";
 "Ask anything, or start with:" = "Ask anything, or start with:";
 "Ask, or type @ to reference media" = "Ask, or type @ to reference media";
 "Aspect" = "Aspect";
@@ -199,6 +208,7 @@
 "Choose video clip color" = "Choose video clip color";
 "Choose…" = "Choose…";
 "Chroma Key" = "Chroma Key";
+"Cinematic" = "Cinematic";
 "Clarity" = "Clarity";
 "Clarity & Haze" = "Clarity & Haze";
 "Clean Up Voice…" = "Clean Up Voice…";
@@ -255,7 +265,9 @@
 "Couldn't delete marker." = "Couldn't delete marker.";
 "Couldn't switch angle." = "Couldn't switch angle.";
 "Couldn’t move %@ to the Trash." = "Couldn’t move %@ to the Trash.";
+"Couldn’t reach Muse Spark. Check your connection and try again." = "Couldn’t reach Muse Spark. Check your connection and try again.";
 "Count" = "Count";
+"Create" = "Create";
 "Create AI Transition" = "Create AI Transition";
 "Create Matte" = "Create Matte";
 "Create Nested Timeline" = "Create Nested Timeline";
@@ -270,6 +282,7 @@
 "Crop applies to one clip at a time" = "Crop applies to one clip at a time";
 "Curves" = "Curves";
 "Custom Aspect Ratio" = "Custom Aspect Ratio";
+"Custom Look" = "Custom Look";
 "Custom…" = "Custom…";
 "Cut" = "Cut";
 "Cut to the beat" = "Cut to the beat";
@@ -296,11 +309,14 @@
 "Delete from history" = "Delete from history";
 "Delete keyframe" = "Delete keyframe";
 "Delete skill?" = "Delete skill?";
+"Delete this area and its looks" = "Delete this area and its looks";
 "Delete this subject and its looks" = "Delete this subject and its looks";
 "Delete “%@”" = "Delete “%@”";
 "Delete “%@”?" = "Delete “%@”?";
 "Denoise" = "Denoise";
 "Denoise failed. Playback uses the original audio — adjust Strength to retry." = "Denoise failed. Playback uses the original audio — adjust Strength to retry.";
+"Describe a look" = "Describe a look";
+"Describe a look: warm golden hour, 90s film…" = "Describe a look: warm golden hour, 90s film…";
 "Describe the audio scene" = "Describe the audio scene";
 "Describe the audio scene (minimum %lld characters)" = "Describe the audio scene (minimum %lld characters)";
 "Describe the image" = "Describe the image";
@@ -336,7 +352,11 @@
 "Downloads a %@ on-device model so you can search media visually." = "Downloads a %@ on-device model so you can search media visually.";
 "Draft" = "Draft";
 "Draft already enhanced or cache unavailable" = "Draft already enhanced or cache unavailable";
+"Drag a rectangle, or draw a loop around the area" = "Drag a rectangle, or draw a loop around the area";
 "Drag to add or shape a point · double-click to remove" = "Drag to add or shape a point · double-click to remove";
+"Draw Area" = "Draw Area";
+"Draw Area — drag a rectangle or draw a loop around a part of the frame" = "Draw Area — drag a rectangle or draw a loop around a part of the frame";
+"Drawn area. Stays in place for the whole clip." = "Drawn area. Stays in place for the whole clip.";
 "Drop files here or import from disk" = "Drop files here or import from disk";
 "Dubbing" = "Dubbing";
 "Dubbing model not available" = "Dubbing model not available";
@@ -578,6 +598,7 @@
 "Local runs with Apple's SpeechAnalyzer." = "Local runs with Apple's SpeechAnalyzer.";
 "Local runs with Apple's SpeechAnalyzer. Cloud uses credits and a more accurate model with more capabilities." = "Local runs with Apple's SpeechAnalyzer. Cloud uses credits and a more accurate model with more capabilities.";
 "Log in for 250 free credits" = "Log in for 250 free credits";
+"Looks" = "Looks";
 "Low" = "Low";
 "Luma" = "Luma";
 "Luminosity" = "Luminosity";
@@ -632,6 +653,7 @@
 "Modified" = "Modified";
 "Moments" = "Moments";
 "Mood" = "Mood";
+"Moody" = "Moody";
 "More" = "More";
 "More skill actions" = "More skill actions";
 "Motion Blur" = "Motion Blur";
@@ -641,6 +663,8 @@
 "Multicam" = "Multicam";
 "Multilingual" = "Multilingual";
 "Multiply" = "Multiply";
+"Muse Spark couldn’t build that look. Try describing it differently." = "Muse Spark couldn’t build that look. Try describing it differently.";
+"Muse Spark is building the look…" = "Muse Spark is building the look…";
 "Music" = "Music";
 "My Projects" = "My Projects";
 "Name" = "Name";
@@ -861,7 +885,7 @@
 "Screen" = "Screen";
 "Screenshot a frame" = "Screenshot a frame";
 "Scribble over the subject, circle it, or click it" = "Scribble over the subject, circle it, or click it";
-"Scribble over, circle, or click someone in the preview, or track an area by name like “sky”. VeeCut follows it through the clip so you can change just it or everything else." = "Scribble over, circle, or click someone in the preview, or track an area by name like “sky”. VeeCut follows it through the clip so you can change just it or everything else.";
+"Scribble over, circle, or click someone in the preview, or track an area by name like “sky”. VeeCut follows it through the clip so you can change just it or everything else. Draw Area marks a fixed part of the frame instead." = "Scribble over, circle, or click someone in the preview, or track an area by name like “sky”. VeeCut follows it through the clip so you can change just it or everything else. Draw Area marks a fixed part of the frame instead.";
 "Scroll Horizontally" = "Scroll Horizontally";
 "Scroll to latest" = "Scroll to latest";
 "Search" = "Search";
@@ -937,6 +961,7 @@
 "Skip" = "Skip";
 "Skip Backward" = "Skip Backward";
 "Skip Forward" = "Skip Forward";
+"Skipped unsupported: %@" = "Skipped unsupported: %@";
 "Slide Up" = "Slide Up";
 "Small" = "Small";
 "Smart search" = "Smart search";
@@ -1127,6 +1152,7 @@
 "View plans" = "View plans";
 "Vignette" = "Vignette";
 "Visual search model download failed. Check your connection and try again." = "Visual search model download failed. Check your connection and try again.";
+"Vlog Pop" = "Vlog Pop";
 "Voice" = "Voice";
 "Voice Cleanup" = "Voice Cleanup";
 "Voice Cleanup model not available" = "Voice Cleanup model not available";

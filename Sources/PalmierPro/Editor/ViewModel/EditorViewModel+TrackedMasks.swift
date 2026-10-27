@@ -1,6 +1,6 @@
 import Foundation
 
-/// Tracked SAM masks: in-memory registry, save snapshot, and restore on open.
+/// Subjects (SAM-tracked masks and drawn areas): in-memory registry, save snapshot, and restore on open.
 extension EditorViewModel {
 
     func trackedMask(id: String) -> TrackedMask? {
@@ -15,7 +15,7 @@ extension EditorViewModel {
     /// Every subject whose media is still in the project, looks or not.
     func savedTrackedMasks() -> [TrackedMask]? {
         let mediaRefs = Set(mediaAssets.map(\.id))
-        let saved = trackedMasks.filter { mediaRefs.contains($0.mediaRef) && trackedMaskFiles[$0.id] != nil }
+        let saved = trackedMasks.filter { mediaRefs.contains($0.mediaRef) && ($0.isDrawnArea || trackedMaskFiles[$0.id] != nil) }
         return saved.isEmpty ? nil : saved
     }
 
@@ -32,8 +32,11 @@ extension EditorViewModel {
         trackedMaskFiles[mask.id] = file
     }
 
-    /// Decodes saved mask files off-main, then makes them available to the renderer.
+    /// Makes drawn areas available to the renderer, then decodes saved mask files off-main.
     func restoreTrackedMasks(files: [String: Data]) {
+        for area in trackedMasks where area.isDrawnArea {
+            MatteStore.shared.install(area, frames: [:])
+        }
         let masks = trackedMasks.filter { files[$0.id] != nil }
         guard !masks.isEmpty else { return }
         Task {

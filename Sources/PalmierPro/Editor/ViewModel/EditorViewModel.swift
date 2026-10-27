@@ -104,13 +104,16 @@ final class EditorViewModel {
     var trackedMasks: [TrackedMask] = []
     /// Progress (0…1) of in-flight SAM tracking jobs, keyed by clip id.
     var objectTrackingProgress: [String: Double] = [:]
-    var subjectSelectionActive = false
+    /// The canvas drawing tool in use; nil when the preview behaves normally.
+    var canvasSelection: CanvasSelectionKind?
     var canvasSubject: CanvasSubject?
     /// CapCut-style editing for this editor; follows View → Magnetic Timeline.
     var isMagneticTimeline = MagneticTimelinePreference.isEnabled
     var subjectTrackingClipId: String?
     var subjectTrackingFailure: SubjectTrackingFailure?
     var subjectTrackingTask: Task<Void, Never>?
+    var lookRequestTask: Task<Void, Never>?
+    var lookRequestStatus: LookRequestStatus?
     /// Encoded `.samtrack` contents per mask id, written into the package on save.
     var trackedMaskFiles: [String: Data] = [:]
     var speakerIdentifyPhase: String?

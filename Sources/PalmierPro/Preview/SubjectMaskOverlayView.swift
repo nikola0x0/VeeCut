@@ -1,6 +1,7 @@
 import SwiftUI
 
-/// Tints the tracked subject on the preview so the user can confirm SAM grabbed the right thing.
+/// Tints the selected subject on the preview so the user can confirm SAM grabbed the right thing,
+/// or outlines a drawn area.
 struct SubjectMaskOverlayView: View {
     @Environment(EditorViewModel.self) private var editor
     let subject: CanvasSubject
@@ -8,7 +9,15 @@ struct SubjectMaskOverlayView: View {
     var body: some View {
         GeometryReader { geometry in
             let frame = editor.playheadState.timelineFrame
-            if let placement = placement(frame: frame, viewSize: geometry.size) {
+            if let outline = areaOutline(frame: frame, viewSize: geometry.size) {
+                Path { path in path.addLines(outline); path.closeSubpath() }
+                    .fill(AppTheme.Accent.canvasAI.opacity(AppTheme.Opacity.medium))
+                    .overlay(
+                        Path { path in path.addLines(outline); path.closeSubpath() }
+                            .stroke(AppTheme.Accent.canvasAI, style: StrokeStyle(lineWidth: AppTheme.BorderWidth.medium, dash: AppTheme.Canvas.areaDash))
+                    )
+                    .allowsHitTesting(false)
+            } else if let placement = placement(frame: frame, viewSize: geometry.size) {
                 Image(decorative: placement.image, scale: 1)
                     .resizable()
                     .interpolation(.medium)
@@ -28,6 +37,15 @@ struct SubjectMaskOverlayView: View {
         let rotation: Double
         let flipX: Bool
         let flipY: Bool
+    }
+
+    /// A drawn area's outline in view points while its clip is under the playhead.
+    private func areaOutline(frame: Int, viewSize: CGSize) -> [CGPoint]? {
+        guard let area = editor.trackedMask(id: subject.maskId)?.area,
+              let clip = editor.clipFor(id: subject.clipId), clip.contains(timelineFrame: frame) else { return nil }
+        let videoRect = PreviewHitTester.videoContentRect(in: viewSize, timeline: editor.timeline)
+        let points = area.compactMap { PreviewHitTester.viewPoint(ofSource: $0, clip: clip, frame: frame, videoRect: videoRect) }
+        return points.count == area.count ? points : nil
     }
 
     private func placement(frame: Int, viewSize: CGSize) -> Placement? {

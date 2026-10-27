@@ -65,8 +65,9 @@ struct PreviewContainerView: View {
                 if isTimeline, let subject = editor.canvasSubject {
                     SubjectMaskOverlayView(subject: subject)
                 }
-                if isTimeline, editor.subjectSelectionActive {
-                    SubjectSelectionOverlayView()
+                if isTimeline, let kind = editor.canvasSelection {
+                    SubjectSelectionOverlayView(kind: kind)
+                        .id(kind)
                 } else if editor.chromaKeySamplingClipId != nil {
                     ChromaKeySamplerOverlayView()
                 } else if editor.cropEditingActive {
@@ -94,7 +95,7 @@ struct PreviewContainerView: View {
                     .onEnded { value in
                         guard isTimeline,
                               captionPreview == nil,
-                              !editor.subjectSelectionActive,
+                              editor.canvasSelection == nil,
                               !editor.cropEditingActive,
                               editor.chromaKeySamplingClipId == nil,
                               let id = PreviewHitTester.clipID(

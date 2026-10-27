@@ -87,6 +87,39 @@ struct MetaModelClient: Sendable {
         }
     }
 
+    /// One non-streaming `/responses` call whose text output must match the JSON schema. Returns that text.
+    @concurrent
+    func structuredResponse(
+        model: String,
+        instructions: String,
+        prompt: String,
+        schemaName: String,
+        schemaJSON: Data
+    ) async throws -> String {
+        let schema = try JSONSerialization.jsonObject(with: schemaJSON)
+        var request = request("responses")
+        request.setValue("application/json", forHTTPHeaderField: "Content-Type")
+        let body: [String: Any] = [
+            "model": model,
+            "stream": false,
+            "instructions": instructions,
+            "input": [["type": "message", "role": "user", "content": [["type": "input_text", "text": prompt]]]],
+            "text": ["format": ["type": "json_schema", "name": schemaName, "schema": schema]],
+        ]
+        request.httpBody = try JSONSerialization.data(withJSONObject: body)
+        let (data, response) = try await URLSession.shared.data(for: request)
+        try Self.validate(response, data: data)
+        guard let object = try JSONSerialization.jsonObject(with: data) as? [String: Any],
+              let output = object["output"] as? [[String: Any]] else { throw MetaModelError.invalidResponse }
+        let text = output
+            .filter { $0["type"] as? String == "message" }
+            .flatMap { $0["content"] as? [[String: Any]] ?? [] }
+            .compactMap { $0["type"] as? String == "output_text" ? $0["text"] as? String : nil }
+            .joined()
+        guard !text.isEmpty else { throw MetaModelError.invalidResponse }
+        return text
+    }
+
     private static func validate(_ response: URLResponse, data: Data) throws {
         guard let http = response as? HTTPURLResponse else { throw MetaModelError.invalidResponse }
         guard http.statusCode < 400 else {

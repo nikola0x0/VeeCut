@@ -17,6 +17,7 @@ struct SubjectTab: View {
 
     var body: some View {
         addSubjectBar
+        looksGroup(target: masks.first)
         if masks.isEmpty {
             emptyState
         } else {
@@ -64,13 +65,22 @@ struct SubjectTab: View {
 
     private var addSubjectBar: some View {
         VStack(alignment: .leading, spacing: AppTheme.Spacing.sm) {
-            Button {
-                if !editor.subjectSelectionActive { editor.toggleSubjectSelection() }
-            } label: {
-                Label(L10n.string("Select Subject"), systemImage: "scribble")
-                    .frame(maxWidth: .infinity)
+            HStack(spacing: AppTheme.Spacing.xs) {
+                Button {
+                    if editor.canvasSelection != .subject { editor.toggleCanvasSelection(.subject) }
+                } label: {
+                    Label(L10n.string("Select Subject"), systemImage: "scribble")
+                        .frame(maxWidth: .infinity)
+                }
+                .buttonStyle(.capsule(.prominent, size: .regular))
+                Button {
+                    if editor.canvasSelection != .area { editor.toggleCanvasSelection(.area) }
+                } label: {
+                    Label(L10n.string("Draw Area"), systemImage: "square.dashed")
+                        .frame(maxWidth: .infinity)
+                }
+                .buttonStyle(.capsule(.secondary, size: .regular))
             }
-            .buttonStyle(.capsule(.prominent, size: .regular))
             TrackByNameField { editor.trackSubject(named: $0, clipId: clip.id) }
         }
         .disabled(editor.isSubjectTracking)
@@ -87,7 +97,7 @@ struct SubjectTab: View {
             Text(L10n.string("No subjects yet"))
                 .font(.system(size: AppTheme.FontSize.md, weight: AppTheme.FontWeight.semibold))
                 .foregroundStyle(AppTheme.Text.primaryColor)
-            Text(L10n.string("Scribble over, circle, or click someone in the preview, or track an area by name like \u{201C}sky\u{201D}. VeeCut follows it through the clip so you can change just it or everything else."))
+            Text(L10n.string("Scribble over, circle, or click someone in the preview, or track an area by name like \u{201C}sky\u{201D}. VeeCut follows it through the clip so you can change just it or everything else. Draw Area marks a fixed part of the frame instead."))
                 .font(.system(size: AppTheme.FontSize.sm))
                 .foregroundStyle(AppTheme.Text.secondaryColor)
                 .multilineTextAlignment(.center)
@@ -111,7 +121,7 @@ struct SubjectTab: View {
                     .hoverHighlight()
             }
             .buttonStyle(.plain)
-            .help(L10n.string("Delete this subject and its looks"))
+            .help(mask.isDrawnArea ? L10n.string("Delete this area and its looks") : L10n.string("Delete this subject and its looks"))
         } content: {
             HStack(spacing: AppTheme.Spacing.sm) {
                 Text(L10n.string("Name"))
@@ -120,7 +130,7 @@ struct SubjectTab: View {
                     .frame(width: AppTheme.Slider.labelColumn, alignment: .leading)
                 SubjectNameField(name: mask.label) { editor.renameSubject(maskId: maskId, to: $0) }
             }
-            Text(L10n.string("Tracked with SAM 3.1"))
+            Text(mask.isDrawnArea ? L10n.string("Drawn area. Stays in place for the whole clip.") : L10n.string("Tracked with SAM 3.1"))
                 .font(.system(size: AppTheme.FontSize.xs))
                 .foregroundStyle(AppTheme.Text.tertiaryColor)
             quickActions(outside: false, maskId: maskId)
@@ -131,6 +141,87 @@ struct SubjectTab: View {
         }
     }
 
+    // MARK: - Looks
+
+    /// Full looks, as presets or described to Muse Spark: around one subject and the shared background,
+    /// or for the whole clip when it has no subject.
+    private func looksGroup(target mask: TrackedMask?) -> some View {
+        EditorPanelGroup(L10n.string("Looks")) {
+            EmptyView()
+        } content: {
+            Text(lookTargetDescription(mask))
+                .font(.system(size: AppTheme.FontSize.xs))
+                .foregroundStyle(AppTheme.Text.tertiaryColor)
+            HStack(spacing: AppTheme.Spacing.xs) {
+                ForEach(SubjectLook.allCases.filter { $0.placement == .both }, id: \.self) { look in
+                    Button {
+                        editor.applySubjectLook(look, clipId: clip.id, maskId: mask?.id)
+                    } label: {
+                        Text(L10n.string(key: look.titleKey))
+                            .lineLimit(1)
+                            .frame(maxWidth: .infinity)
+                    }
+                    .buttonStyle(.capsule(.secondary, size: .regular))
+                }
+            }
+            DescribeLookField { editor.requestLook(described: $0, clipId: clip.id, maskId: mask?.id) }
+                .disabled(editor.isRequestingLook)
+            if let status = editor.lookRequestStatus, status.clipId == clip.id {
+                lookRequestStatusRow(status)
+            }
+        }
+    }
+
+    private func lookTargetDescription(_ mask: TrackedMask?) -> String {
+        guard let mask else { return L10n.string("Applies to the whole clip. Tune it in the Adjust tab.") }
+        return masks.count > 1
+            ? L10n.string("Applies to \(mask.label) and the background.")
+            : L10n.string("Applies to the subject and the background.")
+    }
+
+    @ViewBuilder
+    private func lookRequestStatusRow(_ status: LookRequestStatus) -> some View {
+        switch status {
+        case .running:
+            HStack(spacing: AppTheme.Spacing.sm) {
+                ProgressView().controlSize(.small)
+                Text(L10n.string("Muse Spark is building the look…"))
+                    .font(.system(size: AppTheme.FontSize.sm))
+                    .foregroundStyle(AppTheme.Text.secondaryColor)
+                Spacer(minLength: 0)
+                Button(L10n.string("Cancel")) { editor.cancelLookRequest() }
+                    .controlSize(.small)
+            }
+        case .applied(_, let name, let wholeClip, let skipped):
+            VStack(alignment: .leading, spacing: AppTheme.Spacing.xxs) {
+                Text(wholeClip
+                    ? L10n.string("Applied \u{201C}\(name)\u{201D}. Tune it in the Adjust tab.")
+                    : L10n.string("Applied \u{201C}\(name)\u{201D}. Tune it below."))
+                    .font(.system(size: AppTheme.FontSize.sm))
+                    .foregroundStyle(AppTheme.Text.secondaryColor)
+                if !skipped.isEmpty {
+                    Text(L10n.string("Skipped unsupported: \(skipped.joined(separator: ", "))"))
+                        .font(.system(size: AppTheme.FontSize.xs))
+                        .foregroundStyle(AppTheme.Text.tertiaryColor)
+                }
+            }
+            .fixedSize(horizontal: false, vertical: true)
+        case .failed(_, let failure):
+            Text(lookFailureMessage(failure))
+                .font(.system(size: AppTheme.FontSize.sm))
+                .foregroundStyle(AppTheme.Text.secondaryColor)
+                .fixedSize(horizontal: false, vertical: true)
+        }
+    }
+
+    private func lookFailureMessage(_ failure: LookRequestFailure) -> String {
+        switch failure {
+        case .missingAPIKey: L10n.string("Add a Meta Model API key in Settings to describe looks.")
+        case .unusable: L10n.string("Muse Spark couldn\u{2019}t build that look. Try describing it differently.")
+        case .failed: L10n.string("Couldn\u{2019}t reach Muse Spark. Check your connection and try again.")
+        }
+    }
+
     // MARK: - Quick actions
 
     private func quickActions(outside: Bool, maskId: String) -> some View {
@@ -138,12 +229,12 @@ struct SubjectTab: View {
             columns: [GridItem(.flexible(), spacing: AppTheme.Spacing.xs), GridItem(.flexible(), spacing: AppTheme.Spacing.xs)],
             spacing: AppTheme.Spacing.xs
         ) {
-            ForEach(SubjectLook.allCases.filter { $0.appliesOutside == outside }, id: \.self) { look in
+            ForEach(SubjectLook.allCases.filter { $0.placement == (outside ? .background : .subject) }, id: \.self) { look in
                 Button {
                     editor.applySubjectLook(look, clipId: clip.id, maskId: maskId)
                 } label: {
                     HStack(spacing: AppTheme.Spacing.sm) {
-                        sideSwatch(outside: look.appliesOutside)
+                        sideSwatch(outside: outside)
                         Text(L10n.string(key: look.titleKey))
                             .lineLimit(1)
                         Spacer(minLength: 0)
@@ -356,5 +447,31 @@ private struct TrackByNameField: View {
     private func track() {
         onTrack(name)
         name = ""
+    }
+}
+
+/// Describes a look in words ("warm golden hour", "90s film") for Muse Spark to build.
+private struct DescribeLookField: View {
+    let onCreate: (String) -> Void
+    @State private var text = ""
+
+    var body: some View {
+        HStack(spacing: AppTheme.Spacing.xs) {
+            TextField(L10n.string("Describe a look: warm golden hour, 90s film\u{2026}"), text: $text)
+                .textFieldStyle(.roundedBorder)
+                .font(.system(size: AppTheme.FontSize.sm))
+                .controlSize(.small)
+                .onSubmit(create)
+                .accessibilityLabel(L10n.string("Describe a look"))
+            Button(L10n.string("Create"), action: create)
+                .controlSize(.small)
+                .disabled(text.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty)
+        }
+    }
+
+    private func create() {
+        guard !text.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty else { return }
+        onCreate(text)
+        text = ""
     }
 }

@@ -1,6 +1,7 @@
 import Foundation
 
-/// One SAM-tracked object in a source video. Immutable: refining creates a new mask.
+/// One subject in a source video: an object SAM tracked, or a static area the user drew.
+/// Immutable apart from its label: refining creates a new mask.
 struct TrackedMask: Codable, Sendable, Equatable, Identifiable {
     var id: String = UUID().uuidString
     var mediaRef: String
@@ -12,6 +13,19 @@ struct TrackedMask: Codable, Sendable, Equatable, Identifiable {
     /// Display-oriented pixel size SAM coordinates refer to.
     var sourceWidth: Int
     var sourceHeight: Int
+    /// A drawn area's closed outline in display-oriented source coordinates, 0…1 from the top left.
+    /// Nil for SAM-tracked masks.
+    var area: [CGPoint]?
+
+    /// Drawn areas rasterize at this square size; the renderer scales it to the source.
+    static let areaRasterSize = 2048
+
+    static func drawnArea(outline: [CGPoint], mediaRef: String, label: String) -> TrackedMask {
+        TrackedMask(mediaRef: mediaRef, label: label, sourceFPS: 0,
+                    sourceWidth: areaRasterSize, sourceHeight: areaRasterSize, area: outline)
+    }
+
+    var isDrawnArea: Bool { area != nil }
 }
 
 /// Limits a region's effects to the inside (or outside) of a tracked mask.

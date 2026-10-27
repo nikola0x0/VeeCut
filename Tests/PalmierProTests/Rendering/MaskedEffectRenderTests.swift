@@ -72,4 +72,17 @@ struct MaskedEffectRenderTests {
         #expect(Self.isRed(frame.tl))
         #expect(Self.isGreen(frame.tr))
     }
+
+    @Test func drawnAreaAppliesTheEffectOnlyInsideItsOutline() async throws {
+        let area = TrackedMask.drawnArea(
+            outline: [CGPoint(x: 0, y: 0), CGPoint(x: 0.5, y: 0), CGPoint(x: 0.5, y: 0.5), CGPoint(x: 0, y: 0.5)],
+            mediaRef: "pattern", label: "Area 1"
+        )
+        MatteStore.shared.install(area, frames: [:])
+        defer { MatteStore.shared.remove(maskIds: [area.id]) }
+        let frame = try await Self.render(Self.invertedClip(matte: EffectMatte(maskId: area.id)))
+
+        #expect(!Self.isRed(frame.tl), "inside the drawn area should be inverted: \(frame.tl)")
+        #expect(Self.isGreen(frame.tr), "outside the drawn area should be untouched: \(frame.tr)")
+    }
 }

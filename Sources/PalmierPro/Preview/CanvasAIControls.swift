@@ -6,21 +6,10 @@ struct CanvasToolPalette: View {
 
     var body: some View {
         VStack(spacing: AppTheme.Spacing.xs) {
-            Button {
-                editor.toggleSubjectSelection()
-            } label: {
-                Image(systemName: "person.crop.rectangle")
-                    .font(.system(size: AppTheme.FontSize.md, weight: AppTheme.FontWeight.medium))
-                    .frame(width: AppTheme.IconSize.mdLg, height: AppTheme.IconSize.mdLg)
-                    .foregroundStyle(editor.subjectSelectionActive ? AppTheme.MediaOverlay.primaryColor : AppTheme.MediaOverlay.secondaryColor)
-                    .background(
-                        RoundedRectangle(cornerRadius: AppTheme.Radius.sm)
-                            .fill(editor.subjectSelectionActive ? AppTheme.Accent.canvasAI : AppTheme.Background.clearColor)
-                    )
-            }
-            .buttonStyle(.plain)
-            .disabled(editor.isSubjectTracking)
-            .help(L10n.string("Select Subject — scribble over, circle, or click what to track"))
+            toolButton(.subject, systemImage: "person.crop.rectangle",
+                       help: L10n.string("Select Subject — scribble over, circle, or click what to track"))
+            toolButton(.area, systemImage: "square.dashed",
+                       help: L10n.string("Draw Area — drag a rectangle or draw a loop around a part of the frame"))
         }
         .padding(AppTheme.Spacing.xs)
         .background(
@@ -28,6 +17,25 @@ struct CanvasToolPalette: View {
                 .fill(AppTheme.MediaOverlay.backgroundColor.opacity(AppTheme.Opacity.high))
         )
         .padding(.leading, AppTheme.Spacing.smMd)
+    }
+
+    private func toolButton(_ kind: CanvasSelectionKind, systemImage: String, help: String) -> some View {
+        let active = editor.canvasSelection == kind
+        return Button {
+            editor.toggleCanvasSelection(kind)
+        } label: {
+            Image(systemName: systemImage)
+                .font(.system(size: AppTheme.FontSize.md, weight: AppTheme.FontWeight.medium))
+                .frame(width: AppTheme.IconSize.mdLg, height: AppTheme.IconSize.mdLg)
+                .foregroundStyle(active ? AppTheme.MediaOverlay.primaryColor : AppTheme.MediaOverlay.secondaryColor)
+                .background(
+                    RoundedRectangle(cornerRadius: AppTheme.Radius.sm)
+                        .fill(active ? AppTheme.Accent.canvasAI : AppTheme.Background.clearColor)
+                )
+        }
+        .buttonStyle(.plain)
+        .disabled(editor.isSubjectTracking)
+        .help(help)
     }
 }
 
@@ -41,10 +49,13 @@ struct SubjectActionBar: View {
                 trackingRow(progress: editor.objectTrackingProgress[clipId] ?? 0)
             } else if let failure = editor.subjectTrackingFailure {
                 failureRow(failure)
-            } else if editor.canvasSubject != nil {
-                trackedRow
-            } else if editor.subjectSelectionActive {
-                hint(L10n.string("Scribble over the subject, circle it, or click it"))
+            } else if let subject = editor.canvasSubject {
+                trackedRow(isArea: editor.trackedMask(id: subject.maskId)?.isDrawnArea == true)
+            } else if let kind = editor.canvasSelection {
+                switch kind {
+                case .subject: hint(L10n.string("Scribble over the subject, circle it, or click it"))
+                case .area: hint(L10n.string("Drag a rectangle, or draw a loop around the area"))
+                }
             }
         }
         .padding(.bottom, AppTheme.Spacing.lgXl)
@@ -70,9 +81,11 @@ struct SubjectActionBar: View {
         }
     }
 
-    private var trackedRow: some View {
+    private func trackedRow(isArea: Bool) -> some View {
         capsule {
-            Text(L10n.string("Subject tracked. Add looks in the Subject inspector."))
+            Text(isArea
+                ? L10n.string("Area added. Add looks in the Subject inspector.")
+                : L10n.string("Subject tracked. Add looks in the Subject inspector."))
                 .foregroundStyle(AppTheme.MediaOverlay.primaryColor)
             barButton(L10n.string("Done")) { editor.canvasSubject = nil }
         }

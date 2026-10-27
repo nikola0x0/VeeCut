@@ -6,6 +6,12 @@ struct CanvasSubject: Equatable {
     let maskId: String
 }
 
+/// What drawing on the preview creates: a subject SAM tracks, or a static area.
+enum CanvasSelectionKind: Equatable {
+    case subject
+    case area
+}
+
 enum SubjectTrackingFailure: Equatable {
     case missingAPIKey
     case notFound
@@ -14,49 +20,22 @@ enum SubjectTrackingFailure: Equatable {
     case failed
 }
 
-/// One-click looks applied to the tracked subject or its background.
-enum SubjectLook: CaseIterable {
-    case popSubject
-    case darkenBackground
-    case blurBackground
-
-    var appliesOutside: Bool { self != .popSubject }
-
-    var titleKey: String {
-        switch self {
-        case .popSubject: L10n.key("Pop Subject")
-        case .darkenBackground: L10n.key("Darken Background")
-        case .blurBackground: L10n.key("Blur Background")
-        }
-    }
-
-    var effects: [Effect] {
-        switch self {
-        case .popSubject:
-            [.make("color.exposure", ["ev": 0.3]), .make("color.contrast", ["amount": 1.08]), .make("color.vibrance", ["amount": 0.3])]
-        case .darkenBackground:
-            [.make("color.exposure", ["ev": -1.2]), .make("color.saturation", ["amount": 0.7])]
-        case .blurBackground:
-            [.make(Effect.gaussianBlurType, [Effect.gaussianBlurRadiusKey: 14])]
-        }
-    }
-}
-
 /// Canvas subject selection: draw on the preview, track with SAM 3.1, apply looks to the result.
 extension EditorViewModel {
     static let subjectFeather = 6.0
 
     var isSubjectTracking: Bool { subjectTrackingTask != nil }
 
-    func toggleSubjectSelection() {
-        if subjectSelectionActive {
-            subjectSelectionActive = false
+    /// Turns a canvas drawing tool on, switches to it from the other one, or turns it off.
+    func toggleCanvasSelection(_ kind: CanvasSelectionKind) {
+        if canvasSelection == kind {
+            canvasSelection = nil
             return
         }
         cancelChromaKeySampling()
         cropEditingActive = false
         subjectTrackingFailure = nil
-        subjectSelectionActive = true
+        canvasSelection = kind
     }
 
     /// Escape handling, innermost first. Returns whether anything was dismissed.
@@ -65,8 +44,8 @@ extension EditorViewModel {
             task.cancel()
             return true
         }
-        if subjectSelectionActive {
-            subjectSelectionActive = false
+        if canvasSelection != nil {
+            canvasSelection = nil
             return true
         }
         if canvasSubject != nil || subjectTrackingFailure != nil {
@@ -93,7 +72,7 @@ extension EditorViewModel {
     }
 
     private func startSubjectTracking(clipId: String, prompt: TrackingPrompt, label: String) {
-        subjectSelectionActive = false
+        canvasSelection = nil
         subjectTrackingFailure = nil
         canvasSubject = nil
         subjectTrackingClipId = clipId
@@ -106,10 +85,7 @@ extension EditorViewModel {
             do {
                 let result = try await self.trackObject(clipId: clipId, prompt: prompt, label: label)
                 guard !Task.isCancelled, self.clipFor(id: clipId) != nil else { return }
-                self.canvasSubject = CanvasSubject(clipId: clipId, maskId: result.mask.id)
-                self.selectedClipIds = [clipId]
-                self.inspectorPanelVisible = true
-                self.inspectorClipTabRequest = .subject
+                self.focusSubject(clipId: clipId, maskId: result.mask.id)
             } catch is CancellationError {
             } catch MetaModelError.missingAPIKey {
                 self.subjectTrackingFailure = .missingAPIKey
@@ -127,6 +103,26 @@ extension EditorViewModel {
         }
     }
 
+    /// Adds a static area drawn on `clipId` as one undoable step. `outline` is in 0…1 source coordinates.
+    func drawArea(clipId: String, outline: [CGPoint]) {
+        guard !isSubjectTracking, let clip = clipFor(id: clipId), clip.mediaType == .video,
+              let outline = AreaMark.validatedSourceOutline(outline) else { return }
+        let areaCount = trackedMasks(forMedia: clip.mediaRef).filter(\.isDrawnArea).count
+        let area = TrackedMask.drawnArea(outline: outline, mediaRef: clip.mediaRef, label: L10n.string("Area \(areaCount + 1)"))
+        MatteStore.shared.install(area, frames: [:])
+        let actionName = L10n.string("Draw Area")
+        undo.perform(actionName) { replaceTrackedMasks(with: trackedMasks + [area], actionName: actionName) }
+        canvasSelection = nil
+        focusSubject(clipId: clipId, maskId: area.id)
+    }
+
+    private func focusSubject(clipId: String, maskId: String) {
+        canvasSubject = CanvasSubject(clipId: clipId, maskId: maskId)
+        selectedClipIds = [clipId]
+        inspectorPanelVisible = true
+        inspectorClipTabRequest = .subject
+    }
+
     /// The clip's background matte: its existing background region, else outside every subject on its media.
     func backgroundMatte(clipId: String) -> EffectMatte? {
         guard let clip = clipFor(id: clipId) else { return nil }
@@ -139,20 +135,41 @@ extension EditorViewModel {
         outside ? backgroundMatte(clipId: clipId) : EffectMatte(maskId: maskId, feather: Self.subjectFeather)
     }
 
-    /// Merges a look into the subject's region or the clip's background as one undoable edit.
-    func applySubjectLook(_ look: SubjectLook, clipId: String, maskId: String) {
-        guard clipFor(id: clipId) != nil,
-              let matte = lookMatte(outside: look.appliesOutside, clipId: clipId, maskId: maskId) else { return }
-        let actionName = L10n.string("Apply Look")
+    /// Applies a preset look around `maskId`, or to the whole clip when there is no subject.
+    func applySubjectLook(_ look: SubjectLook, clipId: String, maskId: String?) {
+        applyLook(look.plan(hasSubject: maskId != nil), clipId: clipId, maskId: maskId, actionName: L10n.string("Apply Look"))
+    }
+
+    /// Merges a look into the subject's region, the clip's background, and the clip's own effects as one undoable edit.
+    /// Each effect replaces any effect of the same type already on that side.
+    func applyLook(_ plan: LookPlan, clipId: String, maskId: String?, actionName: String) {
+        guard clipFor(id: clipId)?.mediaType == .video else { return }
+        var sides: [(matte: EffectMatte, effects: [Effect])] = []
+        if let maskId {
+            guard trackedMask(id: maskId) != nil else { return }
+            for (effects, outside) in [(plan.subject, false), (plan.background, true)] where !effects.isEmpty {
+                if let matte = lookMatte(outside: outside, clipId: clipId, maskId: maskId) { sides.append((matte, effects)) }
+            }
+        }
+        guard !sides.isEmpty || !plan.frame.isEmpty else { return }
         undo.perform(actionName) {
             mutateClips(ids: [clipId], actionName: actionName) { clip in
-                clip.updateRegion(matching: matte) { stack in
-                    for effect in look.effects {
-                        stack.removeAll { $0.type == effect.type }
-                        stack.insert(effect, at: EffectRegistry.insertIndex(stack, for: effect.type))
-                    }
+                if !plan.frame.isEmpty {
+                    var stack = clip.effects ?? []
+                    Self.merge(plan.frame, into: &stack)
+                    clip.effects = stack
+                }
+                for side in sides {
+                    clip.updateRegion(matching: side.matte) { Self.merge(side.effects, into: &$0) }
                 }
             }
+        }
+    }
+
+    private static func merge(_ effects: [Effect], into stack: inout [Effect]) {
+        for effect in effects {
+            stack.removeAll { $0.type == effect.type }
+            stack.insert(effect, at: EffectRegistry.insertIndex(stack, for: effect.type))
         }
     }
 
@@ -185,9 +202,9 @@ extension EditorViewModel {
         }
     }
 
-    /// Effects that can run inside a subject region: tunable numeric settings, no keying.
+    /// Effects that can run inside a subject region: tunable numeric settings, no keying, no file resources.
     static let subjectEffectDescriptors: [EffectDescriptor] = EffectRegistry.all.filter {
-        !$0.params.isEmpty && !$0.id.hasPrefix("key.")
+        !$0.params.isEmpty && !$0.id.hasPrefix("key.") && $0.resourceKey == nil
     }
 
     /// Live (`commit == false`) or undoable edit of one subject region; an emptied region is removed.
@@ -207,7 +224,7 @@ extension EditorViewModel {
     }
 
     func nextSubjectName(mediaRef: String) -> String {
-        L10n.string("Subject \(trackedMasks(forMedia: mediaRef).count + 1)")
+        L10n.string("Subject \(trackedMasks(forMedia: mediaRef).filter { !$0.isDrawnArea }.count + 1)")
     }
 
     /// Renames a subject as one undoable edit. Blank or unchanged names are ignored.

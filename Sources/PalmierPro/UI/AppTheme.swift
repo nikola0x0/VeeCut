@@ -30,6 +30,7 @@ enum AppTheme {
     enum Canvas {
         static let markerWidth: CGFloat = 5
         static let markerGlow: CGFloat = 6
+        static let areaDash: [CGFloat] = [6, 4]
     }
 
     enum Brand {

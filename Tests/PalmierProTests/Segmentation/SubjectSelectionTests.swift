@@ -85,6 +85,54 @@ struct SubjectLookTests {
         #expect(editor.clipFor(id: "clip")?.effectRegions == nil)
     }
 
+    @Test func aFullLookGradesSubjectAndBackgroundInOneUndoStep() throws {
+        let editor = editorWithSubject()
+        editor.applySubjectLook(.cinematic, clipId: "clip", maskId: "mask")
+        let regions = try #require(editor.clipFor(id: "clip")?.effectRegions)
+        #expect(regions.count == 2)
+        #expect(regions.first { !$0.matte.invert }?.matte.maskIds == ["mask"])
+        #expect(regions.first { $0.matte.invert }?.effects.contains { $0.type == "stylize.vignette" } == true)
+
+        undoManager.undo()
+        #expect(editor.clipFor(id: "clip")?.effectRegions == nil)
+    }
+
+    @Test func aLookOnAnUnknownSubjectChangesNothing() {
+        let editor = editorWithSubject()
+        editor.applySubjectLook(.moody, clipId: "clip", maskId: "missing")
+        #expect(editor.clipFor(id: "clip")?.effectRegions == nil)
+        #expect(!undoManager.canUndo)
+    }
+
+    @Test func withoutASubjectAFullLookGradesTheWholeClipInOneUndoStep() throws {
+        let editor = editorWithSubject()
+        editor.applySubjectLook(.cinematic, clipId: "clip", maskId: nil)
+        let clip = try #require(editor.clipFor(id: "clip"))
+        #expect(clip.effectRegions == nil)
+        #expect(clip.effects?.map(\.type) == ["color.contrast", "color.highlightsShadows", "color.temperature",
+                                              "color.saturation", "stylize.grain", "stylize.vignette"])
+        editor.applySubjectLook(.cinematic, clipId: "clip", maskId: nil)
+        #expect(editor.clipFor(id: "clip")?.effects?.count == 6)
+
+        undoManager.undo()
+        undoManager.undo()
+        #expect(editor.clipFor(id: "clip")?.effects == nil)
+    }
+
+    @Test func subjectOnlyQuickActionsNeedASubject() {
+        let editor = editorWithSubject()
+        editor.applySubjectLook(.popSubject, clipId: "clip", maskId: nil)
+        #expect(editor.clipFor(id: "clip")?.effects == nil)
+        #expect(!undoManager.canUndo)
+    }
+
+    @Test func aBlankDescriptionStartsNoRequest() {
+        let editor = editorWithSubject()
+        editor.requestLook(described: "   ", clipId: "clip", maskId: "mask")
+        #expect(!editor.isRequestingLook)
+        #expect(editor.lookRequestStatus == nil)
+    }
+
     @Test func reapplyingALookDoesNotDuplicateEffects() throws {
         let editor = editorWithSubject()
         editor.applySubjectLook(.blurBackground, clipId: "clip", maskId: "mask")
@@ -177,10 +225,11 @@ struct SubjectLookTests {
         #expect(editor.clipFor(id: "clip")?.effectRegions == nil)
     }
 
-    @Test func subjectEffectsExcludeKeyingAndSettinglessEffects() {
+    @Test func subjectEffectsExcludeKeyingFilesAndSettinglessEffects() {
         let ids = EditorViewModel.subjectEffectDescriptors.map(\.id)
         #expect(ids.contains("color.exposure"))
         #expect(!ids.contains { $0.hasPrefix("key.") })
+        #expect(!ids.contains("color.lut"))
         #expect(EditorViewModel.subjectEffectDescriptors.allSatisfy { !$0.params.isEmpty })
     }
 
@@ -230,9 +279,9 @@ struct SubjectLookTests {
 
     @Test func escapeDismissesSelectionModeBeforeSubject() {
         let editor = editorWithSubject()
-        editor.toggleSubjectSelection()
+        editor.toggleCanvasSelection(.subject)
         #expect(editor.cancelSubjectInteraction())
-        #expect(!editor.subjectSelectionActive)
+        #expect(editor.canvasSelection == nil)
         #expect(editor.canvasSubject != nil)
         #expect(editor.cancelSubjectInteraction())
         #expect(editor.canvasSubject == nil)

@@ -1,9 +1,11 @@
 import AppKit
 import SwiftUI
 
-/// Scribble over, circle, or click the subject on the preview to mark what to track.
+/// Scribble over, circle, or click the subject on the preview to mark what to track,
+/// or drag a rectangle or loop to draw a static area.
 struct SubjectSelectionOverlayView: View {
     @Environment(EditorViewModel.self) private var editor
+    let kind: CanvasSelectionKind
     @State private var stroke: [CGPoint] = []
 
     var body: some View {
@@ -13,7 +15,15 @@ struct SubjectSelectionOverlayView: View {
                     .fill(AppTheme.Background.clearColor)
                     .contentShape(Rectangle())
                     .onHover { hovering in (hovering ? NSCursor.crosshair : NSCursor.arrow).set() }
-                if stroke.count > 1 {
+                if kind == .area, let outline = AreaMark.outline(stroke) {
+                    Path { path in path.addLines(outline); path.closeSubpath() }
+                        .fill(AppTheme.Accent.canvasAI.opacity(AppTheme.Opacity.medium))
+                        .overlay(
+                            Path { path in path.addLines(outline); path.closeSubpath() }
+                                .stroke(AppTheme.Accent.canvasAI, style: StrokeStyle(lineWidth: AppTheme.BorderWidth.medium, dash: AppTheme.Canvas.areaDash))
+                        )
+                        .allowsHitTesting(false)
+                } else if stroke.count > 1 {
                     Path { path in path.addLines(stroke) }
                         .stroke(
                             AppTheme.Accent.canvasAI,
@@ -27,9 +37,14 @@ struct SubjectSelectionOverlayView: View {
                 DragGesture(minimumDistance: 0)
                     .onChanged { value in stroke.append(value.location) }
                     .onEnded { _ in
-                        let mark = SubjectMark.classify(stroke)
+                        let finished = stroke
                         stroke = []
-                        if let mark { commit(mark, viewSize: geometry.size) }
+                        switch kind {
+                        case .subject:
+                            if let mark = SubjectMark.classify(finished) { commit(mark, viewSize: geometry.size) }
+                        case .area:
+                            commitArea(finished, viewSize: geometry.size)
+                        }
                     }
             )
         }
@@ -66,5 +81,17 @@ struct SubjectSelectionOverlayView: View {
             guard !mapped.isEmpty else { return NSSound.beep() }
             editor.selectSubject(clipId: clipId, box: nil, points: mapped)
         }
+    }
+
+    private func commitArea(_ stroke: [CGPoint], viewSize: CGSize) {
+        guard let outline = AreaMark.outline(stroke) else { return NSSound.beep() }
+        let frame = editor.activeFrame
+        let center = SubjectMark.boundingBox(outline)
+        guard let clipId = PreviewHitTester.clipID(at: CGPoint(x: center.midX, y: center.midY), viewSize: viewSize, editor: editor),
+              let clip = editor.clipFor(id: clipId), clip.mediaType == .video else { return NSSound.beep() }
+        let videoRect = PreviewHitTester.videoContentRect(in: viewSize, timeline: editor.timeline)
+        let source = outline.compactMap { PreviewHitTester.sourcePoint(of: $0, clip: clip, frame: frame, videoRect: videoRect) }
+        guard source.count == outline.count, AreaMark.validatedSourceOutline(source) != nil else { return NSSound.beep() }
+        editor.drawArea(clipId: clipId, outline: source)
     }
 }
