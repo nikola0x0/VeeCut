@@ -7,7 +7,7 @@ let package = Package(
     defaultLocalization: "en",
     platforms: [.macOS(.v26)],
     products: [
-        .executable(name: "PalmierPro", targets: ["PalmierPro"]),
+        .executable(name: "VeeCut", targets: ["PalmierPro"]),
     ],
     traits: [
         .trait(name: "BundledSpeech", description: "Include on-device speech models and MLX."),
