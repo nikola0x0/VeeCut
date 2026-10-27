@@ -22,6 +22,8 @@ struct SAMObjectRecord: Sendable, Equatable {
     let box: SAMBox
     let mask: SAMMaskRaster
     let confidence: Double?
+    /// The `!`-prefixed one-bit payload as received, kept so masks persist without re-encoding.
+    var maskPayload: String = ""
 }
 
 struct SAMFrameRecord: Sendable, Equatable {
@@ -98,7 +100,8 @@ enum SAMOutputParser {
             objectID: objectID,
             box: box,
             mask: SAMMaskRaster(width: columns, height: rows, bits: bits),
-            confidence: confidence
+            confidence: confidence,
+            maskPayload: String(parts[2])
         )
     }
 }

@@ -7,6 +7,7 @@ struct ProjectPackageContents: Sendable {
     var projectFile: ProjectFile
     var manifest: MediaManifest?
     var manifestUnreadable: Bool = false
+    var maskFiles: [String: Data] = [:]
 }
 
 struct ProjectPackageSnapshot: Sendable {
@@ -14,6 +15,7 @@ struct ProjectPackageSnapshot: Sendable {
     var manifest: Data?
     var thumbnail: Data?
     var chatSessionFiles: [(name: String, data: Data)]
+    var maskFiles: [(name: String, data: Data)] = []
 }
 
 private struct RestoredMediaCandidate: Sendable {
@@ -42,6 +44,7 @@ class VideoProject: NSDocument {
     /// Decoded off-main in read(), applied on main in makeWindowControllers.
     private nonisolated(unsafe) var loadedProjectFile: ProjectFile?
     private nonisolated(unsafe) var loadedManifest: MediaManifest?
+    private nonisolated(unsafe) var loadedMaskFiles: [String: Data] = [:]
 
     /// Set when media.json existed but failed to decode, so saves preserve it instead of clobbering.
     private nonisolated(unsafe) var manifestLoadFailed = false
@@ -51,6 +54,7 @@ class VideoProject: NSDocument {
     private nonisolated(unsafe) var snapshotManifest: MediaManifest?
     private nonisolated(unsafe) var snapshotThumbnail: Data?
     private nonisolated(unsafe) var snapshotChatSessionFiles: [(name: String, data: Data)] = []
+    private nonisolated(unsafe) var snapshotMaskFiles: [(name: String, data: Data)] = []
     private nonisolated(unsafe) var snapshotSourceProjectURL: URL?
     private nonisolated(unsafe) var snapshotPreparedForWrite = false
     // AppKit saves asynchronously, but write() consumes one shared snapshot at a time.
@@ -86,6 +90,7 @@ class VideoProject: NSDocument {
         loadedProjectFile = contents.projectFile
         loadedManifest = contents.manifest
         manifestLoadFailed = contents.manifestUnreadable
+        loadedMaskFiles = contents.maskFiles
         let timelines = loadedProjectFile?.timelines ?? []
         Log.project.notice(
             "read ok timelines=\(timelines.count)",
@@ -126,10 +131,21 @@ class VideoProject: NSDocument {
             manifestUnreadable = false
         }
 
+        var maskFiles: [String: Data] = [:]
+        for mask in projectFile.trackedMasks ?? [] {
+            let name = "\(TrackedMaskFile.directoryName)/\(TrackedMaskFile.fileName(maskId: mask.id))"
+            if let data = try optionalData(name, in: url) {
+                maskFiles[mask.id] = data
+            } else {
+                Log.project.error("read: missing tracked mask file mask=\(mask.id)")
+            }
+        }
+
         return ProjectPackageContents(
             projectFile: projectFile,
             manifest: manifest,
-            manifestUnreadable: manifestUnreadable
+            manifestUnreadable: manifestUnreadable,
+            maskFiles: maskFiles
         )
     }
 
@@ -241,6 +257,7 @@ class VideoProject: NSDocument {
         let manifest = snapshotManifest
         let thumbnail = snapshotThumbnail
         let chatSessionFiles = snapshotChatSessionFiles
+        let maskFiles = snapshotMaskFiles
         let sourceURL = snapshotSourceProjectURL
         snapshotPreparedForWrite = false
         snapshotSourceProjectURL = nil
@@ -257,7 +274,8 @@ class VideoProject: NSDocument {
                 timeline: data,
                 manifest: manifest.flatMap { try? JSONEncoder().encode($0) },
                 thumbnail: thumbnail,
-                chatSessionFiles: chatSessionFiles
+                chatSessionFiles: chatSessionFiles,
+                maskFiles: maskFiles
             ),
             to: url,
             sourceURL: sourceURL
@@ -276,6 +294,7 @@ class VideoProject: NSDocument {
             .compactMap { session in
                 ChatSessionStore.encodeSession(session).map { (name: "\(session.id.uuidString).json", data: $0) }
             }
+        snapshotMaskFiles = editorViewModel.trackedMaskFileSnapshot()
         snapshotPreparedForWrite = true
     }
 
@@ -315,6 +334,7 @@ class VideoProject: NSDocument {
             try copyPreservedFile(Project.thumbnailFilename, from: sourceURL, to: packageURL, fm: fm)
         }
         try writeChatDirectory(snapshot.chatSessionFiles, to: packageURL, fm: fm)
+        try writeDirectory(TrackedMaskFile.directoryName, files: snapshot.maskFiles, to: packageURL, fm: fm)
         try copyMediaDirectoryIfNeeded(from: sourceURL, to: packageURL, fm: fm)
         try fm.createDirectory(
             at: packageURL.appendingPathComponent(Project.mediaDirectoryName, isDirectory: true),
@@ -339,6 +359,23 @@ class VideoProject: NSDocument {
         try fm.createDirectory(at: chatURL, withIntermediateDirectories: true)
         for file in files {
             try file.data.write(to: chatURL.appendingPathComponent(file.name, isDirectory: false), options: .atomic)
+        }
+    }
+
+    private nonisolated static func writeDirectory(
+        _ name: String,
+        files: [(name: String, data: Data)],
+        to packageURL: URL,
+        fm: FileManager
+    ) throws {
+        let directory = packageURL.appendingPathComponent(name, isDirectory: true)
+        if fm.fileExists(atPath: directory.path) {
+            try fm.removeItem(at: directory)
+        }
+        guard !files.isEmpty else { return }
+        try fm.createDirectory(at: directory, withIntermediateDirectories: true)
+        for file in files {
+            try file.data.write(to: directory.appendingPathComponent(file.name, isDirectory: false), options: .atomic)
         }
     }
 
@@ -421,6 +458,7 @@ class VideoProject: NSDocument {
     // MARK: - Close
 
     override func close() {
+        editorViewModel.releaseTrackedMasks()
         super.close()
         DispatchQueue.main.async {
             if AppState.shared.activeProject === self {
@@ -435,6 +473,8 @@ class VideoProject: NSDocument {
         if let loaded = loadedProjectFile {
             editorViewModel.applyProjectFile(loaded)
             loadedProjectFile = nil
+            editorViewModel.restoreTrackedMasks(files: loadedMaskFiles)
+            loadedMaskFiles = [:]
         }
         editorViewModel.undo.attach(undoManager)
         editorViewModel.projectURL = fileURL

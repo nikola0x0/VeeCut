@@ -101,6 +101,9 @@ final class EditorViewModel {
         }
     }
     var speakerAssignments: [String: [String: Int]] = [:]
+    var trackedMasks: [TrackedMask] = []
+    /// Encoded `.samtrack` contents per mask id, written into the package on save.
+    var trackedMaskFiles: [String: Data] = [:]
     var speakerIdentifyPhase: String?
     var speakerIdentifyInFlight: Bool { speakerIdentifyPhase != nil }
     var speakerIdentifyError: String?

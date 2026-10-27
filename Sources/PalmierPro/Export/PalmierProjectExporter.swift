@@ -87,6 +87,7 @@ enum PalmierProjectExporter {
             try Task.checkCancellation()
             copyIfPresent(Project.thumbnailFilename, from: sourceProjectURL, to: staging, fm: fm)
             copyIfPresent(ChatSessionStore.dirName, from: sourceProjectURL, to: staging, fm: fm)
+            copyIfPresent(TrackedMaskFile.directoryName, from: sourceProjectURL, to: staging, fm: fm)
         }
 
         try Task.checkCancellation()
