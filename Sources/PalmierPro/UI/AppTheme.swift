@@ -21,6 +21,12 @@ enum AppTheme {
         static let paper = NSColor(srgbRed: 245/255, green: 240/255, blue: 252/255, alpha: 1)
     }
 
+    enum History {
+        static let listWidth: CGFloat = 300
+        static let listHeight: CGFloat = 380
+        static let toastDuration: Duration = .seconds(1.6)
+    }
+
     enum Canvas {
         static let markerWidth: CGFloat = 5
         static let markerGlow: CGFloat = 6

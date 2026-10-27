@@ -119,6 +119,9 @@ struct PreviewContainerView: View {
         .overlay(alignment: .leading) {
             if isTimeline { CanvasToolPalette() }
         }
+        .overlay(alignment: .top) {
+            if isTimeline { UndoStepToast(undo: editor.undo) }
+        }
         .overlay(alignment: .bottom) {
             if isTimeline { SubjectActionBar() }
         }
