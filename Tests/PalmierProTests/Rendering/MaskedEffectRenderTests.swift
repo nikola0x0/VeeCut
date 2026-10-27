@@ -20,9 +20,9 @@ struct MaskedEffectRenderTests {
         return id
     }
 
-    private static func invertedClip(matte: EffectMatte?) -> Clip {
+    private static func invertedClip(matte: EffectMatte) -> Clip {
         var clip = CompositorFixtures.patternClip()
-        clip.effects = [Effect(type: "stylize.invert", matte: matte)]
+        clip.effectRegions = [EffectRegion(matte: matte, effects: [Effect(type: "stylize.invert")])]
         return clip
     }
 

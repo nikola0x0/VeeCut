@@ -311,19 +311,24 @@ enum FrameRenderer {
             let offset = frame - clip.startFrame
             for effect in effects where effect.enabled {
                 guard let descriptor = EffectRegistry.descriptor(id: effect.type) else { continue }
-                let effected = descriptor.render(image, effect: effect, atOffset: offset)
-                if let matte = effect.matte {
-                    guard let mask = sourceMatte(matte, layer: layer, srcHeight: srcHeight, sourceSeconds: sourceSeconds) else {
-                        continue
-                    }
-                    image = effected.applyingFilter("CIBlendWithMask", parameters: [
-                        kCIInputBackgroundImageKey: image,
-                        kCIInputMaskImageKey: mask,
-                    ]).cropped(to: image.extent)
-                } else {
-                    image = effected
-                }
+                image = descriptor.render(image, effect: effect, atOffset: offset)
             }
+        }
+
+        for region in clip.effectRegions ?? [] {
+            guard let mask = sourceMatte(region.matte, layer: layer, srcHeight: srcHeight, sourceSeconds: sourceSeconds) else {
+                continue
+            }
+            let offset = frame - clip.startFrame
+            var graded = image
+            for effect in region.effects where effect.enabled {
+                guard let descriptor = EffectRegistry.descriptor(id: effect.type) else { continue }
+                graded = descriptor.render(graded, effect: effect, atOffset: offset)
+            }
+            image = graded.applyingFilter("CIBlendWithMask", parameters: [
+                kCIInputBackgroundImageKey: image,
+                kCIInputMaskImageKey: mask,
+            ]).cropped(to: image.extent)
         }
 
         image = EdgeRoundingKernel.apply(

@@ -10,7 +10,7 @@ extension EditorViewModel {
     func referencedMaskIds() -> Set<String> {
         Set(timelines.flatMap { timeline in
             timeline.tracks.flatMap { track in
-                track.clips.flatMap { $0.effects?.compactMap(\.matte?.maskId) ?? [] }
+                track.clips.flatMap { $0.effectRegions?.map(\.matte.maskId) ?? [] }
             }
         })
     }

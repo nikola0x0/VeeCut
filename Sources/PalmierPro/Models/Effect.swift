@@ -6,19 +6,17 @@ struct Effect: Codable, Sendable, Equatable, Identifiable {
     var type: String
     var enabled: Bool = true
     var params: [String: EffectParam] = [:]
-    var matte: EffectMatte?
 
     init(id: String = UUID().uuidString, type: String, enabled: Bool = true,
-         params: [String: EffectParam] = [:], matte: EffectMatte? = nil) {
+         params: [String: EffectParam] = [:]) {
         self.id = id
         self.type = type
         self.enabled = enabled
         self.params = params
-        self.matte = matte
     }
 
     private enum CodingKeys: String, CodingKey {
-        case id, type, enabled, params, matte
+        case id, type, enabled, params
     }
 
     init(from decoder: Decoder) throws {
@@ -27,8 +25,7 @@ struct Effect: Codable, Sendable, Equatable, Identifiable {
             id: (try? c.decode(String.self, forKey: .id)) ?? UUID().uuidString,
             type: try c.decode(String.self, forKey: .type),
             enabled: (try? c.decode(Bool.self, forKey: .enabled)) ?? true,
-            params: (try? c.decode([String: EffectParam].self, forKey: .params)) ?? [:],
-            matte: try c.decodeIfPresent(EffectMatte.self, forKey: .matte)
+            params: (try? c.decode([String: EffectParam].self, forKey: .params)) ?? [:]
         )
     }
 }

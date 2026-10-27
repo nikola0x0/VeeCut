@@ -7,17 +7,30 @@ struct TrackedMask: Codable, Sendable, Equatable, Identifiable {
     var label: String
     /// Frame rate SAM indexed frames at; maps source seconds to SAM frame indices.
     var sourceFPS: Double
+    /// Source time of SAM frame 0 (the start of the excerpt sent for tracking).
+    var sourceStartSeconds: Double = 0
     /// Display-oriented pixel size SAM coordinates refer to.
     var sourceWidth: Int
     var sourceHeight: Int
 }
 
-/// Limits an effect to the inside (or outside) of a tracked mask.
+/// Limits a region's effects to the inside (or outside) of a tracked mask.
 struct EffectMatte: Codable, Sendable, Equatable {
     var maskId: String
     var invert: Bool = false
     /// Edge softness in source pixels.
     var feather: Double = 0
+
+    func targetsSameRegion(as other: EffectMatte) -> Bool {
+        maskId == other.maskId && invert == other.invert
+    }
+}
+
+/// An effect stack applied only within a matte, after the clip's whole-frame effects.
+struct EffectRegion: Codable, Sendable, Equatable, Identifiable {
+    var id: String = UUID().uuidString
+    var matte: EffectMatte
+    var effects: [Effect]
 }
 
 /// Per-frame box-local mask, packed one bit per pixel, row-major from the top row.

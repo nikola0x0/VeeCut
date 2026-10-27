@@ -26,7 +26,7 @@ private func sampleMask() -> TrackedMask {
     let mask = sampleMask()
     let frames = sampleFrames()
     var clip = Fixtures.clip(mediaRef: mask.mediaRef, start: 0, duration: 30)
-    clip.effects = [Effect(type: "color.exposure", matte: EffectMatte(maskId: mask.id))]
+    clip.effectRegions = [EffectRegion(matte: EffectMatte(maskId: mask.id), effects: [Effect.make("color.exposure", ["ev": -1])])]
     let timeline = Fixtures.timeline(tracks: [Fixtures.videoTrack(clips: [clip])])
     let file = ProjectFile(timelines: [timeline], activeTimelineId: timeline.id, trackedMasks: [mask])
 
@@ -54,7 +54,7 @@ private func sampleMask() -> TrackedMask {
     editor.registerTrackedMask(unused, frames: sampleFrames(), file: Data("unused".utf8))
     defer { editor.releaseTrackedMasks() }
     var clip = Fixtures.clip(mediaRef: used.mediaRef, start: 0, duration: 30)
-    clip.effects = [Effect(type: "color.exposure", matte: EffectMatte(maskId: used.id))]
+    clip.effectRegions = [EffectRegion(matte: EffectMatte(maskId: used.id), effects: [Effect.make("color.exposure", ["ev": -1])])]
     editor.timelines = [Fixtures.timeline(tracks: [Fixtures.videoTrack(clips: [clip])])]
 
     #expect(editor.savedTrackedMasks() == [used])

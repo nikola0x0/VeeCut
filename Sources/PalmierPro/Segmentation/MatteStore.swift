@@ -34,7 +34,7 @@ final class MatteStore: Sendable {
               sourceSeconds.isFinite, entry.mask.sourceFPS > 0 else { return nil }
         let size = CGSize(width: entry.mask.sourceWidth, height: entry.mask.sourceHeight)
         let background = CIImage(color: .black).cropped(to: CGRect(origin: .zero, size: size))
-        let index = Int((sourceSeconds * entry.mask.sourceFPS).rounded())
+        let index = Int(((sourceSeconds - entry.mask.sourceStartSeconds) * entry.mask.sourceFPS).rounded())
         guard let frame = entry.frames[index] else { return (background, size) }
 
         let raster = CIImage(
