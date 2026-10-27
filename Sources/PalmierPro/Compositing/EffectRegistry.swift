@@ -96,7 +96,7 @@ enum EffectRegistry {
 
     private static let color: [EffectDescriptor] = [
         EffectDescriptor(
-            id: "color.exposure", displayName: L10n.key("Exposure"), category: "Color",
+            id: "color.exposure", displayName: L10n.key("Exposure"), category: L10n.key("Color"),
             params: [EffectParamSpec(key: "ev", label: L10n.key("Exposure"), range: -3...3,
                                      defaultValue: 0, unit: "")],
             linearizes: true,
@@ -105,7 +105,7 @@ enum EffectRegistry {
             }
         ),
         EffectDescriptor(
-            id: "color.contrast", displayName: L10n.key("Contrast"), category: "Color",
+            id: "color.contrast", displayName: L10n.key("Contrast"), category: L10n.key("Color"),
             params: [EffectParamSpec(key: "amount", label: L10n.key("Contrast"), range: 0.5...1.5,
                                      defaultValue: 1, unit: "")],
             apply: { image, p, _ in
@@ -115,7 +115,7 @@ enum EffectRegistry {
             }
         ),
         EffectDescriptor(
-            id: "color.saturation", displayName: L10n.key("Saturation"), category: "Color",
+            id: "color.saturation", displayName: L10n.key("Saturation"), category: L10n.key("Color"),
             params: [EffectParamSpec(key: "amount", label: L10n.key("Saturation"), range: 0...2,
                                      defaultValue: 1, unit: "")],
             apply: { image, p, _ in
@@ -125,7 +125,7 @@ enum EffectRegistry {
             }
         ),
         EffectDescriptor(
-            id: "color.temperature", displayName: L10n.key("Temperature & Tint"), category: "Color",
+            id: "color.temperature", displayName: L10n.key("Temperature & Tint"), category: L10n.key("Color"),
             params: [
                 EffectParamSpec(key: "temperature", label: L10n.key("Temperature"), range: 2000...11000,
                                 defaultValue: 6500, unit: "K"),
@@ -140,7 +140,7 @@ enum EffectRegistry {
             }
         ),
         EffectDescriptor(
-            id: "color.highlightsShadows", displayName: L10n.key("Highlights & Shadows"), category: "Color",
+            id: "color.highlightsShadows", displayName: L10n.key("Highlights & Shadows"), category: L10n.key("Color"),
             params: [
                 EffectParamSpec(key: "highlights", label: L10n.key("Highlights"), range: -1...1,
                                 defaultValue: 0, unit: ""),
@@ -153,7 +153,7 @@ enum EffectRegistry {
             }
         ),
         EffectDescriptor(
-            id: "color.blacksWhites", displayName: L10n.key("Levels"), category: "Color",
+            id: "color.blacksWhites", displayName: L10n.key("Levels"), category: L10n.key("Color"),
             params: [
                 EffectParamSpec(key: "blacks", label: L10n.key("Blacks"), range: -1...1, defaultValue: 0, unit: ""),
                 EffectParamSpec(key: "whites", label: L10n.key("Whites"), range: -1...1, defaultValue: 0, unit: ""),
@@ -163,7 +163,7 @@ enum EffectRegistry {
             }
         ),
         EffectDescriptor(
-            id: "color.vibrance", displayName: L10n.key("Vibrance"), category: "Color",
+            id: "color.vibrance", displayName: L10n.key("Vibrance"), category: L10n.key("Color"),
             params: [EffectParamSpec(key: "amount", label: L10n.key("Vibrance"), range: -1...1, defaultValue: 0, unit: "")],
             apply: { image, p, _ in
                 image.applyingFilter("CIVibrance", parameters: ["inputAmount": p.value("amount")])
@@ -173,7 +173,7 @@ enum EffectRegistry {
 
     private static let wheels: [EffectDescriptor] = [
         EffectDescriptor(
-            id: "color.wheels", displayName: L10n.key("Color Wheels"), category: "Color",
+            id: "color.wheels", displayName: L10n.key("Color Wheels"), category: L10n.key("Color"),
             params: [
                 EffectParamSpec(key: "lift_x", label: L10n.key("Lift"), range: -1...1, defaultValue: 0, unit: ""),
                 EffectParamSpec(key: "lift_y", label: L10n.key("Lift"), range: -1...1, defaultValue: 0, unit: ""),
@@ -193,7 +193,7 @@ enum EffectRegistry {
 
     private static let hueCurves: [EffectDescriptor] = [
         EffectDescriptor(
-            id: "color.hueCurves", displayName: L10n.key("Hue Curves"), category: "Color",
+            id: "color.hueCurves", displayName: L10n.key("Hue Curves"), category: L10n.key("Color"),
             params: [],
             apply: { image, p, _ in
                 guard let json = p.string("curves"), let curves = HueCurves(json: json) else { return image }
@@ -204,7 +204,7 @@ enum EffectRegistry {
 
     private static let lut: [EffectDescriptor] = [
         EffectDescriptor(
-            id: "color.lut", displayName: L10n.key("LUT"), category: "Color",
+            id: "color.lut", displayName: L10n.key("LUT"), category: L10n.key("Color"),
             params: [EffectParamSpec(key: "intensity", label: L10n.key("Intensity"), range: 0...1,
                                      defaultValue: 1, unit: "")],
             resourceKey: "path",
@@ -217,7 +217,7 @@ enum EffectRegistry {
 
     private static let curves: [EffectDescriptor] = [
         EffectDescriptor(
-            id: "color.curves", displayName: L10n.key("Curves"), category: "Color",
+            id: "color.curves", displayName: L10n.key("Curves"), category: L10n.key("Color"),
             params: [],
             apply: { image, p, _ in
                 guard let json = p.string("curve"), let curve = GradeCurve(json: json) else { return image }
@@ -228,7 +228,7 @@ enum EffectRegistry {
 
     private static let blur: [EffectDescriptor] = [
         EffectDescriptor(
-            id: "blur.gaussian", displayName: L10n.key("Gaussian Blur"), category: "Blur & Sharpen",
+            id: "blur.gaussian", displayName: L10n.key("Gaussian Blur"), category: L10n.key("Blur & Sharpen"),
             params: [EffectParamSpec(key: "radius", label: L10n.key("Radius"), range: 0...100,
                                      defaultValue: 8, unit: "px")],
             apply: { image, p, extent in
@@ -242,7 +242,7 @@ enum EffectRegistry {
             }
         ),
         EffectDescriptor(
-            id: "blur.sharpen", displayName: L10n.key("Sharpen"), category: "Blur & Sharpen",
+            id: "blur.sharpen", displayName: L10n.key("Sharpen"), category: L10n.key("Blur & Sharpen"),
             params: [EffectParamSpec(key: "amount", label: L10n.key("Sharpness"), range: 0...2,
                                      defaultValue: 0.4, unit: "")],
             apply: { image, p, extent in
@@ -254,7 +254,7 @@ enum EffectRegistry {
             }
         ),
         EffectDescriptor(
-            id: "blur.noiseReduction", displayName: L10n.key("Noise Reduction"), category: "Blur & Sharpen",
+            id: "blur.noiseReduction", displayName: L10n.key("Noise Reduction"), category: L10n.key("Blur & Sharpen"),
             params: [EffectParamSpec(key: "amount", label: L10n.key("Noise Reduction"), range: 0...1,
                                      defaultValue: 0, unit: "")],
             apply: { image, p, _ in
@@ -267,7 +267,7 @@ enum EffectRegistry {
             }
         ),
         EffectDescriptor(
-            id: "blur.motion", displayName: L10n.key("Motion Blur"), category: "Blur & Sharpen",
+            id: "blur.motion", displayName: L10n.key("Motion Blur"), category: L10n.key("Blur & Sharpen"),
             params: [
                 EffectParamSpec(key: "radius", label: L10n.key("Motion Blur"), range: 0...100,
                                 defaultValue: 0, unit: "px"),
@@ -289,7 +289,7 @@ enum EffectRegistry {
 
     private static let stylize: [EffectDescriptor] = [
         EffectDescriptor(
-            id: "stylize.invert", displayName: L10n.key("Invert"), category: "Stylize",
+            id: "stylize.invert", displayName: L10n.key("Invert"), category: L10n.key("Stylize"),
             params: [],
             apply: { image, _, _ in
                 return image.applyingFilter("CIColorMatrix", parameters: [
@@ -302,7 +302,7 @@ enum EffectRegistry {
             }
         ),
         EffectDescriptor(
-            id: "stylize.grain", displayName: L10n.key("Film Grain"), category: "Stylize",
+            id: "stylize.grain", displayName: L10n.key("Film Grain"), category: L10n.key("Stylize"),
             params: [
                 EffectParamSpec(key: "amount", label: L10n.key("Amount"), range: 0...1, defaultValue: 0, unit: ""),
                 EffectParamSpec(key: "size", label: L10n.key("Size"), range: 0.5...4, defaultValue: 1.5, unit: ""),
@@ -312,7 +312,7 @@ enum EffectRegistry {
             }
         ),
         EffectDescriptor(
-            id: "stylize.vignette", displayName: L10n.key("Vignette"), category: "Stylize",
+            id: "stylize.vignette", displayName: L10n.key("Vignette"), category: L10n.key("Stylize"),
             params: [
                 EffectParamSpec(key: "amount", label: L10n.key("Amount"), range: -1...1, defaultValue: 0, unit: ""),
                 EffectParamSpec(key: "midpoint", label: L10n.key("Midpoint"), range: 0...1, defaultValue: 0.5, unit: ""),
@@ -326,7 +326,7 @@ enum EffectRegistry {
             }
         ),
         EffectDescriptor(
-            id: "stylize.glow", displayName: L10n.key("Glow"), category: "Stylize",
+            id: "stylize.glow", displayName: L10n.key("Glow"), category: L10n.key("Stylize"),
             params: [
                 EffectParamSpec(key: "intensity", label: L10n.key("Glow"), range: 0...1, defaultValue: 0, unit: ""),
                 EffectParamSpec(key: "radius", label: L10n.key("Radius"), range: 0...100, defaultValue: 20, unit: "px"),
@@ -343,7 +343,7 @@ enum EffectRegistry {
 
     private static let detail: [EffectDescriptor] = [
         EffectDescriptor(
-            id: "detail.clarity", displayName: L10n.key("Clarity & Haze"), category: "Detail",
+            id: "detail.clarity", displayName: L10n.key("Clarity & Haze"), category: L10n.key("Detail"),
             params: [
                 EffectParamSpec(key: "clarity", label: L10n.key("Clarity"), range: -1...1, defaultValue: 0, unit: ""),
                 EffectParamSpec(key: "dehaze", label: L10n.key("Dehaze"), range: -1...1, defaultValue: 0, unit: ""),
@@ -356,7 +356,7 @@ enum EffectRegistry {
 
     private static let key: [EffectDescriptor] = [
         EffectDescriptor(
-            id: "key.chroma", displayName: L10n.key("Chroma Key"), category: "Key",
+            id: "key.chroma", displayName: L10n.key("Chroma Key"), category: L10n.key("Key"),
             params: [
                 EffectParamSpec(key: "keyHue", label: L10n.key("Key Hue"), range: 0...1, defaultValue: 0.333, unit: ""),
                 EffectParamSpec(key: "tolerance", label: L10n.key("Tolerance"), range: 0...1, defaultValue: 0, unit: ""),

@@ -166,6 +166,30 @@ struct SubjectLookTests {
         #expect(editor.nextSubjectName(mediaRef: "other") == "Subject 1")
     }
 
+    @Test func addingAnEffectCreatesTheRegionOnceAndUndoesInOneStep() {
+        let editor = editorWithSubject()
+        editor.addSubjectEffect("stylize.vignette", outside: true, clipId: "clip", maskId: "mask")
+        editor.addSubjectEffect("stylize.vignette", outside: true, clipId: "clip", maskId: "mask")
+        let region = editor.clipFor(id: "clip")?.effectRegions?.first
+        #expect(region?.matte.invert == true)
+        #expect(region?.effects.map(\.type) == ["stylize.vignette"])
+        undoManager.undo()
+        #expect(editor.clipFor(id: "clip")?.effectRegions == nil)
+    }
+
+    @Test func subjectEffectsExcludeKeyingAndSettinglessEffects() {
+        let ids = EditorViewModel.subjectEffectDescriptors.map(\.id)
+        #expect(ids.contains("color.exposure"))
+        #expect(!ids.contains { $0.hasPrefix("key.") })
+        #expect(EditorViewModel.subjectEffectDescriptors.allSatisfy { !$0.params.isEmpty })
+    }
+
+    @Test func trackingByABlankNameDoesNothing() {
+        let editor = editorWithSubject()
+        editor.trackSubject(named: "   ", clipId: "clip")
+        #expect(!editor.isSubjectTracking)
+    }
+
     @Test func escapeDismissesSelectionModeBeforeSubject() {
         let editor = editorWithSubject()
         editor.toggleSubjectSelection()

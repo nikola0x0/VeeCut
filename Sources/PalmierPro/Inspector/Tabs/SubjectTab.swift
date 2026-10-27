@@ -16,6 +16,7 @@ struct SubjectTab: View {
     }
 
     var body: some View {
+        addSubjectBar
         if masks.isEmpty {
             emptyState
         } else {
@@ -23,6 +24,23 @@ struct SubjectTab: View {
                 subjectGroup(mask)
             }
         }
+    }
+
+    private var addSubjectBar: some View {
+        VStack(alignment: .leading, spacing: AppTheme.Spacing.sm) {
+            Button {
+                if !editor.subjectSelectionActive { editor.toggleSubjectSelection() }
+            } label: {
+                Label(L10n.string("Select Subject"), systemImage: "scribble")
+                    .frame(maxWidth: .infinity)
+            }
+            .buttonStyle(.capsule(.prominent, size: .regular))
+            TrackByNameField { editor.trackSubject(named: $0, clipId: clip.id) }
+        }
+        .disabled(editor.isSubjectTracking)
+        .padding(AppTheme.EditorPanel.contentInsets)
+        .frame(maxWidth: .infinity, alignment: .leading)
+        .background(AppTheme.Background.surfaceColor)
     }
 
     private var emptyState: some View {
@@ -33,18 +51,11 @@ struct SubjectTab: View {
             Text(L10n.string("No subjects yet"))
                 .font(.system(size: AppTheme.FontSize.md, weight: AppTheme.FontWeight.semibold))
                 .foregroundStyle(AppTheme.Text.primaryColor)
-            Text(L10n.string("Scribble over, circle, or click someone in the preview. VeeCut tracks them through the clip so you can change just them or just the background."))
+            Text(L10n.string("Scribble over, circle, or click someone in the preview, or track an area by name like \u{201C}sky\u{201D}. VeeCut follows it through the clip so you can change just it or everything else."))
                 .font(.system(size: AppTheme.FontSize.sm))
                 .foregroundStyle(AppTheme.Text.secondaryColor)
                 .multilineTextAlignment(.center)
                 .fixedSize(horizontal: false, vertical: true)
-            Button {
-                if !editor.subjectSelectionActive { editor.toggleSubjectSelection() }
-            } label: {
-                Label(L10n.string("Select Subject"), systemImage: "scribble")
-            }
-            .buttonStyle(.capsule(.prominent, size: .regular))
-            .disabled(editor.isSubjectTracking)
         }
         .frame(maxWidth: .infinity)
         .padding(AppTheme.Spacing.xl)
@@ -77,6 +88,10 @@ struct SubjectTab: View {
                 .font(.system(size: AppTheme.FontSize.xs))
                 .foregroundStyle(AppTheme.Text.tertiaryColor)
             quickActions(maskId: maskId)
+            HStack(spacing: AppTheme.Spacing.xs) {
+                addEffectMenu(outside: false, maskId: maskId)
+                addEffectMenu(outside: true, maskId: maskId)
+            }
             if regions.isEmpty {
                 Text(L10n.string("Pick a quick action, then fine-tune it here."))
                     .font(.system(size: AppTheme.FontSize.sm))
@@ -110,6 +125,33 @@ struct SubjectTab: View {
                 .buttonStyle(.capsule(.secondary, size: .regular))
             }
         }
+    }
+
+    private func addEffectMenu(outside: Bool, maskId: String) -> some View {
+        let applied = Set((clip.effectRegions ?? [])
+            .filter { $0.matte.maskId == maskId && $0.matte.invert == outside }
+            .flatMap { $0.effects.map(\.type) })
+        let categories = Dictionary(grouping: EditorViewModel.subjectEffectDescriptors, by: \.category)
+        return Menu {
+            ForEach(categories.keys.sorted(), id: \.self) { category in
+                Section(L10n.string(key: category)) {
+                    ForEach(categories[category] ?? []) { descriptor in
+                        Button(L10n.string(key: descriptor.displayName)) {
+                            editor.addSubjectEffect(descriptor.id, outside: outside, clipId: clip.id, maskId: maskId)
+                        }
+                        .disabled(applied.contains(descriptor.id))
+                    }
+                }
+            }
+        } label: {
+            HStack(spacing: AppTheme.Spacing.sm) {
+                sideSwatch(outside: outside)
+                Text(outside ? L10n.string("Add to Background") : L10n.string("Add to Subject"))
+            }
+        }
+        .menuStyle(.button)
+        .controlSize(.small)
+        .fixedSize()
     }
 
     // MARK: - Applied regions
@@ -268,5 +310,30 @@ private struct SubjectNameField: View {
             .onChange(of: name, initial: true) { _, newName in draft = newName }
             .onExitCommand { draft = name; focused = false }
             .accessibilityLabel(L10n.string("Subject name"))
+    }
+}
+
+/// Tracks an area or object by name ("sky", "the red car") instead of drawing on it.
+private struct TrackByNameField: View {
+    let onTrack: (String) -> Void
+    @State private var name = ""
+
+    var body: some View {
+        HStack(spacing: AppTheme.Spacing.xs) {
+            TextField(L10n.string("Track by name: sky, the red car…"), text: $name)
+                .textFieldStyle(.roundedBorder)
+                .font(.system(size: AppTheme.FontSize.sm))
+                .controlSize(.small)
+                .onSubmit(track)
+                .accessibilityLabel(L10n.string("Track by name"))
+            Button(L10n.string("Track"), action: track)
+                .controlSize(.small)
+                .disabled(name.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty)
+        }
+    }
+
+    private func track() {
+        onTrack(name)
+        name = ""
     }
 }

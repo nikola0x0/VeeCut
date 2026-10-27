@@ -82,7 +82,17 @@ extension EditorViewModel {
         guard !isSubjectTracking, let clip = clipFor(id: clipId), clip.contains(timelineFrame: activeFrame),
               let seconds = clip.sourceSeconds(atTimelineFrame: activeFrame, fps: timeline.fps) else { return }
         let target = TrackingTarget(sourceSeconds: seconds, box: box, points: points)
-        let label = nextSubjectName(mediaRef: clip.mediaRef)
+        startSubjectTracking(clipId: clipId, prompt: .target(target), label: nextSubjectName(mediaRef: clip.mediaRef))
+    }
+
+    /// Tracks every frame of `clipId` matching a short name such as "sky" or "the red car".
+    func trackSubject(named name: String, clipId: String) {
+        let name = name.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard !isSubjectTracking, !name.isEmpty, clipFor(id: clipId)?.mediaType == .video else { return }
+        startSubjectTracking(clipId: clipId, prompt: .concept(name), label: name)
+    }
+
+    private func startSubjectTracking(clipId: String, prompt: TrackingPrompt, label: String) {
         subjectSelectionActive = false
         subjectTrackingFailure = nil
         canvasSubject = nil
@@ -94,7 +104,7 @@ extension EditorViewModel {
                 self.subjectTrackingClipId = nil
             }
             do {
-                let result = try await self.trackObject(clipId: clipId, prompt: .target(target), label: label)
+                let result = try await self.trackObject(clipId: clipId, prompt: prompt, label: label)
                 guard !Task.isCancelled, self.clipFor(id: clipId) != nil else { return }
                 self.canvasSubject = CanvasSubject(clipId: clipId, maskId: result.mask.id)
                 self.selectedClipIds = [clipId]
@@ -132,6 +142,27 @@ extension EditorViewModel {
                 }
             }
         }
+    }
+
+    /// Adds `type` with default settings to the subject's inside or outside, unless already there.
+    func addSubjectEffect(_ type: String, outside: Bool, clipId: String, maskId: String) {
+        guard let descriptor = EffectRegistry.descriptor(id: type), clipFor(id: clipId) != nil else { return }
+        let matte = EffectMatte(maskId: maskId, invert: outside, feather: Self.subjectFeather)
+        let existing = clipFor(id: clipId)?.effectRegions?.first { $0.matte.targetsSameRegion(as: matte) }
+        guard existing?.effects.contains(where: { $0.type == type }) != true else { return }
+        let actionName = L10n.string("Add \(L10n.string(key: descriptor.displayName))")
+        undo.perform(actionName) {
+            mutateClips(ids: [clipId], actionName: actionName) { clip in
+                clip.updateRegion(matching: existing?.matte ?? matte) { stack in
+                    stack.insert(descriptor.makeEffect(), at: EffectRegistry.insertIndex(stack, for: type))
+                }
+            }
+        }
+    }
+
+    /// Effects that can run inside a subject region: tunable numeric settings, no keying.
+    static let subjectEffectDescriptors: [EffectDescriptor] = EffectRegistry.all.filter {
+        !$0.params.isEmpty && !$0.id.hasPrefix("key.")
     }
 
     /// Live (`commit == false`) or undoable edit of one subject region; an emptied region is removed.

@@ -66,6 +66,7 @@
 "Account settings" = "Account settings";
 "Action Safe" = "Action Safe";
 "Activity unavailable" = "Activity unavailable";
+"Add %@" = "Add %@";
 "Add Marker (M)" = "Add Marker (M)";
 "Add Range to Chat" = "Add Range to Chat";
 "Add Text" = "Add Text";
@@ -86,9 +87,11 @@
 "Add this configuration to ~/.cursor/mcp.json." = "Add this configuration to ~/.cursor/mcp.json.";
 "Add this skill to an external agent" = "Add this skill to an external agent";
 "Add to %@" = "Add to %@";
+"Add to Background" = "Add to Background";
 "Add to Chat" = "Add to Chat";
 "Add to External Agent" = "Add to External Agent";
 "Add to Queue" = "Add to Queue";
+"Add to Subject" = "Add to Subject";
 "Add to chat" = "Add to chat";
 "Add video to the timeline, then mark a range to score only part of it." = "Add video to the timeline, then mark a range to score only part of it.";
 "Added to %@" = "Added to %@";
@@ -131,6 +134,7 @@
 "Blend" = "Blend";
 "Blends denoised and original audio — lower this if voices sound thin or over-compressed." = "Blends denoised and original audio — lower this if voices sound thin or over-compressed.";
 "Blur" = "Blur";
+"Blur & Sharpen" = "Blur & Sharpen";
 "Blur Background" = "Blur Background";
 "Bold" = "Bold";
 "Both" = "Both";
@@ -527,6 +531,7 @@
 "Keep Skill" = "Keep Skill";
 "Keep the best takes" = "Keep the best takes";
 "Keeps this much audio before and after detected speech." = "Keeps this much audio before and after detected speech.";
+"Key" = "Key";
 "Key Hue" = "Key Hue";
 "Keyboard Shortcuts" = "Keyboard Shortcuts";
 "Keyframes" = "Keyframes";
@@ -851,7 +856,7 @@
 "Screen" = "Screen";
 "Screenshot a frame" = "Screenshot a frame";
 "Scribble over the subject, circle it, or click it" = "Scribble over the subject, circle it, or click it";
-"Scribble over, circle, or click someone in the preview. VeeCut tracks them through the clip so you can change just them or just the background." = "Scribble over, circle, or click someone in the preview. VeeCut tracks them through the clip so you can change just them or just the background.";
+"Scribble over, circle, or click someone in the preview, or track an area by name like “sky”. VeeCut follows it through the clip so you can change just it or everything else." = "Scribble over, circle, or click someone in the preview, or track an area by name like “sky”. VeeCut follows it through the clip so you can change just it or everything else.";
 "Scroll Horizontally" = "Scroll Horizontally";
 "Scroll to latest" = "Scroll to latest";
 "Search" = "Search";
@@ -966,6 +971,7 @@
 "Student" = "Student";
 "Style" = "Style";
 "Style instructions (optional). e.g., warm and slow, British accent." = "Style instructions (optional). e.g., warm and slow, British accent.";
+"Stylize" = "Stylize";
 "Subject" = "Subject";
 "Subject %lld" = "Subject %lld";
 "Subject name" = "Subject name";
@@ -1032,7 +1038,10 @@
 "Tools" = "Tools";
 "Top" = "Top";
 "Top / Bottom" = "Top / Bottom";
+"Track" = "Track";
 "Track Name" = "Track Name";
+"Track by name" = "Track by name";
+"Track by name: sky, the red car…" = "Track by name: sky, the red car…";
 "Tracked with SAM 3.1" = "Tracked with SAM 3.1";
 "Tracking" = "Tracking";
 "Tracking failed. Try again." = "Tracking failed. Try again.";
