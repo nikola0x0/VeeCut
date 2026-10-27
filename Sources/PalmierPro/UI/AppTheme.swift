@@ -21,6 +21,12 @@ enum AppTheme {
         static let paper = NSColor(srgbRed: 245/255, green: 240/255, blue: 252/255, alpha: 1)
     }
 
+    enum Brand {
+        static let wordmarkFontName = "Fredoka"
+        static let markCornerRatio: CGFloat = 0.27
+        static let glyphShadowRatio: CGFloat = 2.0 / 30
+    }
+
     // MARK: - Backgrounds
 
     enum Background {
@@ -259,6 +265,10 @@ enum AppTheme {
         static func fill(_ opacity: Double) -> Color {
             AppTheme.Text.primaryColor.opacity(opacity)
         }
+
+        static func selectedFill(_ opacity: Double) -> Color {
+            AppTheme.Accent.primary.opacity(opacity)
+        }
     }
 
     // MARK: - Media overlays
@@ -494,7 +504,7 @@ enum AppTheme {
             width: 960 + GenerationPanel.minimumWidthAdjustment,
             height: 600
         )
-        static let projectTitlebarLeadingWidth: CGFloat = 132
+        static let projectTitlebarLeadingWidth: CGFloat = 228
         static let projectTitlebarTrailingWidth: CGFloat = 280
         static let settingsDefault = NSSize(width: 1200, height: 800)
         static let settingsMin = NSSize(width: 860, height: 640)

@@ -5,6 +5,8 @@ struct TitleBarLeadingView: View {
 
     var body: some View {
         HStack(spacing: AppTheme.Spacing.xxs) {
+            VeeCutWordmark()
+                .padding(.trailing, AppTheme.Spacing.md)
             PanelVisibilityButton(
                 systemName: "bubble.left",
                 filledSystemName: "bubble.left.fill",

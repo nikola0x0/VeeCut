@@ -87,6 +87,11 @@ private struct HomeSidebar: View {
 
     var body: some View {
         VStack(alignment: .leading, spacing: 0) {
+            VeeCutWordmark(markSize: AppTheme.IconSize.mdLg, fontSize: AppTheme.FontSize.xl)
+                .padding(.horizontal, AppTheme.Spacing.lgXl)
+                .padding(.top, AppTheme.Spacing.xs)
+                .padding(.bottom, AppTheme.Spacing.smMd)
+
             if account.isSignedIn {
                 IdentityStrip()
             }

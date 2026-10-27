@@ -24,8 +24,8 @@ struct HoverHighlight: ViewModifier {
         guard isEnabled else { return .clear }
         if isActive, let activeFill { return activeFill }
         return switch (isActive, isHovered) {
-        case (true, true): AppTheme.Interaction.fill(AppTheme.Opacity.muted)
-        case (true, false): AppTheme.Interaction.fill(AppTheme.Opacity.soft)
+        case (true, true): AppTheme.Interaction.selectedFill(AppTheme.Opacity.moderate)
+        case (true, false): AppTheme.Interaction.selectedFill(AppTheme.Opacity.muted)
         case (false, true): AppTheme.Interaction.fill(AppTheme.Opacity.faint)
         case (false, false): .clear
         }
