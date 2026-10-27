@@ -7,18 +7,18 @@ struct MCPInstructionsPane: View {
     private var mcpEndpoint: String { "http://127.0.0.1:\(MCPService.port)/mcp" }
 
     private var claudeCodeCommand: String {
-        "claude mcp add --transport http palmier-pro \(mcpEndpoint)"
+        "claude mcp add --transport http veecut \(mcpEndpoint)"
     }
 
     private var codexCommand: String {
-        "codex mcp add palmier-pro --url \(mcpEndpoint)"
+        "codex mcp add veecut --url \(mcpEndpoint)"
     }
 
     private var cursorJSONConfig: String {
         """
         {
           "mcpServers": {
-            "palmier-pro": {
+            "veecut": {
               "type": "http",
               "url": "\(mcpEndpoint)"
             }
@@ -33,13 +33,13 @@ struct MCPInstructionsPane: View {
             let data = try? JSONSerialization.data(withJSONObject: config, options: [.sortedKeys]),
             let encoded = data.base64EncodedString().addingPercentEncoding(withAllowedCharacters: .urlQueryAllowed)
         else { return nil }
-        return URL(string: "cursor://anysphere.cursor-deeplink/mcp/install?name=palmier-pro&config=\(encoded)")
+        return URL(string: "cursor://anysphere.cursor-deeplink/mcp/install?name=veecut&config=\(encoded)")
     }
 
     var body: some View {
         ScrollView {
             VStack(alignment: .leading, spacing: AppTheme.Spacing.xxl) {
-                Text(L10n.string("Connect an external agent to inspect and edit the open Palmier Pro project."))
+                Text(L10n.string("Connect an external agent to inspect and edit the open VeeCut project."))
                     .font(.system(size: AppTheme.FontSize.smMd, weight: AppTheme.FontWeight.regular))
                     .foregroundStyle(AppTheme.Text.secondaryColor)
                     .fixedSize(horizontal: false, vertical: true)
@@ -96,7 +96,7 @@ struct MCPInstructionsPane: View {
         agentSection(
             .cursor,
             name: "Cursor",
-            description: L10n.string("Install the Palmier Pro MCP server in Cursor."),
+            description: L10n.string("Install the VeeCut MCP server in Cursor."),
             action: (L10n.string("Install in Cursor"), openCursor)
         ) {
             ManualFallback(
@@ -110,7 +110,7 @@ struct MCPInstructionsPane: View {
         agentSection(
             .claude,
             name: "Claude Desktop",
-            description: L10n.string("Install the bundled Palmier Pro connector."),
+            description: L10n.string("Install the bundled VeeCut connector."),
             action: (L10n.string("Install in Claude Desktop"), openClaudeDesktopBundle)
         ) {
             EmptyView()
@@ -199,7 +199,7 @@ struct MCPInstructionsPane: View {
 
     private func openClaudeDesktopBundle() {
         guard let bundleURL = claudeDesktopBundleURL else {
-            claudeInstallError = "The Palmier Pro connector could not be found. Reinstall Palmier Pro, then try again."
+            claudeInstallError = "The VeeCut connector could not be found. Reinstall VeeCut, then try again."
             return
         }
         guard let claudeURL = NSWorkspace.shared.urlForApplication(withBundleIdentifier: "com.anthropic.claudefordesktop") else {
@@ -214,13 +214,13 @@ struct MCPInstructionsPane: View {
         ) { _, error in
             guard error != nil else { return }
             Task { @MainActor in
-                claudeInstallError = "Claude Desktop could not open the Palmier Pro connector. Update Claude Desktop, then try again."
+                claudeInstallError = "Claude Desktop could not open the VeeCut connector. Update Claude Desktop, then try again."
             }
         }
     }
 
     private var claudeDesktopBundleURL: URL? {
-        BundledResource.url("palmier-pro.mcpb")
+        BundledResource.url("veecut.mcpb")
     }
 }
 

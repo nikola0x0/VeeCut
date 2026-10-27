@@ -21,7 +21,7 @@ private func sampleMask() -> TrackedMask {
 
 @Test func projectPackagePersistsReferencedTrackedMasks() throws {
     let fm = FileManager.default
-    let package = fm.temporaryDirectory.appendingPathComponent("mask-pkg-\(UUID().uuidString).palmier", isDirectory: true)
+    let package = fm.temporaryDirectory.appendingPathComponent("mask-pkg-\(UUID().uuidString).veecut", isDirectory: true)
     defer { try? fm.removeItem(at: package) }
     let mask = sampleMask()
     let frames = sampleFrames()

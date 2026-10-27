@@ -89,8 +89,8 @@ extension ToolExecutor {
 
         let timeline: Timeline
         if let id = input.timelineId {
-            guard mode != .palmier else {
-                throw ToolError("export_project: timelineId doesn't apply to palmier mode — the package carries every timeline")
+            guard mode != .veecut else {
+                throw ToolError("export_project: timelineId doesn't apply to veecut mode — the package carries every timeline")
             }
             guard let t = editor.timeline(for: id) else {
                 throw ToolError("export_project: no timeline with id '\(id)'. get_timeline lists the project's timelines.")
@@ -139,7 +139,7 @@ extension ToolExecutor {
                 editor, timeline: timeline, mode: mode, format: .fcpxml,
                 resolution: .matchTimeline, target: target, outputURL: outputURL
             )
-        case .palmier:
+        case .veecut:
             return try enqueuePalmierExport(editor, outputURL: outputURL)
         }
     }
@@ -213,7 +213,7 @@ extension ToolExecutor {
             "status": submission.started ? "started" : "queued",
             "jobId": submission.jobID.uuidString,
             "queuePosition": submission.queuePosition,
-            "mode": ExportProjectMode.palmier.rawValue,
+            "mode": ExportProjectMode.veecut.rawValue,
             "path": outputURL.path,
             "note": "The export is available in the Export dialog.",
         ]
@@ -258,7 +258,7 @@ extension ToolExecutor {
         var isDirectory = ObjCBool(false)
         if fm.fileExists(atPath: expanded, isDirectory: &isDirectory),
            isDirectory.boolValue,
-           !(mode == .palmier && rawExtension == expectedExtension) {
+           !(mode == .veecut && rawExtension == expectedExtension) {
             throw ToolError("export_project: outputPath must include a filename")
         }
 
@@ -340,7 +340,7 @@ private enum ExportProjectMode: String {
     case video
     case xml
     case fcpxml
-    case palmier
+    case veecut
 
     init(named raw: String?) throws {
         guard let raw else {
@@ -348,7 +348,7 @@ private enum ExportProjectMode: String {
             return
         }
         guard let mode = Self(rawValue: raw.normalizedExportOption) else {
-            throw ToolError("export_project: mode must be video, xml, fcpxml, or palmier")
+            throw ToolError("export_project: mode must be video, xml, fcpxml, or veecut")
         }
         self = mode
     }
@@ -358,7 +358,7 @@ private enum ExportProjectMode: String {
         case .video: format?.fileExtension ?? ExportFormat.h264.fileExtension
         case .xml: "xml"
         case .fcpxml: "fcpxml"
-        case .palmier: Project.fileExtension
+        case .veecut: Project.fileExtension
         }
     }
 
@@ -373,7 +373,7 @@ private enum ExportProjectMode: String {
         case .video: format?.displayName ?? "Video"
         case .xml: "XML"
         case .fcpxml: "FCPXML"
-        case .palmier: "Palmier Project"
+        case .veecut: "VeeCut Project"
         }
     }
 }

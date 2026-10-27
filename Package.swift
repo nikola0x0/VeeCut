@@ -15,7 +15,6 @@ let package = Package(
     ],
     dependencies: [
         .package(url: "https://github.com/modelcontextprotocol/swift-sdk.git", from: "0.11.0"),
-        .package(url: "https://github.com/sparkle-project/Sparkle", from: "2.7.0"),
         .package(url: "https://github.com/getsentry/sentry-cocoa", exact: "9.21.0"),
         .package(url: "https://github.com/PostHog/posthog-ios.git", exact: "3.64.4"),
         .package(url: "https://github.com/clerk/clerk-convex-swift", from: "0.1.0"),
@@ -31,7 +30,6 @@ let package = Package(
             name: "PalmierPro",
             dependencies: [
                 .product(name: "MCP", package: "swift-sdk"),
-                .product(name: "Sparkle", package: "Sparkle"),
                 .product(
                     name: "Sentry",
                     package: "sentry-cocoa",
@@ -72,7 +70,7 @@ let package = Package(
             ],
             resources: [
                 .copy("Resources/Fonts"),
-                .copy("Resources/MCPB/palmier-pro.mcpb"),
+                .copy("Resources/MCPB/veecut.mcpb"),
                 .copy("Resources/Images"),
                 .copy("Resources/Changelog"),
                 .copy("Resources/Skills"),

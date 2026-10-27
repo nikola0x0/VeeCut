@@ -76,15 +76,14 @@ private struct WelcomeTitle: View {
 
     private var title: String {
         if let first = account.account?.user.firstName {
-            return L10n.string("Welcome to Palmier Pro, \(first)")
+            return L10n.string("Welcome to VeeCut, \(first)")
         }
-        return L10n.string("Welcome to Palmier Pro")
+        return L10n.string("Welcome to VeeCut")
     }
 }
 
 private struct HomeSidebar: View {
     @Bindable private var account = AccountService.shared
-    @Bindable private var updater = Updater.shared
 
     var body: some View {
         VStack(alignment: .leading, spacing: 0) {
@@ -118,11 +117,6 @@ private struct HomeSidebar: View {
             .padding(.vertical, AppTheme.Spacing.md)
 
             Spacer(minLength: 0)
-
-            UpdateSidebarCard()
-                .padding(.horizontal, AppTheme.Spacing.smMd)
-                .padding(.bottom, AppTheme.Spacing.sm)
-                .animation(.easeInOut(duration: AppTheme.Anim.transition), value: updater.updateAvailable)
 
             SidebarRowButton(
                 label: L10n.string("Settings"),

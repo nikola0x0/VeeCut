@@ -257,7 +257,7 @@ enum Transcription {
         fileExtension: String = "caf"
     ) async throws -> URL {
         let outURL = FileManager.default.temporaryDirectory
-            .appendingPathComponent("palmier-stt-\(UUID().uuidString).\(fileExtension)")
+            .appendingPathComponent("veecut-stt-\(UUID().uuidString).\(fileExtension)")
         try await audioExtractionGate.wait()
         defer { Task { await audioExtractionGate.signal() } }
 

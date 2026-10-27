@@ -1,6 +1,6 @@
 import Foundation
 
-/// Writes a self-contained `.palmier` package: every resolvable media reference is copied
+/// Writes a self-contained `.veecut` package: every resolvable media reference is copied
 /// into the new bundle's `media/` directory and rewritten to a project-relative source
 enum PalmierProjectExporter {
 
@@ -34,7 +34,7 @@ enum PalmierProjectExporter {
         let fm = FileManager.default
         let parent = destURL.deletingLastPathComponent()
         try fm.createDirectory(at: parent, withIntermediateDirectories: true)
-        let staging = parent.appendingPathComponent(".palmier-export-\(UUID().uuidString).partial", isDirectory: true)
+        let staging = parent.appendingPathComponent(".veecut-export-\(UUID().uuidString).partial", isDirectory: true)
         let mediaDir = staging.appendingPathComponent(Project.mediaDirectoryName, isDirectory: true)
         try fm.createDirectory(at: mediaDir, withIntermediateDirectories: true)
         defer { try? fm.removeItem(at: staging) }

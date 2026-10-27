@@ -5,12 +5,12 @@ import Testing
 @MainActor
 struct AppNotificationsTests {
     @Test(arguments: [
-        (ClipType.video, "2 videos are ready in Palmier Pro."),
-        (.audio, "2 audio clips are ready in Palmier Pro."),
-        (.image, "2 images are ready in Palmier Pro."),
-        (.text, "2 text clips are ready in Palmier Pro."),
-        (.lottie, "2 Lottie animations are ready in Palmier Pro."),
-        (.sequence, "2 videos are ready in Palmier Pro."),
+        (ClipType.video, "2 videos are ready in VeeCut."),
+        (.audio, "2 audio clips are ready in VeeCut."),
+        (.image, "2 images are ready in VeeCut."),
+        (.text, "2 text clips are ready in VeeCut."),
+        (.lottie, "2 Lottie animations are ready in VeeCut."),
+        (.sequence, "2 videos are ready in VeeCut."),
     ])
     func generatedAssetCountsUseCompleteMessages(type: ClipType, expected: String) {
         #expect(AppNotifications.generationBody(assetName: "", assetType: type, count: 2) == expected)

@@ -17,9 +17,6 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         NSApp.setActivationPolicy(.regular)
         NSApp.activate(ignoringOtherApps: true)
 
-        // Start Sparkle updater
-        _ = Updater.shared
-
         HomeWindowController.shared.showWindow(nil)
         SkillStore.shared.startSkillSync()
         Task.detached(priority: .utility) {
@@ -95,7 +92,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         process.arguments = [
             "-c",
             "while kill -0 \"$1\" 2>/dev/null; do sleep 0.1; done; exec /usr/bin/open -n \"$2\"",
-            "palmier-restart",
+            "veecut-restart",
             String(processID),
             applicationURL.path,
         ]

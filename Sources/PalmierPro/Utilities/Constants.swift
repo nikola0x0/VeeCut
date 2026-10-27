@@ -85,9 +85,9 @@ enum Trim {
 }
 
 enum Project {
-    static let fileExtension = "palmier"
+    static let fileExtension = "veecut"
     static let registryFilename = "project-registry.json"
-    static let typeIdentifier = "io.palmier.project"
+    static let typeIdentifier = "io.veecut.appject"
     static let defaultProjectName = "Untitled Project"
     static let timelineFilename = "project.json"
     static let manifestFilename = "media.json"
@@ -96,7 +96,7 @@ enum Project {
 
     static var storageDirectory: URL {
         FileManager.default.homeDirectoryForCurrentUser
-            .appendingPathComponent("Documents/Palmier Pro", isDirectory: true)
+            .appendingPathComponent("Documents/VeeCut", isDirectory: true)
     }
 
     nonisolated static func ensureStorageDirectory() {

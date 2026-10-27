@@ -5,9 +5,9 @@ import UniformTypeIdentifiers
 // MARK: - Folder-drag string contract
 
 extension MediaTab {
-    static let folderDragScheme = "palmier-folder://"
-    static let assetDragScheme = "palmier-asset://"
-    static let timelineDragScheme = "palmier-timeline://"
+    static let folderDragScheme = "veecut-folder://"
+    static let assetDragScheme = "veecut-asset://"
+    static let timelineDragScheme = "veecut-timeline://"
 
     static func folderDragString(forFolderId id: String) -> String {
         folderDragScheme + id
@@ -29,7 +29,7 @@ extension MediaTab {
         assetDragScheme + id
     }
 
-    /// A search "moment": `palmier-asset://<id>#<start>-<end>` in source seconds
+    /// A search "moment": `veecut-asset://<id>#<start>-<end>` in source seconds
     static func assetDragString(forAssetId id: String, segment: ClosedRange<Double>) -> String {
         assetDragScheme + id + String(format: "#%.3f-%.3f", segment.lowerBound, segment.upperBound)
     }

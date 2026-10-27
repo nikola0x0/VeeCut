@@ -50,7 +50,7 @@ private struct PersistedSkillLedger: Codable {
     let suppressed: [String]
 }
 
-/// Reads skills from `~/.palmier/skills/` — the single source of truth.
+/// Reads skills from `~/.veecut/skills/` — the single source of truth.
 @Observable
 @MainActor
 final class SkillStore {
@@ -76,7 +76,7 @@ final class SkillStore {
 
     nonisolated static var directory: URL {
         FileManager.default.homeDirectoryForCurrentUser
-            .appendingPathComponent(".palmier/skills", isDirectory: true)
+            .appendingPathComponent(".veecut/skills", isDirectory: true)
     }
 
     private var reloadGeneration = 0
@@ -302,7 +302,7 @@ final class SkillStore {
         }
     }
 
-    /// Resolves `~/.palmier/skills/<id>/` only when `id` is a single safe path component.
+    /// Resolves `~/.veecut/skills/<id>/` only when `id` is a single safe path component.
     nonisolated static func skillDirectory(
         for id: String,
         directory: URL = SkillStore.directory
@@ -435,11 +435,11 @@ final class SkillStore {
         } ?? .failed
     }
 
-    /// Copies under a `palmier-` prefix so we only overwrite our own prior copy
+    /// Copies under a `veecut-` prefix so we only overwrite our own prior copy
     @discardableResult
     func copy(_ skill: Skill, to agent: SkillExternalAgent) -> URL? {
         let source = skill.path.deletingLastPathComponent()
-        let dest = agent.skillsDirectory.appendingPathComponent("palmier-\(skill.id)", isDirectory: true)
+        let dest = agent.skillsDirectory.appendingPathComponent("veecut-\(skill.id)", isDirectory: true)
         let fm = FileManager.default
         do {
             try fm.createDirectory(at: agent.skillsDirectory, withIntermediateDirectories: true)

@@ -1,4 +1,4 @@
-/* Text displayed by macOS for Palmier Pro project packages. */
+/* Text displayed by macOS for VeeCut project packages. */
 
-"CFBundleTypeName" = "Proyek Palmier";
-"UTTypeDescription" = "Proyek Palmier";
+"CFBundleTypeName" = "Proyek VeeCut";
+"UTTypeDescription" = "Proyek VeeCut";

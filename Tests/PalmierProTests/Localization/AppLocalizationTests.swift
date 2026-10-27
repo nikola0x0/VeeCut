@@ -22,7 +22,7 @@ struct AppLocalizationTests {
                     forKey: "CFBundleTypeName",
                     value: nil,
                     table: "InfoPlist"
-                ) == "Palmier Project"
+                ) == "VeeCut Project"
             )
         }
     }

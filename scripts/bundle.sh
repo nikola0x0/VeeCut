@@ -59,11 +59,11 @@ POSTHOG_PROJECT_TOKEN="${POSTHOG_PROJECT_TOKEN:-}"
 POSTHOG_HOST="${POSTHOG_HOST:-https://us.i.posthog.com}"
 PROVISION_PROFILE="${PROVISION_PROFILE:-$ROOT/scripts/Palmier_Pro_Developer_ID.provisionprofile}"
 ENTITLEMENTS="$ROOT/scripts/PalmierPro.entitlements"
-KEYCHAIN_ACCESS_GROUP="${KEYCHAIN_ACCESS_GROUP:-MMFLRC7562.io.palmier.pro}"
+KEYCHAIN_ACCESS_GROUP="${KEYCHAIN_ACCESS_GROUP:-MMFLRC7562.io.veecut.app}"
 RESOURCES="$ROOT/Sources/PalmierPro/Resources"
-APP="$ROOT/.build/PalmierPro.app"
-ZIP="$ROOT/.build/PalmierPro.zip"
-DMG="$ROOT/.build/PalmierPro.dmg"
+APP="$ROOT/.build/VeeCut.app"
+ZIP="$ROOT/.build/VeeCut.zip"
+DMG="$ROOT/.build/VeeCut.dmg"
 
 BUILD_ARGS=(-c "$CONFIG")
 if $ENABLE_ALL_TRAITS; then
@@ -89,11 +89,10 @@ fi
 echo "==> Building ($CONFIG, traits: ${TRAITS:-none})"
 swift build "${BUILD_ARGS[@]}"
 BIN="$(swift build "${BUILD_ARGS[@]}" --show-bin-path)/PalmierPro"
-SPARKLE_FW="$ROOT/.build/artifacts/sparkle/Sparkle/Sparkle.xcframework/macos-arm64_x86_64/Sparkle.framework"
 
 echo "==> Assembling $APP"
 rm -rf "$APP"
-mkdir -p "$APP/Contents/MacOS" "$APP/Contents/Resources" "$APP/Contents/Frameworks"
+mkdir -p "$APP/Contents/MacOS" "$APP/Contents/Resources"
 cp "$BIN" "$APP/Contents/MacOS/PalmierPro"
 cp "$RESOURCES/Info.plist" "$APP/Contents/Info.plist"
 
@@ -130,7 +129,6 @@ inject_plist PalmierClerkPublishableKey "${CLERK_PUBLISHABLE_KEY:-}"
 inject_plist PalmierConvexDeploymentURL "${CONVEX_DEPLOYMENT_URL:-}"
 inject_plist PalmierConvexHttpURL "${CONVEX_HTTP_URL:-}"
 cp "$RESOURCES/AppIcon.icns" "$APP/Contents/Resources/AppIcon.icns"
-cp -R "$SPARKLE_FW" "$APP/Contents/Frameworks/Sparkle.framework"
 
 # Flatten SwiftPM's resource bundle into the app's Resources tree.
 RES_BUNDLE="$(dirname "$BIN")/PalmierPro_PalmierPro.bundle"
@@ -147,15 +145,15 @@ fi
 
 # Ensure the shipped Claude Desktop connector is always up to date with mcpb/ sources.
 MCPB_SRC="$ROOT/mcpb"
-MCPB_CHECKED_IN="$ROOT/Sources/PalmierPro/Resources/MCPB/palmier-pro.mcpb"
-MCPB_FRESH="$(mktemp -d)/palmier-pro.mcpb"
+MCPB_CHECKED_IN="$ROOT/Sources/PalmierPro/Resources/MCPB/veecut.mcpb"
+MCPB_FRESH="$(mktemp -d)/veecut.mcpb"
 (cd "$MCPB_SRC" && zip -q -X -r "$MCPB_FRESH" manifest.json icon.png server/index.js server/package.json)
 if ! unzip -p "$MCPB_CHECKED_IN" server/index.js 2>/dev/null | diff -q - <(unzip -p "$MCPB_FRESH" server/index.js) >/dev/null 2>&1 \
   || ! unzip -p "$MCPB_CHECKED_IN" manifest.json 2>/dev/null | diff -q - <(unzip -p "$MCPB_FRESH" manifest.json) >/dev/null 2>&1; then
-  echo "==> refreshing checked-in palmier-pro.mcpb from mcpb/ sources"
+  echo "==> refreshing checked-in veecut.mcpb from mcpb/ sources"
   cp "$MCPB_FRESH" "$MCPB_CHECKED_IN"
 fi
-cp "$MCPB_FRESH" "$APP/Contents/Resources/palmier-pro.mcpb"
+cp "$MCPB_FRESH" "$APP/Contents/Resources/veecut.mcpb"
 rm -rf "$(dirname "$MCPB_FRESH")"
 if [ -d "$RES_BUNDLE/Images" ]; then
   cp -R "$RES_BUNDLE/Images" "$APP/Contents/Resources/"
@@ -216,7 +214,6 @@ if $INCLUDE_BUNDLED_SPEECH; then
   cp "$MLX_METALLIB" "$APP/Contents/Resources/mlx-swift_Cmlx.bundle/default.metallib"
 fi
 
-install_name_tool -add_rpath "@executable_path/../Frameworks" "$APP/Contents/MacOS/PalmierPro"
 touch "$APP"
 
 if [ "$MODE" = "fast" ]; then
@@ -254,24 +251,6 @@ if [ "$MODE" = "dev" ]; then
   exit 0
 fi
 
-echo "==> Codesigning nested Sparkle helpers"
-SPARKLE_CURRENT="$APP/Contents/Frameworks/Sparkle.framework/Versions/Current"
-for helper in \
-    "$SPARKLE_CURRENT/Autoupdate" \
-    "$SPARKLE_CURRENT/Updater.app/Contents/MacOS/Updater" \
-    "$SPARKLE_CURRENT/Updater.app" \
-    "$SPARKLE_CURRENT/XPCServices/Downloader.xpc/Contents/MacOS/Downloader" \
-    "$SPARKLE_CURRENT/XPCServices/Downloader.xpc" \
-    "$SPARKLE_CURRENT/XPCServices/Installer.xpc/Contents/MacOS/Installer" \
-    "$SPARKLE_CURRENT/XPCServices/Installer.xpc"; do
-  [ -e "$helper" ] && codesign --force --options runtime --timestamp --sign "$SIGNING_IDENTITY" "$helper"
-done
-
-echo "==> Codesigning Sparkle framework"
-codesign --force --options runtime --timestamp \
-  --sign "$SIGNING_IDENTITY" \
-  "$APP/Contents/Frameworks/Sparkle.framework"
-
 echo "==> Embedding provisioning profile + keychain access group"
 if [ ! -f "$PROVISION_PROFILE" ]; then
   echo "!! provisioning profile not found at $PROVISION_PROFILE" >&2
@@ -308,11 +287,11 @@ rm -f "$ZIP"
 echo "==> Building DMG"
 rm -f "$DMG"
 STAGING="$(mktemp -d)"
-cp -R "$APP" "$STAGING/PalmierPro.app"
+cp -R "$APP" "$STAGING/VeeCut.app"
 ln -s /Applications "$STAGING/Applications"
 cp "$RESOURCES/AppIcon.icns" "$STAGING/.VolumeIcon.icns"
 hdiutil create \
-  -volname "PalmierPro" \
+  -volname "VeeCut" \
   -srcfolder "$STAGING" \
   -ov -format UDZO \
   "$DMG"
@@ -331,19 +310,8 @@ xcrun stapler staple "$DMG"
 
 upload_dsyms
 
-echo "==> Signing DMG with Sparkle EdDSA key"
-SPARKLE_SIG="$("$ROOT/.build/artifacts/sparkle/Sparkle/bin/sign_update" "$DMG")"
-
 echo ""
 echo "==> Done"
 echo "   App: $APP"
 echo "   DMG: $DMG"
 echo ""
-echo "Sparkle signature for appcast entry:"
-echo "  $SPARKLE_SIG"
-echo ""
-echo "Add an <item> to appcast.xml with:"
-echo "  - version, shortVersionString from Info.plist"
-echo "  - url pointing at the GitHub Release download"
-echo "  - length=$(stat -f%z "$DMG")"
-echo "  - the sparkle:edSignature from above"

@@ -77,9 +77,9 @@ enum Analytics {
     #if PRODUCTION_TELEMETRY
     private static let projectToken = Bundle.main.object(forInfoDictionaryKey: "PostHogProjectToken") as? String ?? ""
     private static let host = Bundle.main.object(forInfoDictionaryKey: "PostHogHost") as? String ?? PostHogConfig.defaultHost
-    private static let captureQueue = DispatchQueue(label: "io.palmier.pro.analytics.capture")
+    private static let captureQueue = DispatchQueue(label: "io.veecut.app.analytics.capture")
     #endif
-    private static let enabledKey = "io.palmier.pro.analytics.enabled"
+    private static let enabledKey = "io.veecut.app.analytics.enabled"
 
     static var isEnabled: Bool {
         get {

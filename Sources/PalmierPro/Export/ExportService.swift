@@ -51,8 +51,8 @@ private struct ExportAnalyticsRun: Sendable {
     init(palmierContext context: ExportAnalyticsContext) {
         self.source = context.source
         self.projectId = context.projectId ?? "unknown"
-        self.mode = "palmier"
-        self.format = "Palmier"
+        self.mode = "veecut"
+        self.format = "VeeCut"
         self.resolution = "n/a"
         self.timelineInput = context.timelineInput
         self.started = ContinuousClock.now
@@ -357,7 +357,7 @@ final class ExportService {
         ])
     }
 
-    /// Writes a self-contained `.palmier` bundle (all media collected internally).
+    /// Writes a self-contained `.veecut` bundle (all media collected internally).
     @discardableResult
     func exportPalmierProject(
         projectFile: ProjectFile,
@@ -375,8 +375,8 @@ final class ExportService {
             analytics.begin()
             setPhase(.exporting)
             Log.export.notice(
-                "palmier export start url=\(outputURL.lastPathComponent)",
-                telemetry: "Palmier project export started",
+                "veecut export start url=\(outputURL.lastPathComponent)",
+                telemetry: "VeeCut project export started",
                 data: [
                     "timelines": projectFile.timelines.count,
                     "clips": projectFile.timelines.reduce(0) { $0 + $1.tracks.reduce(0) { $0 + $1.clips.count } },
@@ -400,8 +400,8 @@ final class ExportService {
             didCommitOutput = true
             setProgress(1)
             Log.export.notice(
-                "palmier export ok collected=\(report.collected.count) missing=\(report.missing.count)",
-                telemetry: "Palmier project export finished",
+                "veecut export ok collected=\(report.collected.count) missing=\(report.missing.count)",
+                telemetry: "VeeCut project export finished",
                 data: ["collected": report.collected.count, "missing": report.missing.count]
             )
             analytics.finish()
@@ -409,12 +409,12 @@ final class ExportService {
         } catch {
             if Self.isCancellation(error) {
                 wasCancelled = true
-                Log.export.notice("palmier export cancelled", telemetry: "Export cancelled")
+                Log.export.notice("veecut export cancelled", telemetry: "Export cancelled")
             } else {
                 self.error = Log.detail(error)
                 Log.export.error(
-                    "palmier export failed: \(Log.detail(error))",
-                    telemetry: "Palmier project export failed",
+                    "veecut export failed: \(Log.detail(error))",
+                    telemetry: "VeeCut project export failed",
                     data: ["error": Log.detail(error)]
                 )
                 analytics.fail()

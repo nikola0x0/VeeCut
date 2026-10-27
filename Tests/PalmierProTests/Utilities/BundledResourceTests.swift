@@ -8,7 +8,7 @@ import Testing
     "Images/tour-hero.jpg",
     "Changelog/changelog.json",
     "Models/BeatThis.mlmodelc",
-    "palmier-pro.mcpb",
+    "veecut.mcpb",
 ])
 func bundledResourceResolvesInBuiltResourceBundle(path: String) {
     #expect(BundledResource.url(path) != nil)

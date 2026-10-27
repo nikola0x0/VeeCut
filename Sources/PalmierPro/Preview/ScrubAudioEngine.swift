@@ -72,7 +72,7 @@ final class ScrubAudioEngine {
     nonisolated private static let failedDecodeRetryDelay = Duration.seconds(1)
 
     nonisolated private static let readerTeardownQueue = DispatchQueue(
-        label: "io.palmier.pro.scrub-reader-teardown",
+        label: "io.veecut.app.scrub-reader-teardown",
         qos: .userInitiated
     )
 

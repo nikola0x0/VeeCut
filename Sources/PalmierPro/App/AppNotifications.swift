@@ -4,7 +4,7 @@ import UserNotifications
 
 @MainActor
 enum AppNotifications {
-    private static let enabledKey = "io.palmier.pro.notifications.enabled"
+    private static let enabledKey = "io.veecut.app.notifications.enabled"
 
     static var isEnabled: Bool {
         get {
@@ -133,12 +133,12 @@ enum AppNotifications {
     static func generationBody(assetName: String, assetType: ClipType, count: Int) -> String {
         if count > 1 {
             switch assetType {
-            case .video, .sequence: return L10n.string("\(count) videos are ready in Palmier Pro.")
-            case .audio: return L10n.string("\(count) audio clips are ready in Palmier Pro.")
-            case .image: return L10n.string("\(count) images are ready in Palmier Pro.")
-            case .text: return L10n.string("\(count) text clips are ready in Palmier Pro.")
-            case .lottie: return L10n.string("\(count) Lottie animations are ready in Palmier Pro.")
-            case .subtitle: return L10n.string("\(count) subtitle files are ready in Palmier Pro.")
+            case .video, .sequence: return L10n.string("\(count) videos are ready in VeeCut.")
+            case .audio: return L10n.string("\(count) audio clips are ready in VeeCut.")
+            case .image: return L10n.string("\(count) images are ready in VeeCut.")
+            case .text: return L10n.string("\(count) text clips are ready in VeeCut.")
+            case .lottie: return L10n.string("\(count) Lottie animations are ready in VeeCut.")
+            case .subtitle: return L10n.string("\(count) subtitle files are ready in VeeCut.")
             }
         }
         let name = assetName.trimmingCharacters(in: .whitespacesAndNewlines)

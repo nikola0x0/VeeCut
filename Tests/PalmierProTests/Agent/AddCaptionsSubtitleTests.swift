@@ -72,7 +72,7 @@ struct AddCaptionsSubtitleTests {
             .appendingPathComponent("pp-import-subtitle-bytes-\(UUID().uuidString)", isDirectory: true)
         defer { try? FileManager.default.removeItem(at: root) }
         let h = ToolHarness()
-        h.editor.projectURL = root.appendingPathComponent("Import.palmier", isDirectory: true)
+        h.editor.projectURL = root.appendingPathComponent("Import.veecut", isDirectory: true)
 
         let srt = "1\n00:00:01,000 --> 00:00:02,000\nFrom bytes.\n"
         let result = try await h.runOK("import_media", args: [

@@ -14,7 +14,7 @@ enum Telemetry {
     }
 
     private static let dsn = Bundle.main.object(forInfoDictionaryKey: "SentryDSN") as? String ?? ""
-    private static let enabledKey = "io.palmier.pro.telemetry.enabled"
+    private static let enabledKey = "io.veecut.app.telemetry.enabled"
 
     static var isEnabled: Bool {
         get {
@@ -61,7 +61,7 @@ enum Telemetry {
             }
             if let version = Bundle.main.object(forInfoDictionaryKey: "CFBundleShortVersionString") as? String,
                let build = Bundle.main.object(forInfoDictionaryKey: "CFBundleVersion") as? String {
-                options.releaseName = "palmier-pro@\(version)+\(build)"
+                options.releaseName = "veecut@\(version)+\(build)"
             }
         }
         didStart = true

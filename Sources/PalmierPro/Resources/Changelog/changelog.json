@@ -1,17 +1,17 @@
 {
-  "changelogURL": "https://github.com/palmier-io/palmier-pro/releases",
+  "changelogURL": "https://github.com/nikola0x0/VeeCut/commits/main",
   "entries": [
     {
-      "version": "0.7.6",
-      "date": "2026-08-18",
+      "version": "0.1.0",
+      "date": "2026-10-27",
       "sections": [
         {
           "heading": "New",
           "items": [
-            "Timeline Index - A new way to navigate the timeline in the media panel. In the index tab, you can search the timeline via transcripts. You can also manage markers and handoff to agents to address them.",
-            "Ripple markers with edits: Markers can move with ripple edits. This is configurable in the dropdown next to the marker button in toolbar.",
-            "Smart Search model installs on demand when agent needs it.",
-            "More supported languages: German, Dutch, Polish, Swedish, Czech, Danish, Norwegian, Finnish, Ukrainian, Indonesian, Thai, Hebrew, and European Portuguese"
+            "Select Subject: drag a box or click on the preview, and SAM 3.1 tracks that subject through the whole clip.",
+            "One-click looks inside or outside the tracked subject: Pop Subject, Darken Background, Blur Background.",
+            "The agent can track objects and apply color or effects to just the subject or just the background.",
+            "Agent skills ship inside the app."
           ]
         }
       ]
