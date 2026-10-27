@@ -42,3 +42,5 @@ claude mcp add --transport http veecut http://127.0.0.1:19789/mcp
 ## License
 
 GPLv3, see [LICENSE](LICENSE). Modified from Palmier Pro since October 2026; see the git history for changes.
+
+Exception: `Sources/PalmierPro/MetaModels/SAMMaskCodec.swift` is a Swift port of Meta's SAM 3.1 mask decoder (meta-sam-parser) and is licensed under the [SAM License](ThirdPartyLicenses/SAM-LICENSE.txt), not GPLv3.
