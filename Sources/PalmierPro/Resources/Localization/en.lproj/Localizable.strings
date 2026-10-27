@@ -71,6 +71,7 @@
 "Add Range to Chat" = "Add Range to Chat";
 "Add Text" = "Add Text";
 "Add a Meta Model API key in Settings to track subjects." = "Add a Meta Model API key in Settings to track subjects.";
+"Add a Meta Model API key in Settings to use Muse Spark." = "Add a Meta Model API key in Settings to use Muse Spark.";
 "Add a comment" = "Add a comment";
 "Add an Anthropic API key or credits to use this model." = "Add an Anthropic API key or credits to use this model.";
 "Add an OpenAI API key or credits to use this model." = "Add an OpenAI API key or credits to use this model.";
@@ -738,6 +739,7 @@
 "Pop Subject" = "Pop Subject";
 "Portrait (9:16)" = "Portrait (9:16)";
 "Position" = "Position";
+"Powers Muse Spark in the AI chat and SAM 3.1 subject tracking. Stored in the macOS Keychain." = "Powers Muse Spark in the AI chat and SAM 3.1 subject tracking. Stored in the macOS Keychain.";
 "Preparing" = "Preparing";
 "Preparing…" = "Preparing…";
 "Presence" = "Presence";
@@ -966,6 +968,7 @@
 "Stopped" = "Stopped";
 "Storage" = "Storage";
 "Streaming through your Anthropic API key (BYOK)" = "Streaming through your Anthropic API key (BYOK)";
+"Streaming through your Meta Model API key" = "Streaming through your Meta Model API key";
 "Streaming through your OpenAI API key (BYOK)" = "Streaming through your OpenAI API key (BYOK)";
 "Strikethrough" = "Strikethrough";
 "Student" = "Student";
@@ -1100,7 +1103,6 @@
 "Use for non-English or mixed-language audio." = "Use for non-English or mixed-language audio.";
 "Use trimmed portion only" = "Use trimmed portion only";
 "Use your own API key for AI chat. Stored in the macOS Keychain." = "Use your own API key for AI chat. Stored in the macOS Keychain.";
-"Used to track subjects on the canvas with SAM 3.1. Stored in the macOS Keychain." = "Used to track subjects on the canvas with SAM 3.1. Stored in the macOS Keychain.";
 "Uses selected clips when available, otherwise all captionable audio. Choose a track to limit captions." = "Uses selected clips when available, otherwise all captionable audio. Choose a track to limit captions.";
 "Uses the whole timeline by default. Mark a range on the timeline to score only that span." = "Uses the whole timeline by default. Mark a range on the timeline to score only that span.";
 "VeeCut Project" = "VeeCut Project";
@@ -1178,9 +1180,11 @@
 "group moved right to fit" = "group moved right to fit";
 "iMovie" = "iMovie";
 "lowercase" = "lowercase";
+"or add your Meta Model API key" = "or add your Meta Model API key";
 "or add your own Anthropic key" = "or add your own Anthropic key";
 "or add your own OpenAI key" = "or add your own OpenAI key";
 "result" = "result";
 "using Anthropic API key" = "using Anthropic API key";
+"using Meta Model API key" = "using Meta Model API key";
 "using OpenAI API key" = "using OpenAI API key";
 "you@example.com — so we can reply" = "you@example.com — so we can reply";

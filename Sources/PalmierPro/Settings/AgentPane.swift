@@ -31,11 +31,11 @@ struct AgentPane: View {
 
     private var metaModelSection: some View {
         VStack(alignment: .leading, spacing: AppTheme.Spacing.xl) {
-            Text(L10n.string("Used to track subjects on the canvas with SAM 3.1. Stored in the macOS Keychain."))
+            Text(L10n.string("Powers Muse Spark in the AI chat and SAM 3.1 subject tracking. Stored in the macOS Keychain."))
                 .font(.system(size: AppTheme.FontSize.sm))
                 .foregroundStyle(AppTheme.Text.tertiaryColor)
                 .fixedSize(horizontal: false, vertical: true)
-            APIKeySettingRow(source: .metaModels)
+            APIKeySettingRow(source: .agent(.meta))
         }
     }
 
@@ -139,18 +139,6 @@ private struct APIKeySource {
             consoleURL: presentation.consoleURL,
             load: { await provider.loadAPIKey() },
             save: { await provider.setAPIKey($0) }
-        )
-    }
-
-    @MainActor
-    static var metaModels: APIKeySource {
-        APIKeySource(
-            title: L10n.string("Meta Model API Key"),
-            getKeyTitle: L10n.string("Get Meta Model API key"),
-            placeholder: "LLM_…",
-            consoleURL: URL(string: "https://dev.meta.ai/platform")!,
-            load: { await MetaModelCredentials.loadAPIKey() },
-            save: { await MetaModelCredentials.setAPIKey($0) }
         )
     }
 }
@@ -305,6 +293,13 @@ private extension AgentProvider {
                 L10n.string("Get OpenAI API key"),
                 "sk-…",
                 URL(string: "https://platform.openai.com/api-keys")!
+            )
+        case .meta:
+            (
+                L10n.string("Meta Model API Key"),
+                L10n.string("Get Meta Model API key"),
+                "LLM_…",
+                URL(string: "https://dev.meta.ai/platform")!
             )
         }
     }

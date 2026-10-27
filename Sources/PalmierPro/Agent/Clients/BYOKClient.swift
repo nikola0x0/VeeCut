@@ -37,7 +37,7 @@ struct BYOKClient: AgentClient {
         case .anthropic:
             request.setValue(apiKey, forHTTPHeaderField: "x-api-key")
             request.setValue("2023-06-01", forHTTPHeaderField: "anthropic-version")
-        case .openAI:
+        case .openAI, .meta:
             request.setValue("Bearer \(apiKey)", forHTTPHeaderField: "Authorization")
         }
         request.httpBody = try JSONSerialization.data(
@@ -57,6 +57,8 @@ struct BYOKClient: AgentClient {
             URL(string: "https://api.anthropic.com/v1/messages")!
         case .openAI:
             URL(string: "https://api.openai.com/v1/responses")!
+        case .meta:
+            MetaModelClient.baseURL.appending(path: "responses")
         }
     }
 }

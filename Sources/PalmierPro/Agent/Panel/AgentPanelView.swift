@@ -154,6 +154,10 @@ struct AgentPanelView: View {
                     ExternalAgentLogo(agent: .claude, size: AppTheme.IconSize.xs)
                 case .openAI:
                     ProviderLogo(iconKey: "openai", size: AppTheme.IconSize.xs)
+                case .meta:
+                    Image(systemName: "infinity")
+                        .font(.system(size: AppTheme.FontSize.xs, weight: AppTheme.FontWeight.semibold))
+                        .foregroundStyle(AppTheme.Accent.canvasAI)
                 }
             }
         }
@@ -633,6 +637,13 @@ private extension AgentProvider {
                 L10n.string("Streaming through your OpenAI API key (BYOK)"),
                 L10n.string("Add an OpenAI API key or credits to use this model."),
                 L10n.string("or add your own OpenAI key")
+            )
+        case .meta:
+            (
+                L10n.string("using Meta Model API key"),
+                L10n.string("Streaming through your Meta Model API key"),
+                L10n.string("Add a Meta Model API key in Settings to use Muse Spark."),
+                L10n.string("or add your Meta Model API key")
             )
         }
     }

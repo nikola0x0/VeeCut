@@ -12,12 +12,13 @@ struct AgentProviderTests {
             ["gpt-5.6-luna", "GPT-5.6 Luna"],
             ["gpt-5.6-terra", "GPT-5.6 Terra"],
             ["gpt-5.6-sol", "GPT-5.6 Sol"],
+            ["muse-spark-1.3", "Muse Spark"],
         ])
         #expect(AgentModel.allCases.allSatisfy { $0.maxOutputTokens == 64_000 })
-        #expect(AgentModel.defaultModel == .terra)
+        #expect(AgentModel.defaultModel == .museSpark)
         #expect(AgentModel.persisted("claude-opus-4-8") == .opus5)
         #expect(AgentModel.allCases.map(\.provider) == [
-            .anthropic, .anthropic, .anthropic, .openAI, .openAI, .openAI,
+            .anthropic, .anthropic, .anthropic, .openAI, .openAI, .openAI, .meta,
         ])
         #expect(AgentModel.allCases.filter(\.requiresPaidHostedPlan) == [.fable5, .sol])
         let anthropicEfforts: [AgentReasoningEffort] = [.low, .medium, .high, .xHigh, .max]
@@ -27,9 +28,24 @@ struct AgentProviderTests {
         #expect(AgentModel.allCases.filter { $0.provider == .openAI }
             .allSatisfy { $0.supportedReasoningEfforts == openAIEfforts })
         #expect(openAIEfforts == [.none, .minimal, .low, .medium, .high, .xHigh, .max])
+        #expect(AgentModel.museSpark.supportedReasoningEfforts == [.low, .medium, .high])
+    }
+
+    @Test func museSparkUsesTheResponsesRequestShape() {
+        let body = AgentRunSettings(model: .museSpark, reasoningEffort: .medium).requestBody(
+            system: "sys",
+            tools: [AgentToolSchema(name: "get_timeline", description: "d", inputSchema: ["type": "object"])],
+            messages: [AgentRequestMessage(role: .user, content: [.content(.text("hi"))])]
+        )
+        #expect(body["model"] as? String == "muse-spark-1.3")
+        #expect(body["instructions"] as? String == "sys")
+        #expect((body["tools"] as? [[String: Any]])?.first?["type"] as? String == "function")
+        #expect(AgentProvider.meta.usesResponsesAPI && !AgentProvider.anthropic.usesResponsesAPI)
     }
 
     @Test func routingUsesOnlyTheSelectedProvidersKey() {
+        #expect(route(.museSpark, key: .meta) == .direct)
+        #expect(route(.museSpark, key: .openAI) == .unavailable)
         #expect(route(.sonnet5, key: .openAI) == .unavailable)
         #expect(route(.luna, key: .anthropic) == .unavailable)
         #expect(route(.fable5, key: .anthropic, hasCredits: true) == .direct)

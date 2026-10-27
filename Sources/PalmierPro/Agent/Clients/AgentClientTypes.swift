@@ -7,18 +7,24 @@ extension Notification.Name {
 enum AgentProvider: String, CaseIterable, Sendable {
     case anthropic
     case openAI
+    case meta
 
     var displayName: String {
         switch self {
         case .anthropic: "Anthropic"
         case .openAI: "OpenAI"
+        case .meta: "Meta"
         }
     }
+
+    /// Providers that speak the Responses API (request shape and stream events).
+    var usesResponsesAPI: Bool { self != .anthropic }
 
     private var credentialStorage: (account: String, environment: String) {
         switch self {
         case .anthropic: ("anthropic-api-key", "ANTHROPIC_API_KEY")
         case .openAI: ("openai-api-key", "OPENAI_API_KEY")
+        case .meta: ("meta-model-api-key", "MODEL_API_KEY")
         }
     }
 
@@ -76,8 +82,9 @@ enum AgentModel: String, CaseIterable, Codable, Sendable {
     case luna = "gpt-5.6-luna"
     case terra = "gpt-5.6-terra"
     case sol = "gpt-5.6-sol"
+    case museSpark = "muse-spark-1.3"
 
-    static let defaultModel: AgentModel = .terra
+    static let defaultModel: AgentModel = .museSpark
 
     var displayName: String {
         switch self {
@@ -87,6 +94,7 @@ enum AgentModel: String, CaseIterable, Codable, Sendable {
         case .luna: "GPT-5.6 Luna"
         case .terra: "GPT-5.6 Terra"
         case .sol: "GPT-5.6 Sol"
+        case .museSpark: "Muse Spark"
         }
     }
 
@@ -94,6 +102,7 @@ enum AgentModel: String, CaseIterable, Codable, Sendable {
         switch self {
         case .sonnet5, .opus5, .fable5: .anthropic
         case .luna, .terra, .sol: .openAI
+        case .museSpark: .meta
         }
     }
 
@@ -113,6 +122,8 @@ enum AgentModel: String, CaseIterable, Codable, Sendable {
             [.low, .medium, .high, .xHigh, .max]
         case .openAI:
             AgentReasoningEffort.allCases
+        case .meta:
+            [.low, .medium, .high]
         }
     }
 
@@ -316,7 +327,7 @@ extension AgentRunSettings {
                 tools: tools,
                 messages: messages
             )
-        case .openAI:
+        case .openAI, .meta:
             OpenAIRequestBody.build(
                 model: model,
                 reasoningEffort: reasoningEffort,
@@ -336,8 +347,8 @@ extension AgentProvider {
         switch self {
         case .anthropic:
             try await AnthropicSSE.parse(bytes: bytes, continuation: continuation)
-        case .openAI:
-            try await OpenAISSE.parse(bytes: bytes, continuation: continuation)
+        case .openAI, .meta:
+            try await OpenAISSE.parse(provider: self, bytes: bytes, continuation: continuation)
         }
     }
 }

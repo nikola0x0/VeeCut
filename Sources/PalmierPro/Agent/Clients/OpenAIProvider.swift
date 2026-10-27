@@ -8,7 +8,7 @@ enum OpenAIRequestBody {
         tools: [AgentToolSchema],
         messages: [AgentRequestMessage]
     ) -> [String: Any] {
-        precondition(model.provider == .openAI)
+        precondition(model.provider.usesResponsesAPI)
         precondition(model.supportedReasoningEfforts.contains(reasoningEffort))
         var body: [String: Any] = [
             "model": model.rawValue,
@@ -131,10 +131,11 @@ enum OpenAIRequestBody {
 
 enum OpenAISSE {
     static func parse(
+        provider: AgentProvider,
         bytes: URLSession.AsyncBytes,
         continuation: AsyncThrowingStream<AgentStreamEvent, Error>.Continuation
     ) async throws {
-        var parser = OpenAIStreamParser()
+        var parser = OpenAIStreamParser(provider: provider)
         for try await line in bytes.lines {
             try Task.checkCancellation()
             for event in try parser.consume(line: line) {
@@ -146,6 +147,7 @@ enum OpenAISSE {
 }
 
 struct OpenAIStreamParser {
+    var provider: AgentProvider = .openAI
     private(set) var didTerminate = false
 
     mutating func consume(line: String) throws -> [AgentStreamEvent] {
@@ -153,7 +155,7 @@ struct OpenAIStreamParser {
         let payload = line.dropFirst("data:".count).trimmingCharacters(in: .whitespaces)
         guard payload != "[DONE]", let data = payload.data(using: .utf8) else { return [] }
         guard let object = try JSONSerialization.jsonObject(with: data) as? [String: Any] else {
-            throw AgentClientTransportError.streamError(provider: .openAI, message: "Invalid event payload.")
+            throw AgentClientTransportError.streamError(provider: provider, message: "Invalid event payload.")
         }
         return try consume(event: object)
     }
@@ -187,7 +189,7 @@ struct OpenAIStreamParser {
             didTerminate = true
             let error = event["error"] as? [String: Any]
             throw AgentClientTransportError.streamError(
-                provider: .openAI,
+                provider: provider,
                 message: error?["message"] as? String ?? event["message"] as? String ?? "Unknown stream error."
             )
 
@@ -199,7 +201,7 @@ struct OpenAIStreamParser {
     func finish() throws {
         guard didTerminate else {
             throw AgentClientTransportError.streamError(
-                provider: .openAI,
+                provider: provider,
                 message: "The stream ended before a terminal event."
             )
         }
@@ -213,7 +215,7 @@ struct OpenAIStreamParser {
         if eventType == "response.failed" || status == "failed" {
             let error = response["error"] as? [String: Any]
             throw AgentClientTransportError.streamError(
-                provider: .openAI,
+                provider: provider,
                 message: error?["message"] as? String ?? "The response failed."
             )
         }

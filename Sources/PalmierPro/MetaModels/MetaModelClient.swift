@@ -1,34 +1,5 @@
 import Foundation
 
-extension Notification.Name {
-    static let metaModelAPIKeyChanged = Notification.Name("metaModelAPIKeyChanged")
-}
-
-enum MetaModelCredentials {
-    private static let account = "meta-model-api-key"
-    private static let environment = "MODEL_API_KEY"
-
-    @concurrent
-    static func loadAPIKey() async -> String {
-        #if DEBUG
-        let environmentValue = ProcessInfo.processInfo.environment[environment]?
-            .trimmingCharacters(in: .whitespacesAndNewlines) ?? ""
-        if !environmentValue.isEmpty { return environmentValue }
-        #endif
-        return KeychainStore.load(account: account) ?? ""
-    }
-
-    @concurrent
-    static func setAPIKey(_ key: String?) async {
-        if let key {
-            KeychainStore.save(key, account: account)
-        } else {
-            KeychainStore.delete(account: account)
-        }
-        NotificationCenter.default.post(name: .metaModelAPIKeyChanged, object: nil)
-    }
-}
-
 enum MetaModelError: Error, Equatable {
     case missingAPIKey
     case http(status: Int, body: String)
@@ -43,7 +14,7 @@ struct MetaModelClient: Sendable {
     let apiKey: String
 
     static func configured() async throws(MetaModelError) -> MetaModelClient {
-        let key = await MetaModelCredentials.loadAPIKey()
+        let key = await AgentProvider.meta.loadAPIKey()
         guard !key.isEmpty else { throw .missingAPIKey }
         return MetaModelClient(apiKey: key)
     }
