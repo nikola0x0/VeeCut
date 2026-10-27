@@ -82,6 +82,9 @@ enum AppTheme {
     // MARK: - Accent
 
     enum Accent {
+        static let canvasAINSColor = NSColor(srgbRed: 124/255, green: 92/255, blue: 255/255, alpha: 1)
+        static let canvasAI = Color(canvasAINSColor)
+        static let canvasSelectionDash: [CGFloat] = [6, 4]
         static let timecodeNSColor = AppTheme.adaptive(
             light: NSColor(red: 0.58, green: 0.29, blue: 0.02, alpha: 1),
             dark: NSColor(red: 0.95, green: 0.6, blue: 0.2, alpha: 1)

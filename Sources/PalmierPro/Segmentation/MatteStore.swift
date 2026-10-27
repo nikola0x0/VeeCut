@@ -27,15 +27,22 @@ final class MatteStore: Sendable {
         entries.withLock { $0[maskId] != nil }
     }
 
+    /// The mask and its frame at a source time; nil frame when the object is absent there.
+    func frame(maskId: String, sourceSeconds: Double) -> (mask: TrackedMask, frame: MaskFrame?)? {
+        guard let entry = entries.withLock({ $0[maskId] }), sourceSeconds.isFinite, entry.mask.sourceFPS > 0 else { return nil }
+        let index = Int(((sourceSeconds - entry.mask.sourceStartSeconds) * entry.mask.sourceFPS).rounded())
+        return (entry.mask, entry.frames[index])
+    }
+
     /// Grayscale matte covering the full display-oriented source frame, CI bottom-left origin.
     /// Nil when the mask is not loaded or belongs to other media; black when the object is absent.
     func matte(maskId: String, mediaRef: String, sourceSeconds: Double) -> (image: CIImage, size: CGSize)? {
-        guard let entry = entries.withLock({ $0[maskId] }), entry.mask.mediaRef == mediaRef,
-              sourceSeconds.isFinite, entry.mask.sourceFPS > 0 else { return nil }
-        let size = CGSize(width: entry.mask.sourceWidth, height: entry.mask.sourceHeight)
+        guard let (mask, maskFrame) = frame(maskId: maskId, sourceSeconds: sourceSeconds), mask.mediaRef == mediaRef else {
+            return nil
+        }
+        let size = CGSize(width: mask.sourceWidth, height: mask.sourceHeight)
         let background = CIImage(color: .black).cropped(to: CGRect(origin: .zero, size: size))
-        let index = Int(((sourceSeconds - entry.mask.sourceStartSeconds) * entry.mask.sourceFPS).rounded())
-        guard let frame = entry.frames[index] else { return (background, size) }
+        guard let frame = maskFrame else { return (background, size) }
 
         let raster = CIImage(
             bitmapData: frame.coverage(),

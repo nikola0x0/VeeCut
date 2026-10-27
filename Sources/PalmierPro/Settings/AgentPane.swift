@@ -9,6 +9,9 @@ struct AgentPane: View {
             SettingsSection(title: L10n.string("AI Chat")) {
                 apiKeySection
             }
+            SettingsSection(title: L10n.string("Meta Models")) {
+                metaModelSection
+            }
             SettingsSection(title: L10n.string("Integrations")) {
                 mcpSection
             }
@@ -21,8 +24,18 @@ struct AgentPane: View {
                 .font(.system(size: AppTheme.FontSize.sm))
                 .foregroundStyle(AppTheme.Text.tertiaryColor)
                 .fixedSize(horizontal: false, vertical: true)
-            APIKeySettingRow(provider: .anthropic)
-            APIKeySettingRow(provider: .openAI)
+            APIKeySettingRow(source: .agent(.anthropic))
+            APIKeySettingRow(source: .agent(.openAI))
+        }
+    }
+
+    private var metaModelSection: some View {
+        VStack(alignment: .leading, spacing: AppTheme.Spacing.xl) {
+            Text(L10n.string("Used to track subjects on the canvas with SAM 3.1. Stored in the macOS Keychain."))
+                .font(.system(size: AppTheme.FontSize.sm))
+                .foregroundStyle(AppTheme.Text.tertiaryColor)
+                .fixedSize(horizontal: false, vertical: true)
+            APIKeySettingRow(source: .metaModels)
         }
     }
 
@@ -107,8 +120,43 @@ struct AgentPane: View {
     }
 }
 
+/// Where an API key row reads, writes, and links to.
+private struct APIKeySource {
+    let title: String
+    let getKeyTitle: String
+    let placeholder: String
+    let consoleURL: URL
+    let load: @Sendable () async -> String
+    let save: @Sendable (String?) async -> Void
+
+    @MainActor
+    static func agent(_ provider: AgentProvider) -> APIKeySource {
+        let presentation = provider.apiKeyPresentation
+        return APIKeySource(
+            title: presentation.title,
+            getKeyTitle: presentation.getKeyTitle,
+            placeholder: presentation.placeholder,
+            consoleURL: presentation.consoleURL,
+            load: { await provider.loadAPIKey() },
+            save: { await provider.setAPIKey($0) }
+        )
+    }
+
+    @MainActor
+    static var metaModels: APIKeySource {
+        APIKeySource(
+            title: L10n.string("Meta Model API Key"),
+            getKeyTitle: L10n.string("Get Meta Model API key"),
+            placeholder: "LLM_…",
+            consoleURL: URL(string: "https://dev.meta.ai/platform")!,
+            load: { await MetaModelCredentials.loadAPIKey() },
+            save: { await MetaModelCredentials.setAPIKey($0) }
+        )
+    }
+}
+
 private struct APIKeySettingRow: View {
-    let provider: AgentProvider
+    let source: APIKeySource
 
     @State private var hasKey = false
     @State private var maskedKey = ""
@@ -128,13 +176,13 @@ private struct APIKeySettingRow: View {
 
     private var header: some View {
         HStack(alignment: .firstTextBaseline, spacing: AppTheme.Spacing.sm) {
-            Text(provider.apiKeyPresentation.title)
+            Text(verbatim: source.title)
                 .font(.system(size: AppTheme.FontSize.md, weight: AppTheme.FontWeight.medium))
                 .foregroundStyle(AppTheme.Text.primaryColor)
 
             Button(action: openConsole) {
                 HStack(spacing: AppTheme.Spacing.xxs) {
-                    Text(provider.apiKeyPresentation.getKeyTitle)
+                    Text(verbatim: source.getKeyTitle)
                     Image(systemName: "arrow.up.right")
                         .font(.system(
                             size: AppTheme.FontSize.xs,
@@ -194,18 +242,18 @@ private struct APIKeySettingRow: View {
     }
 
     private var placeholder: String {
-        hasKey ? maskedKey : provider.apiKeyPresentation.placeholder
+        hasKey ? maskedKey : source.placeholder
     }
 
     private func openConsole() {
         NSWorkspace.shared.open(
-            provider.apiKeyPresentation.consoleURL, configuration: .init(), completionHandler: nil
+            source.consoleURL, configuration: .init(), completionHandler: nil
         )
     }
 
     private func refresh() {
         Task {
-            applyKey(await provider.loadAPIKey())
+            applyKey(await source.load())
         }
     }
 
@@ -214,18 +262,18 @@ private struct APIKeySettingRow: View {
         guard !key.isEmpty else { return }
         draft = ""
         isFocused = false
-        let provider = provider
+        let save = source.save
         Task {
-            await provider.setAPIKey(key)
+            await save(key)
             applyKey(key)
         }
     }
 
     private func remove() {
         draft = ""
-        let provider = provider
+        let save = source.save
         Task {
-            await provider.setAPIKey(nil)
+            await save(nil)
             applyKey("")
         }
     }

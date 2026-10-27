@@ -68,6 +68,7 @@
 "Add Marker (M)" = "Add Marker (M)";
 "Add Range to Chat" = "Add Range to Chat";
 "Add Text" = "Add Text";
+"Add a Meta Model API key in Settings to track subjects." = "Add a Meta Model API key in Settings to track subjects.";
 "Add a comment" = "Add a comment";
 "Add an Anthropic API key or credits to use this model." = "Add an Anthropic API key or credits to use this model.";
 "Add an OpenAI API key or credits to use this model." = "Add an OpenAI API key or credits to use this model.";
@@ -110,6 +111,7 @@
 "App version %@ and macOS %@ are included." = "App version %@ and macOS %@ are included.";
 "Appearance" = "Appearance";
 "Apply" = "Apply";
+"Apply Look" = "Apply Look";
 "Ask anything, or start with:" = "Ask anything, or start with:";
 "Ask, or type @ to reference media" = "Ask, or type @ to reference media";
 "Aspect" = "Aspect";
@@ -128,6 +130,7 @@
 "Blend" = "Blend";
 "Blends denoised and original audio — lower this if voices sound thin or over-compressed." = "Blends denoised and original audio — lower this if voices sound thin or over-compressed.";
 "Blur" = "Blur";
+"Blur Background" = "Blur Background";
 "Bold" = "Bold";
 "Both" = "Both";
 "Bottom" = "Bottom";
@@ -266,6 +269,7 @@
 "Dark" = "Dark";
 "Dark appearance" = "Dark appearance";
 "Darken" = "Darken";
+"Darken Background" = "Darken Background";
 "Date Added" = "Date Added";
 "Decompose Nested Timeline" = "Decompose Nested Timeline";
 "Default" = "Default";
@@ -321,6 +325,7 @@
 "Downloads a %@ on-device model so you can search media visually." = "Downloads a %@ on-device model so you can search media visually.";
 "Draft" = "Draft";
 "Draft already enhanced or cache unavailable" = "Draft already enhanced or cache unavailable";
+"Drag a box around the subject, or click it" = "Drag a box around the subject, or click it";
 "Drag to add or shape a point · double-click to remove" = "Drag to add or shape a point · double-click to remove";
 "Drop files here or import from disk" = "Drop files here or import from disk";
 "Dubbing" = "Dubbing";
@@ -438,6 +443,7 @@
 "Generation in progress" = "Generation in progress";
 "Generation panel" = "Generation panel";
 "Get Anthropic API key" = "Get Anthropic API key";
+"Get Meta Model API key" = "Get Meta Model API key";
 "Get OpenAI API key" = "Get OpenAI API key";
 "Get a notification when a generation finishes." = "Get a notification when a generation finishes.";
 "Getting the search model ready." = "Getting the search model ready.";
@@ -593,6 +599,8 @@
 "Media search" = "Media search";
 "Media workspace layout" = "Media workspace layout";
 "Medium" = "Medium";
+"Meta Model API Key" = "Meta Model API Key";
+"Meta Models" = "Meta Models";
 "Mic" = "Mic";
 "Midpoint" = "Midpoint";
 "Minimal" = "Minimal";
@@ -652,6 +660,7 @@
 "No projects found" = "No projects found";
 "No prompt needed" = "No prompt needed";
 "No speech detected." = "No speech detected.";
+"No subject found there. Try a tighter box." = "No subject found there. Try a tighter box.";
 "No track" = "No track";
 "No video" = "No video";
 "No video clips" = "No video clips";
@@ -713,6 +722,7 @@
 "Podcast" = "Podcast";
 "Pointer (V)" = "Pointer (V)";
 "Pop In" = "Pop In";
+"Pop Subject" = "Pop Subject";
 "Portrait (9:16)" = "Portrait (9:16)";
 "Position" = "Position";
 "Preparing" = "Preparing";
@@ -841,6 +851,7 @@
 "Select Forward on All Tracks" = "Select Forward on All Tracks";
 "Select Forward on Track" = "Select Forward on Track";
 "Select Range" = "Select Range";
+"Select Subject — drag a box or click on what to track" = "Select Subject — drag a box or click on what to track";
 "Select compatible clips and paste settings again." = "Select compatible clips and paste settings again.";
 "Select media files or folders to import" = "Select media files or folders to import";
 "Select the timeline to add a marker." = "Select the timeline to add a marker.";
@@ -999,6 +1010,8 @@
 "Top / Bottom" = "Top / Bottom";
 "Track Name" = "Track Name";
 "Tracking" = "Tracking";
+"Tracking failed. Try again." = "Tracking failed. Try again.";
+"Tracking subject…" = "Tracking subject…";
 "Transcribe" = "Transcribe";
 "Transcribe · %lld credits" = "Transcribe · %lld credits";
 "Transcribe · 1 credit" = "Transcribe · 1 credit";
@@ -1052,6 +1065,7 @@
 "Use for non-English or mixed-language audio." = "Use for non-English or mixed-language audio.";
 "Use trimmed portion only" = "Use trimmed portion only";
 "Use your own API key for AI chat. Stored in the macOS Keychain." = "Use your own API key for AI chat. Stored in the macOS Keychain.";
+"Used to track subjects on the canvas with SAM 3.1. Stored in the macOS Keychain." = "Used to track subjects on the canvas with SAM 3.1. Stored in the macOS Keychain.";
 "Uses selected clips when available, otherwise all captionable audio. Choose a track to limit captions." = "Uses selected clips when available, otherwise all captionable audio. Choose a track to limit captions.";
 "Uses the whole timeline by default. Mark a range on the timeline to score only that span." = "Uses the whole timeline by default. Mark a range on the timeline to score only that span.";
 "Version" = "Version";

@@ -43,25 +43,44 @@ enum PreviewHitTester {
     }
 
     private static func videoHit(_ clip: Clip, frame: Int, point: CGPoint, videoRect: CGRect) -> Bool {
+        guard let local = unflippedSourcePoint(of: point, clip: clip, frame: frame, videoRect: videoRect) else { return false }
+        let crop = clip.cropAt(frame: frame)
+        return local.x >= crop.left && local.x <= 1 - crop.right && local.y >= crop.top && local.y <= 1 - crop.bottom
+    }
+
+    /// View point → normalized position in the clip's display-oriented source frame (top-left origin).
+    /// Unclamped: points outside the clip map outside 0…1.
+    static func sourcePoint(of point: CGPoint, clip: Clip, frame: Int, videoRect: CGRect) -> CGPoint? {
+        guard let local = unflippedSourcePoint(of: point, clip: clip, frame: frame, videoRect: videoRect) else { return nil }
+        let t = clip.transformAt(frame: frame)
+        return CGPoint(x: t.flipHorizontal ? 1 - local.x : local.x, y: t.flipVertical ? 1 - local.y : local.y)
+    }
+
+    /// Inverse of `sourcePoint`: normalized source position → view point.
+    static func viewPoint(ofSource source: CGPoint, clip: Clip, frame: Int, videoRect: CGRect) -> CGPoint? {
         let t = clip.transformAt(frame: frame)
         let rect = clipFrame(t, videoRect: videoRect)
-        guard rect.width > 0, rect.height > 0 else { return false }
-        let crop = clip.cropAt(frame: frame)
-
-        // Move the point into the clip's unrotated local space (origin at clip center).
-        let center = CGPoint(x: rect.midX, y: rect.midY)
+        guard rect.width > 0, rect.height > 0 else { return nil }
+        let u = t.flipHorizontal ? 1 - source.x : source.x
+        let v = t.flipVertical ? 1 - source.y : source.y
+        let lx = u * rect.width - rect.width / 2
+        let ly = v * rect.height - rect.height / 2
         let rad = t.rotation * .pi / 180
         let c = cos(rad), s = sin(rad)
-        let dx = point.x - center.x, dy = point.y - center.y
+        return CGPoint(x: rect.midX + lx * c - ly * s, y: rect.midY + lx * s + ly * c)
+    }
+
+    /// Point in the clip's unrotated, unflipped local space, normalized to its full (uncropped) frame.
+    private static func unflippedSourcePoint(of point: CGPoint, clip: Clip, frame: Int, videoRect: CGRect) -> CGPoint? {
+        let t = clip.transformAt(frame: frame)
+        let rect = clipFrame(t, videoRect: videoRect)
+        guard rect.width > 0, rect.height > 0 else { return nil }
+        let rad = t.rotation * .pi / 180
+        let c = cos(rad), s = sin(rad)
+        let dx = point.x - rect.midX, dy = point.y - rect.midY
         let lx = dx * c + dy * s
         let ly = -dx * s + dy * c
-
-        let halfW = rect.width / 2, halfH = rect.height / 2
-        let left = -halfW + crop.left * rect.width
-        let right = halfW - crop.right * rect.width
-        let top = -halfH + crop.top * rect.height
-        let bottom = halfH - crop.bottom * rect.height
-        return lx >= left && lx <= right && ly >= top && ly <= bottom
+        return CGPoint(x: lx / rect.width + 0.5, y: ly / rect.height + 0.5)
     }
 
     static func videoContentRect(in viewSize: CGSize, timeline: Timeline) -> CGRect {

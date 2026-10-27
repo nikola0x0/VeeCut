@@ -62,7 +62,12 @@ struct PreviewContainerView: View {
                     offlinePreview(assetId: overlay.assetId, path: overlay.path, isUnprocessable: overlay.isUnprocessable)
                 }
                 CanvasViewingOverlay(selection: canvasOverlays)
-                if editor.chromaKeySamplingClipId != nil {
+                if isTimeline, let subject = editor.canvasSubject {
+                    SubjectMaskOverlayView(subject: subject)
+                }
+                if isTimeline, editor.subjectSelectionActive {
+                    SubjectSelectionOverlayView()
+                } else if editor.chromaKeySamplingClipId != nil {
                     ChromaKeySamplerOverlayView()
                 } else if editor.cropEditingActive {
                     CropOverlayView()
@@ -89,6 +94,7 @@ struct PreviewContainerView: View {
                     .onEnded { value in
                         guard isTimeline,
                               captionPreview == nil,
+                              !editor.subjectSelectionActive,
                               !editor.cropEditingActive,
                               editor.chromaKeySamplingClipId == nil,
                               let id = PreviewHitTester.clipID(
@@ -110,6 +116,12 @@ struct PreviewContainerView: View {
             .offset(x: editor.canvasOffset.width, y: editor.canvasOffset.height)
         }
         .clipped()
+        .overlay(alignment: .leading) {
+            if isTimeline { CanvasToolPalette() }
+        }
+        .overlay(alignment: .bottom) {
+            if isTimeline { SubjectActionBar() }
+        }
     }
 
     // MARK: - Transport bar

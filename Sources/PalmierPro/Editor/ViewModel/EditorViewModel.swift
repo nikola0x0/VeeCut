@@ -104,6 +104,11 @@ final class EditorViewModel {
     var trackedMasks: [TrackedMask] = []
     /// Progress (0…1) of in-flight SAM tracking jobs, keyed by clip id.
     var objectTrackingProgress: [String: Double] = [:]
+    var subjectSelectionActive = false
+    var canvasSubject: CanvasSubject?
+    var subjectTrackingClipId: String?
+    var subjectTrackingFailure: SubjectTrackingFailure?
+    var subjectTrackingTask: Task<Void, Never>?
     /// Encoded `.samtrack` contents per mask id, written into the package on save.
     var trackedMaskFiles: [String: Data] = [:]
     var speakerIdentifyPhase: String?
