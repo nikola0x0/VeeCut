@@ -1486,7 +1486,7 @@ final class TimelineInputController {
         if isDuplicate {
             editor.duplicateClipsToPositions(moves)
         } else {
-            editor.moveClips(moves)
+            editor.moveClips(moves, magnetic: editor.isMagneticTimeline)
         }
     }
 

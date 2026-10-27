@@ -106,6 +106,8 @@ final class EditorViewModel {
     var objectTrackingProgress: [String: Double] = [:]
     var subjectSelectionActive = false
     var canvasSubject: CanvasSubject?
+    /// CapCut-style editing for this editor; follows View → Magnetic Timeline.
+    var isMagneticTimeline = MagneticTimelinePreference.isEnabled
     var subjectTrackingClipId: String?
     var subjectTrackingFailure: SubjectTrackingFailure?
     var subjectTrackingTask: Task<Void, Never>?

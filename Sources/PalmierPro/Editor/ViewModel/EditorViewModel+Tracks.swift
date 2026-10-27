@@ -61,7 +61,7 @@ extension EditorViewModel {
     }
 
     /// Clamp `requested` so that visual (video/image) tracks always sit above every audio track.
-    private func partitionedInsertionIndex(for type: ClipType, requested: Int) -> Int {
+    func partitionedInsertionIndex(for type: ClipType, requested: Int) -> Int {
         let z = zones
         let bounded = max(0, min(requested, z.trackCount))
         switch type {

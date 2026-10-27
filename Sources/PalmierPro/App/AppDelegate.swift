@@ -182,9 +182,21 @@ extension AppDelegate: NSMenuItemValidation {
         ScrubAudioPreference.toggle()
     }
 
+    @objc func toggleMagneticTimeline(_ sender: Any?) {
+        MagneticTimelinePreference.toggle()
+        for case let project as VideoProject in NSDocumentController.shared.documents {
+            project.editorViewModel.isMagneticTimeline = MagneticTimelinePreference.isEnabled
+        }
+    }
+
     func validateMenuItem(_ menuItem: NSMenuItem) -> Bool {
-        if menuItem.action == #selector(toggleScrubAudio(_:)) {
+        switch menuItem.action {
+        case #selector(toggleScrubAudio(_:)):
             menuItem.state = ScrubAudioPreference.isEnabled ? .on : .off
+        case #selector(toggleMagneticTimeline(_:)):
+            menuItem.state = MagneticTimelinePreference.isEnabled ? .on : .off
+        default:
+            break
         }
         return true
     }

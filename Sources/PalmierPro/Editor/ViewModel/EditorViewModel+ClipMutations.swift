@@ -40,7 +40,8 @@ extension EditorViewModel {
     }
 
     /// Moved clips share a single delta from the drag, so they don't collide with each other.
-    func moveClips(_ moves: [(clipId: String, toTrack: Int, toFrame: Int)]) {
+    /// `magnetic` applies CapCut-style insertion for user drags; tools pass exact frames and keep overwrite.
+    func moveClips(_ moves: [(clipId: String, toTrack: Int, toFrame: Int)], magnetic: Bool = false) {
         guard !moves.isEmpty else { return }
 
         // Collect current state + validate track-type compatibility.
@@ -62,6 +63,10 @@ extension EditorViewModel {
         }
 
         let actionName = moves.count == 1 ? "Move Clip" : "Move Clips"
+        if magnetic, let mainTrackId {
+            moveClipsMagnetically(clipInfos, mainTrackId: mainTrackId, actionName: actionName)
+            return
+        }
         withTimelineSwap(actionName: actionName) {
             // Pull moved clips off their source tracks first, so clearRegion on
             // the destinations never touches them.
@@ -85,6 +90,46 @@ extension EditorViewModel {
                 clip.startFrame = info.toFrame
                 timeline.tracks[idx].clips.append(clip)
             }
+            for i in timeline.tracks.indices { sortClips(trackIndex: i) }
+            pruneEmptyTracks()
+        }
+    }
+
+    /// Magnetic move: clips dropped on the main track are inserted in order and the track re-packs;
+    /// clips dropped elsewhere land on a free track instead of cutting what is under them.
+    private func moveClipsMagnetically(
+        _ clipInfos: [(clip: Clip, fromTrack: Int, toTrack: Int, toFrame: Int)],
+        mainTrackId: String,
+        actionName: String
+    ) {
+        let destinations = clipInfos.map { (info: $0, trackId: timeline.tracks[$0.toTrack].id) }
+        var offsets = mainTrackLinkOffsets(mainTrackId: mainTrackId)
+        // Clips joining the main track keep their partners at the offset they had before the move.
+        for destination in destinations where destination.trackId == mainTrackId {
+            let anchor = destination.info.clip
+            for partnerId in linkedPartnerIds(of: anchor.id) {
+                guard let loc = findClip(id: partnerId) else { continue }
+                offsets[partnerId] = (anchor.id, timeline.tracks[loc.trackIndex].clips[loc.clipIndex].startFrame - anchor.startFrame)
+            }
+        }
+        withTimelineSwap(actionName: actionName) {
+            let movedIds = Set(clipInfos.map(\.clip.id))
+            for trackIndex in timeline.tracks.indices {
+                timeline.tracks[trackIndex].clips.removeAll { movedIds.contains($0.id) }
+            }
+            let toMain = destinations.filter { $0.trackId == mainTrackId }.sorted { $0.info.toFrame < $1.info.toFrame }
+            if let first = toMain.first, let mainIndex = timeline.tracks.firstIndex(where: { $0.id == mainTrackId }) {
+                var ordered = timeline.tracks[mainIndex].clips.sorted { $0.startFrame < $1.startFrame }
+                let insertAt = MagneticPacking.insertionIndex(dropFrame: first.info.toFrame, among: ordered)
+                ordered.insert(contentsOf: toMain.map(\.info.clip), at: insertAt)
+                timeline.tracks[mainIndex].clips = MagneticPacking.packed(ordered)
+            }
+            for destination in destinations where destination.trackId != mainTrackId {
+                var clip = destination.info.clip
+                clip.startFrame = destination.info.toFrame
+                placeWithoutOverwrite(clip, preferredTrackId: destination.trackId)
+            }
+            packMainTrack(id: mainTrackId, keeping: offsets)
             for i in timeline.tracks.indices { sortClips(trackIndex: i) }
             pruneEmptyTracks()
         }
@@ -199,15 +244,20 @@ extension EditorViewModel {
         )
     }
 
-    func removeClips(ids: Set<String>, prune: Bool = true) {
+    /// Removes clips as one undoable edit. `closesMainTrackGaps` is for user-facing deletes only:
+    /// internal callers that clear room for new clips must not re-pack the magnetic main track.
+    func removeClips(ids: Set<String>, prune: Bool = true, closesMainTrackGaps: Bool = false) {
         let hasMatches = timeline.tracks.contains { t in t.clips.contains { ids.contains($0.id) } }
         guard hasMatches else { return }
         let count = timeline.tracks.reduce(0) { $0 + $1.clips.lazy.filter { ids.contains($0.id) }.count }
         selectedClipIds.subtract(ids)
+        let mainTrackId = closesMainTrackGaps ? self.mainTrackId : nil
+        let offsets = mainTrackId.map { mainTrackLinkOffsets(mainTrackId: $0) } ?? [:]
         withTimelineSwap(actionName: "Remove Clip\(count == 1 ? "" : "s")") {
             for i in timeline.tracks.indices {
                 timeline.tracks[i].clips.removeAll { ids.contains($0.id) }
             }
+            if let mainTrackId { packMainTrack(id: mainTrackId, keeping: offsets) }
             if prune { pruneEmptyTracks() }
         }
     }
@@ -726,7 +776,7 @@ extension EditorViewModel {
     }
 
     func deleteSelectedClips() {
-        removeClips(ids: selectedClipIds)
+        removeClips(ids: selectedClipIds, closesMainTrackGaps: isMagneticTimeline)
     }
 
     func deleteMediaAssets(ids: Set<String>) {
