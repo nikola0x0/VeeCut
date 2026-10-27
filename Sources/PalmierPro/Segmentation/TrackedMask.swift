@@ -17,14 +17,46 @@ struct TrackedMask: Codable, Sendable, Equatable, Identifiable {
 /// Limits a region's effects to the inside (or outside) of a tracked mask.
 struct EffectMatte: Codable, Sendable, Equatable {
     var maskId: String
+    /// More subjects covered together with `maskId`; an inverted matte keeps all of them out.
+    var additionalMaskIds: [String]?
     var invert: Bool = false
     /// Edge softness in source pixels.
     var feather: Double = 0
 
     static let featherRange: ClosedRange<Double> = 0...50
 
+    init(maskIds: [String], invert: Bool = false, feather: Double = 0) {
+        precondition(!maskIds.isEmpty)
+        maskId = maskIds[0]
+        additionalMaskIds = maskIds.count > 1 ? Array(maskIds.dropFirst()) : nil
+        self.invert = invert
+        self.feather = feather
+    }
+
+    init(maskId: String, invert: Bool = false, feather: Double = 0) {
+        self.init(maskIds: [maskId], invert: invert, feather: feather)
+    }
+
+    var maskIds: [String] { [maskId] + (additionalMaskIds ?? []) }
+
+    /// A clip has one background (inverted) region shared by all subjects, and one inside region per subject.
     func targetsSameRegion(as other: EffectMatte) -> Bool {
-        maskId == other.maskId && invert == other.invert
+        invert == other.invert && (invert || maskId == other.maskId)
+    }
+
+    /// Joining an existing region: a background gains the new subjects, everything else takes the new settings.
+    func merged(into existing: EffectMatte) -> EffectMatte {
+        guard invert, existing.invert else { return self }
+        var ids = existing.maskIds
+        for id in maskIds where !ids.contains(id) { ids.append(id) }
+        return EffectMatte(maskIds: ids, invert: true, feather: feather)
+    }
+
+    /// Without `maskId`; nil when nothing would be left.
+    func removing(_ maskId: String) -> EffectMatte? {
+        let ids = maskIds.filter { $0 != maskId }
+        guard !ids.isEmpty else { return nil }
+        return EffectMatte(maskIds: ids, invert: invert, feather: feather)
     }
 }
 

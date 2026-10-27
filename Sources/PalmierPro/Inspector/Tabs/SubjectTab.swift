@@ -23,6 +23,42 @@ struct SubjectTab: View {
             ForEach(masks) { mask in
                 subjectGroup(mask)
             }
+            backgroundGroup
+        }
+    }
+
+    // MARK: - Background
+
+    /// One background per clip: everything outside the subjects it keeps sharp.
+    private var backgroundGroup: some View {
+        let regions = (clip.effectRegions ?? []).filter(\.matte.invert)
+        let kept = Set(regions.first?.matte.maskIds ?? masks.map(\.id))
+        let anyMaskId = masks[0].id
+        return EditorPanelGroup(L10n.string("Background")) {
+            EmptyView()
+        } content: {
+            quickActions(outside: true, maskId: anyMaskId)
+            addEffectMenu(outside: true, maskId: anyMaskId)
+            if masks.count > 1 || !regions.isEmpty {
+                VStack(alignment: .leading, spacing: AppTheme.Spacing.xs) {
+                    Text(L10n.string("Keep sharp"))
+                        .font(.system(size: AppTheme.FontSize.sm))
+                        .foregroundStyle(AppTheme.Text.secondaryColor)
+                    ForEach(masks) { mask in
+                        Toggle(isOn: Binding(
+                            get: { kept.contains(mask.id) },
+                            set: { editor.setKeepsSharp($0, maskId: mask.id, clipId: clip.id) }
+                        )) {
+                            Text(verbatim: mask.label).font(.system(size: AppTheme.FontSize.sm))
+                        }
+                        .toggleStyle(.checkbox)
+                        .disabled(regions.isEmpty || (kept.contains(mask.id) && kept.count == 1))
+                    }
+                }
+            }
+            ForEach(regions) { region in
+                regionSection(region)
+            }
         }
     }
 
@@ -63,7 +99,7 @@ struct SubjectTab: View {
 
     private func subjectGroup(_ mask: TrackedMask) -> some View {
         let maskId = mask.id
-        let regions = (clip.effectRegions ?? []).filter { $0.matte.maskId == maskId }
+        let regions = (clip.effectRegions ?? []).filter { !$0.matte.invert && $0.matte.maskId == maskId }
         return EditorPanelGroup(mask.label) {
             Button {
                 editor.deleteSubject(maskId: maskId)
@@ -87,17 +123,9 @@ struct SubjectTab: View {
             Text(L10n.string("Tracked with SAM 3.1"))
                 .font(.system(size: AppTheme.FontSize.xs))
                 .foregroundStyle(AppTheme.Text.tertiaryColor)
-            quickActions(maskId: maskId)
-            HStack(spacing: AppTheme.Spacing.xs) {
-                addEffectMenu(outside: false, maskId: maskId)
-                addEffectMenu(outside: true, maskId: maskId)
-            }
-            if regions.isEmpty {
-                Text(L10n.string("Pick a quick action, then fine-tune it here."))
-                    .font(.system(size: AppTheme.FontSize.sm))
-                    .foregroundStyle(AppTheme.Text.mutedColor)
-            }
-            ForEach(regions.sorted { !$0.matte.invert && $1.matte.invert }) { region in
+            quickActions(outside: false, maskId: maskId)
+            addEffectMenu(outside: false, maskId: maskId)
+            ForEach(regions) { region in
                 regionSection(region)
             }
         }
@@ -105,12 +133,12 @@ struct SubjectTab: View {
 
     // MARK: - Quick actions
 
-    private func quickActions(maskId: String) -> some View {
+    private func quickActions(outside: Bool, maskId: String) -> some View {
         LazyVGrid(
             columns: [GridItem(.flexible(), spacing: AppTheme.Spacing.xs), GridItem(.flexible(), spacing: AppTheme.Spacing.xs)],
             spacing: AppTheme.Spacing.xs
         ) {
-            ForEach(SubjectLook.allCases, id: \.self) { look in
+            ForEach(SubjectLook.allCases.filter { $0.appliesOutside == outside }, id: \.self) { look in
                 Button {
                     editor.applySubjectLook(look, clipId: clip.id, maskId: maskId)
                 } label: {
@@ -129,7 +157,7 @@ struct SubjectTab: View {
 
     private func addEffectMenu(outside: Bool, maskId: String) -> some View {
         let applied = Set((clip.effectRegions ?? [])
-            .filter { $0.matte.maskId == maskId && $0.matte.invert == outside }
+            .filter { $0.matte.invert == outside && (outside || $0.matte.maskId == maskId) }
             .flatMap { $0.effects.map(\.type) })
         let categories = Dictionary(grouping: EditorViewModel.subjectEffectDescriptors, by: \.category)
         return Menu {
@@ -158,13 +186,6 @@ struct SubjectTab: View {
 
     private func regionSection(_ region: EffectRegion) -> some View {
         VStack(alignment: .leading, spacing: AppTheme.Spacing.sm) {
-            HStack(spacing: AppTheme.Spacing.sm) {
-                sideSwatch(outside: region.matte.invert)
-                Text(region.matte.invert ? L10n.string("Background") : L10n.string("Subject"))
-                    .font(.system(size: AppTheme.FontSize.sm, weight: AppTheme.FontWeight.semibold))
-                    .foregroundStyle(AppTheme.Text.primaryColor)
-            }
-            .padding(.top, AppTheme.Spacing.sm)
             sliderRow(
                 label: L10n.string("Edge Feather"),
                 value: region.matte.feather,

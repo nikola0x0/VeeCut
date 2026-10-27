@@ -12,7 +12,7 @@ extension Clip {
                 regions.remove(at: index)
             } else {
                 regions[index].effects = effects
-                regions[index].matte = matte
+                regions[index].matte = matte.merged(into: regions[index].matte)
             }
         } else if !effects.isEmpty {
             regions.append(EffectRegion(matte: matte, effects: effects))
@@ -28,8 +28,15 @@ extension Clip {
         effectRegions = regions.isEmpty ? nil : regions
     }
 
+    /// Drops `maskId` from every region; a region left with no subject is removed.
     mutating func removeRegions(maskId: String) {
-        effectRegions?.removeAll { $0.matte.maskId == maskId }
+        effectRegions = effectRegions?.compactMap { region in
+            guard region.matte.maskIds.contains(maskId) else { return region }
+            guard let matte = region.matte.removing(maskId) else { return nil }
+            var region = region
+            region.matte = matte
+            return region
+        }
         if effectRegions?.isEmpty == true { effectRegions = nil }
     }
 }

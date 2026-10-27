@@ -491,20 +491,26 @@ enum FrameRenderer {
         srcHeight: CGFloat,
         sourceSeconds: Double?
     ) -> CIImage? {
-        guard let sourceSeconds,
-              let (display, size) = MatteStore.shared.matte(
-                maskId: matte.maskId, mediaRef: layer.clip.mediaRef, sourceSeconds: sourceSeconds
-              ),
-              size.width > 0, size.height > 0 else { return nil }
-        let toNatural = CGAffineTransform(
-            scaleX: layer.natSize.width / size.width,
-            y: layer.natSize.height / size.height
-        )
-        let toSource = toNatural
-            .concatenating(flipY(layer.natSize.height))
-            .concatenating(layer.preferredTransform.inverted())
-            .concatenating(flipY(srcHeight))
-        var mask = display.transformed(by: toSource)
+        guard let sourceSeconds else { return nil }
+        // Union of every subject in the matte, each mapped from its own tracking size into source space.
+        let subjects = matte.maskIds.compactMap { maskId -> CIImage? in
+            guard let (display, size) = MatteStore.shared.matte(
+                maskId: maskId, mediaRef: layer.clip.mediaRef, sourceSeconds: sourceSeconds
+            ), size.width > 0, size.height > 0 else { return nil }
+            let toNatural = CGAffineTransform(
+                scaleX: layer.natSize.width / size.width,
+                y: layer.natSize.height / size.height
+            )
+            let toSource = toNatural
+                .concatenating(flipY(layer.natSize.height))
+                .concatenating(layer.preferredTransform.inverted())
+                .concatenating(flipY(srcHeight))
+            return display.transformed(by: toSource)
+        }
+        guard var mask = subjects.first else { return nil }
+        for subject in subjects.dropFirst() {
+            mask = subject.applyingFilter("CIMaximumCompositing", parameters: [kCIInputBackgroundImageKey: mask])
+        }
         if matte.feather > 0 {
             mask = mask.clampedToExtent()
                 .applyingFilter("CIGaussianBlur", parameters: [kCIInputRadiusKey: matte.feather])

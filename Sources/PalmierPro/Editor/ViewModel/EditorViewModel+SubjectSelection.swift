@@ -127,10 +127,22 @@ extension EditorViewModel {
         }
     }
 
-    /// Merges a look into the subject's inside or outside region as one undoable edit.
+    /// The clip's background matte: its existing background region, else outside every subject on its media.
+    func backgroundMatte(clipId: String) -> EffectMatte? {
+        guard let clip = clipFor(id: clipId) else { return nil }
+        if let existing = clip.effectRegions?.first(where: { $0.matte.invert }) { return existing.matte }
+        let ids = trackedMasks(forMedia: clip.mediaRef).map(\.id)
+        return ids.isEmpty ? nil : EffectMatte(maskIds: ids, invert: true, feather: Self.subjectFeather)
+    }
+
+    private func lookMatte(outside: Bool, clipId: String, maskId: String) -> EffectMatte? {
+        outside ? backgroundMatte(clipId: clipId) : EffectMatte(maskId: maskId, feather: Self.subjectFeather)
+    }
+
+    /// Merges a look into the subject's region or the clip's background as one undoable edit.
     func applySubjectLook(_ look: SubjectLook, clipId: String, maskId: String) {
-        guard clipFor(id: clipId) != nil else { return }
-        let matte = EffectMatte(maskId: maskId, invert: look.appliesOutside, feather: Self.subjectFeather)
+        guard clipFor(id: clipId) != nil,
+              let matte = lookMatte(outside: look.appliesOutside, clipId: clipId, maskId: maskId) else { return }
         let actionName = L10n.string("Apply Look")
         undo.perform(actionName) {
             mutateClips(ids: [clipId], actionName: actionName) { clip in
@@ -146,8 +158,8 @@ extension EditorViewModel {
 
     /// Adds `type` with default settings to the subject's inside or outside, unless already there.
     func addSubjectEffect(_ type: String, outside: Bool, clipId: String, maskId: String) {
-        guard let descriptor = EffectRegistry.descriptor(id: type), clipFor(id: clipId) != nil else { return }
-        let matte = EffectMatte(maskId: maskId, invert: outside, feather: Self.subjectFeather)
+        guard let descriptor = EffectRegistry.descriptor(id: type), clipFor(id: clipId) != nil,
+              let matte = lookMatte(outside: outside, clipId: clipId, maskId: maskId) else { return }
         let existing = clipFor(id: clipId)?.effectRegions?.first { $0.matte.targetsSameRegion(as: matte) }
         guard existing?.effects.contains(where: { $0.type == type }) != true else { return }
         let actionName = L10n.string("Add \(L10n.string(key: descriptor.displayName))")
@@ -157,6 +169,19 @@ extension EditorViewModel {
                     stack.insert(descriptor.makeEffect(), at: EffectRegistry.insertIndex(stack, for: type))
                 }
             }
+        }
+    }
+
+    /// Keeps a subject out of (or lets it into) the clip's background effects. The last kept subject stays.
+    func setKeepsSharp(_ keepsSharp: Bool, maskId: String, clipId: String) {
+        guard let region = clipFor(id: clipId)?.effectRegions?.first(where: { $0.matte.invert }) else { return }
+        var ids = region.matte.maskIds
+        if keepsSharp, !ids.contains(maskId) { ids.append(maskId) }
+        if !keepsSharp { ids.removeAll { $0 == maskId } }
+        guard !ids.isEmpty, ids != region.matte.maskIds else { return }
+        let feather = region.matte.feather
+        editSubjectRegion(clipId: clipId, regionId: region.id, commit: true, actionName: L10n.string("Change Background")) {
+            $0.matte = EffectMatte(maskIds: ids, invert: true, feather: feather)
         }
     }
 
@@ -201,11 +226,11 @@ extension EditorViewModel {
     func deleteSubject(maskId: String) {
         guard trackedMask(id: maskId) != nil else { return }
         let clipIds = timeline.tracks.flatMap(\.clips)
-            .filter { $0.effectRegions?.contains { $0.matte.maskId == maskId } == true }
+            .filter { $0.effectRegions?.contains { $0.matte.maskIds.contains(maskId) } == true }
             .map(\.id)
         let usedElsewhere = timelines.contains { other in
             other.id != timeline.id && other.tracks.contains { track in
-                track.clips.contains { $0.effectRegions?.contains { $0.matte.maskId == maskId } == true }
+                track.clips.contains { $0.effectRegions?.contains { $0.matte.maskIds.contains(maskId) } == true }
             }
         }
         let actionName = L10n.string("Delete Subject")

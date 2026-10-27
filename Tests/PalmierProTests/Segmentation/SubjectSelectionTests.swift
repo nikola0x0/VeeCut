@@ -190,6 +190,44 @@ struct SubjectLookTests {
         #expect(!editor.isSubjectTracking)
     }
 
+    private func addDog(_ editor: EditorViewModel) {
+        editor.registerTrackedMask(
+            TrackedMask(id: "dog", mediaRef: "media-1", label: "Dog", sourceFPS: 30, sourceWidth: 64, sourceHeight: 48),
+            frames: [:], file: Data()
+        )
+    }
+
+    @Test func backgroundLooksKeepEverySubjectSharpInOneSharedRegion() {
+        let editor = editorWithSubject()
+        addDog(editor)
+        editor.applySubjectLook(.blurBackground, clipId: "clip", maskId: "mask")
+        editor.applySubjectLook(.darkenBackground, clipId: "clip", maskId: "dog")
+        let backgrounds = editor.clipFor(id: "clip")?.effectRegions?.filter(\.matte.invert) ?? []
+        #expect(backgrounds.count == 1)
+        #expect(backgrounds.first?.matte.maskIds == ["mask", "dog"])
+        #expect(backgrounds.first?.effects.count == 3)
+    }
+
+    @Test func keepSharpTogglesASubjectButNeverEmptiesTheBackground() {
+        let editor = editorWithSubject()
+        addDog(editor)
+        editor.applySubjectLook(.blurBackground, clipId: "clip", maskId: "mask")
+        editor.setKeepsSharp(false, maskId: "dog", clipId: "clip")
+        #expect(editor.clipFor(id: "clip")?.effectRegions?.first?.matte.maskIds == ["mask"])
+        editor.setKeepsSharp(false, maskId: "mask", clipId: "clip")
+        #expect(editor.clipFor(id: "clip")?.effectRegions?.first?.matte.maskIds == ["mask"])
+        undoManager.undo()
+        #expect(editor.clipFor(id: "clip")?.effectRegions?.first?.matte.maskIds == ["mask", "dog"])
+    }
+
+    @Test func deletingOneSubjectKeepsTheBackgroundForTheOthers() {
+        let editor = editorWithSubject()
+        addDog(editor)
+        editor.applySubjectLook(.blurBackground, clipId: "clip", maskId: "mask")
+        editor.deleteSubject(maskId: "dog")
+        #expect(editor.clipFor(id: "clip")?.effectRegions?.first?.matte.maskIds == ["mask"])
+    }
+
     @Test func escapeDismissesSelectionModeBeforeSubject() {
         let editor = editorWithSubject()
         editor.toggleSubjectSelection()

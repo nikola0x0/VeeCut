@@ -210,6 +210,11 @@ extension ToolExecutor {
                 "side": region.matte.invert ? "outside" : "inside",
             ]
             if let label = editor.trackedMask(id: region.matte.maskId)?.label { out["target"] = label }
+            if region.matte.maskIds.count > 1 {
+                // An outside region keeps every listed subject out; inside covers them all.
+                out["maskIds"] = region.matte.maskIds
+                out["targets"] = region.matte.maskIds.compactMap { editor.trackedMask(id: $0)?.label }
+            }
             if region.matte.feather > 0 { out["feather"] = region.matte.feather }
             if let color = colorObject(from: region.effects) { out["color"] = color }
             let fx = region.effects.filter { !$0.type.hasPrefix("color.") }.map { effect -> [String: Any] in

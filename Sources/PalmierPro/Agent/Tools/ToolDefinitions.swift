@@ -1196,7 +1196,7 @@ enum ToolDefinitions {
             "description": "Optional. Limit this edit to a tracked object from track_object. Edits merge into that region's own stack; the clip's whole-frame stack is untouched.",
             "properties": [
                 "maskId": ["type": "string", "description": "maskId returned by track_object (also listed under a clip's regions in get_timeline)."],
-                "side": ["type": "string", "enum": ["inside", "outside"], "description": "inside = the tracked object (default); outside = everything except it, e.g. the background."],
+                "side": ["type": "string", "enum": ["inside", "outside"], "description": "inside = the tracked object (default); outside = the clip's background. A clip has one background region: edits with side outside join it, and it keeps every subject listed in its maskIds sharp (adding this maskId)."],
                 "feather": ["type": "number", "description": "Edge softness in source pixels, 0–50. Default 0."],
             ],
             "required": ["maskId"],

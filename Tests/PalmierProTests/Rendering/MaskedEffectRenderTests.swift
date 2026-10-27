@@ -10,9 +10,14 @@ struct MaskedEffectRenderTests {
 
     /// Installs a mask over the whole 320×180 frame whose 2×2 raster sets only the top-left cell.
     private static func installTopLeftMask(frames: ClosedRange<Int>? = 0...120) -> String {
+        installMask(bits: [1, 0, 0, 0], frames: frames)
+    }
+
+    /// Installs a whole-frame mask whose 2×2 raster cells are set by `bits` (row-major, top row first).
+    private static func installMask(bits: [UInt8], frames: ClosedRange<Int>? = 0...120) -> String {
         let id = UUID().uuidString
         let box = SAMBox(left: 0, top: 0, right: 320, bottom: 180, sourceWidth: 320, sourceHeight: 180)
-        let object = SAMObjectRecord(objectID: 1, box: box, mask: SAMMaskRaster(width: 2, height: 2, bits: [1, 0, 0, 0]), confidence: nil)
+        let object = SAMObjectRecord(objectID: 1, box: box, mask: SAMMaskRaster(width: 2, height: 2, bits: bits), confidence: nil)
         let timelineFPS = Fixtures.timeline(tracks: []).fps
         let mask = TrackedMask(id: id, mediaRef: "pattern", label: "corner", sourceFPS: Double(timelineFPS), sourceWidth: 320, sourceHeight: 180)
         let keyed = (frames.map { Array($0) } ?? []).map { ($0, MaskFrame(object)) }
@@ -44,6 +49,15 @@ struct MaskedEffectRenderTests {
 
         #expect(Self.isRed(frame.tl), "inside an inverted matte should be untouched: \(frame.tl)")
         #expect(!Self.isGreen(frame.tr), "outside an inverted matte should be inverted: \(frame.tr)")
+    }
+
+    @Test func backgroundKeepsEverySubjectInItsMatteUntouched() async throws {
+        let me = Self.installMask(bits: [1, 0, 0, 0])
+        let dog = Self.installMask(bits: [0, 1, 0, 0])
+        let frame = try await Self.render(Self.invertedClip(matte: EffectMatte(maskIds: [me, dog], invert: true)))
+
+        #expect(Self.isRed(frame.tl), "first subject stays sharp: \(frame.tl)")
+        #expect(Self.isGreen(frame.tr), "second subject stays sharp too: \(frame.tr)")
     }
 
     @Test func frameWithoutTrackedObjectLeavesClipUntouched() async throws {

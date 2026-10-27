@@ -176,6 +176,7 @@
 "Censor profanity" = "Censor profanity";
 "Center" = "Center";
 "Change %@" = "Change %@";
+"Change Background" = "Change Background";
 "Change Edge Feather" = "Change Edge Feather";
 "Change aspect ratio and extend the frame with AI" = "Change aspect ratio and extend the frame with AI";
 "Change to Match" = "Change to Match";
@@ -530,6 +531,7 @@
 "Keep Current" = "Keep Current";
 "Keep Editing" = "Keep Editing";
 "Keep Skill" = "Keep Skill";
+"Keep sharp" = "Keep sharp";
 "Keep the best takes" = "Keep the best takes";
 "Keeps this much audio before and after detected speech." = "Keeps this much audio before and after detected speech.";
 "Key" = "Key";
@@ -727,7 +729,6 @@
 "PiP Bottom Right" = "PiP Bottom Right";
 "PiP Top Left" = "PiP Top Left";
 "PiP Top Right" = "PiP Top Right";
-"Pick a quick action, then fine-tune it here." = "Pick a quick action, then fine-tune it here.";
 "Pick a replacement for \"%@\"" = "Pick a replacement for \"%@\"";
 "Place on timeline" = "Place on timeline";
 "Play / Pause" = "Play / Pause";
