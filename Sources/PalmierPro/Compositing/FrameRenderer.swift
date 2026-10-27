@@ -17,7 +17,7 @@ enum FrameRenderer {
 
         let base = CIImage(color: .black).cropped(to: renderRect)
         let accum = composite(
-            layers: instruction.layers, over: base, frame: frame,
+            layers: instruction.layers, over: base, frame: frame, fps: instruction.fps,
             renderSize: instruction.renderSize, sourceFrame: sourceFrame, gateByClipRange: false
         )
         let tagSource = colorTagSource(
@@ -36,6 +36,7 @@ enum FrameRenderer {
         layers: [LayerPlan],
         over background: CIImage,
         frame: Int,
+        fps: Int,
         renderSize: CGSize,
         sourceFrame: (CMPersistentTrackID) -> CVPixelBuffer?,
         gateByClipRange: Bool
@@ -93,13 +94,13 @@ enum FrameRenderer {
             switch layer.source {
             case .track(let id):
                 guard let buffer = sourceFrame(id) else { continue }
-                image = composedLayer(layer, buffer: buffer, frame: frame,
+                image = composedLayer(layer, buffer: buffer, frame: frame, fps: fps,
                                       renderSize: renderSize, bakeOpacity: isNormal)
             case .text:
                 image = composedTextLayer(layer, frame: frame, renderSize: renderSize,
                                           bakeOpacity: isNormal)
             case .group(let children, let canvas):
-                image = composedGroupLayer(layer, children: children, canvas: canvas, frame: frame,
+                image = composedGroupLayer(layer, children: children, canvas: canvas, frame: frame, fps: fps,
                                            renderSize: renderSize, sourceFrame: sourceFrame, bakeOpacity: isNormal)
             }
             guard let image else { continue }
@@ -134,6 +135,7 @@ enum FrameRenderer {
         children: [LayerPlan],
         canvas: CGSize,
         frame: Int,
+        fps: Int,
         renderSize: CGSize,
         sourceFrame: (CMPersistentTrackID) -> CVPixelBuffer?,
         bakeOpacity: Bool
@@ -143,7 +145,7 @@ enum FrameRenderer {
         let canvasRect = CGRect(origin: .zero, size: canvas)
         let base = CIImage(color: .black).cropped(to: canvasRect)
         let intermediate = composite(
-            layers: children, over: base, frame: frame,
+            layers: children, over: base, frame: frame, fps: fps,
             renderSize: canvas, sourceFrame: sourceFrame, gateByClipRange: true
         )
         return applyClipPipeline(
@@ -253,6 +255,7 @@ enum FrameRenderer {
         _ layer: LayerPlan,
         buffer: CVPixelBuffer,
         frame: Int,
+        fps: Int,
         renderSize: CGSize,
         bakeOpacity: Bool = true
     ) -> CIImage? {
@@ -267,7 +270,8 @@ enum FrameRenderer {
             .unpremultiplyingAlpha()
         return applyClipPipeline(
             image: image, srcHeight: CGFloat(CVPixelBufferGetHeight(buffer)), layer: layer,
-            frame: frame, renderSize: renderSize, alpha: alpha, bakeOpacity: bakeOpacity
+            frame: frame, renderSize: renderSize, alpha: alpha, bakeOpacity: bakeOpacity,
+            sourceSeconds: layer.clip.sourceSeconds(atTimelineFrame: frame, fps: fps)
         )
     }
 
@@ -279,7 +283,8 @@ enum FrameRenderer {
         frame: Int,
         renderSize: CGSize,
         alpha: Double,
-        bakeOpacity: Bool
+        bakeOpacity: Bool,
+        sourceSeconds: Double? = nil
     ) -> CIImage? {
         let clip = layer.clip
         var image = input
@@ -306,7 +311,18 @@ enum FrameRenderer {
             let offset = frame - clip.startFrame
             for effect in effects where effect.enabled {
                 guard let descriptor = EffectRegistry.descriptor(id: effect.type) else { continue }
-                image = descriptor.render(image, effect: effect, atOffset: offset)
+                let effected = descriptor.render(image, effect: effect, atOffset: offset)
+                if let matte = effect.matte {
+                    guard let mask = sourceMatte(matte, layer: layer, srcHeight: srcHeight, sourceSeconds: sourceSeconds) else {
+                        continue
+                    }
+                    image = effected.applyingFilter("CIBlendWithMask", parameters: [
+                        kCIInputBackgroundImageKey: image,
+                        kCIInputMaskImageKey: mask,
+                    ]).cropped(to: image.extent)
+                } else {
+                    image = effected
+                }
             }
         }
 
@@ -461,6 +477,38 @@ enum FrameRenderer {
             "inputBottomRight": CIVector(cgPoint: corners.bottomRight.applying(flip)),
             "inputBottomLeft": CIVector(cgPoint: corners.bottomLeft.applying(flip)),
         ])
+    }
+
+    /// Tracked-mask matte mapped from display orientation into this layer's source-buffer CI space.
+    private static func sourceMatte(
+        _ matte: EffectMatte,
+        layer: LayerPlan,
+        srcHeight: CGFloat,
+        sourceSeconds: Double?
+    ) -> CIImage? {
+        guard let sourceSeconds,
+              let (display, size) = MatteStore.shared.matte(
+                maskId: matte.maskId, mediaRef: layer.clip.mediaRef, sourceSeconds: sourceSeconds
+              ),
+              size.width > 0, size.height > 0 else { return nil }
+        let toNatural = CGAffineTransform(
+            scaleX: layer.natSize.width / size.width,
+            y: layer.natSize.height / size.height
+        )
+        let toSource = toNatural
+            .concatenating(flipY(layer.natSize.height))
+            .concatenating(layer.preferredTransform.inverted())
+            .concatenating(flipY(srcHeight))
+        var mask = display.transformed(by: toSource)
+        if matte.feather > 0 {
+            mask = mask.clampedToExtent()
+                .applyingFilter("CIGaussianBlur", parameters: [kCIInputRadiusKey: matte.feather])
+                .cropped(to: mask.extent)
+        }
+        if matte.invert {
+            mask = mask.applyingFilter("CIColorInvert")
+        }
+        return mask
     }
 
     private static func flipY(_ height: CGFloat) -> CGAffineTransform {

@@ -367,6 +367,12 @@ struct Clip: Codable, Sendable, Equatable, Identifiable {
         return min(inMul, outMul)
     }
 
+    /// Project-timeline-frame → source-seconds through this clip's placement, trim, and speed.
+    func sourceSeconds(atTimelineFrame frame: Int, fps: Int) -> Double? {
+        guard fps > 0 else { return nil }
+        return (Double(trimStartFrame) + Double(frame - startFrame) * speed) / Double(fps)
+    }
+
     /// Source-seconds → project-timeline-frame through this clip's placement, trim, and speed.
     func timelineFrame(sourceSeconds t: Double, fps: Int) -> Int? {
         let sourceFrame = t * Double(fps)
