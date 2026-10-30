@@ -69,7 +69,6 @@ enum Analytics {
         case skillRead = "skill read"
         case agentStarterPromptClicked = "agent starter prompt clicked"
         case editorEditCommitted = "editor edit committed"
-        case generationSubmitted = "generation submitted"
         case mcpSessionActivated = "mcp session activated"
         case onboardingCompleted = "onboarding completed"
     }
@@ -268,11 +267,6 @@ enum Analytics {
             "export_filename",
             "failure_reason",
             "format",
-            "generated_visual_clip_count",
-            "generated_visual_clip_ratio",
-            "generated_visual_duration_ratio",
-            "generation_type",
-            "imported_visual_clip_count",
             "interests",
             "mode",
             "model",
@@ -297,7 +291,6 @@ enum Analytics {
             "track_count",
             "tool_name",
             "tool_duration_seconds",
-            "upscaled_visual_clip_count",
             "video_types",
             "visual_clip_count",
         ])

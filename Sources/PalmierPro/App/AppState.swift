@@ -1,10 +1,6 @@
 import SwiftUI
 import UniformTypeIdentifiers
 
-struct ProjectOpenOptions {
-    var startTutorial = false
-}
-
 enum ProjectError: LocalizedError {
     case nameTaken(URL)
     case invalidName(String)
@@ -136,41 +132,11 @@ final class AppState {
         }
     }
 
-    func revealGeneratedAssetFromNotification(assetId: String?, projectURL: URL?) {
+    func activateFromNotification() {
         NSApp.activate(ignoringOtherApps: true)
-        guard let project = notificationTargetProject(assetId: assetId, projectURL: projectURL) else {
-            if activeProject == nil {
-                HomeWindowController.shared.showWindow(nil)
-            }
-            return
+        if activeProject == nil {
+            HomeWindowController.shared.showWindow(nil)
         }
-
-        showEditor(for: project)
-        project.windowControllers.first?.window?.makeKeyAndOrderFront(nil)
-
-        guard let assetId,
-              let asset = project.editorViewModel.mediaAssets.first(where: { $0.id == assetId }) else {
-            return
-        }
-
-        let editor = project.editorViewModel
-        editor.mediaPanelVisible = true
-        editor.maximizedPanel = nil
-        editor.focusedPanel = .media
-        editor.selectMediaAsset(asset)
-        editor.mediaPanelRevealAssetId = assetId
-    }
-
-    private func notificationTargetProject(assetId: String?, projectURL: URL?) -> VideoProject? {
-        if let projectURL {
-            return openProjects.first { Self.sameFile($0.fileURL, projectURL) }
-        }
-        if let assetId {
-            return openProjects.first { project in
-                project.editorViewModel.mediaAssets.contains { $0.id == assetId }
-            }
-        }
-        return activeProject
     }
 
     private static func sameFile(_ lhs: URL?, _ rhs: URL) -> Bool {
@@ -247,10 +213,10 @@ final class AppState {
         }
     }
 
-    func openProject(at url: URL, register: Bool = true, options: ProjectOpenOptions = .init()) {
+    func openProject(at url: URL, register: Bool = true) {
         Task {
             do {
-                try await openProjectAsync(at: url, register: register, options: options)
+                try await openProjectAsync(at: url, register: register)
             } catch {
                 NSAlert(error: error).runModal()
             }
@@ -258,13 +224,13 @@ final class AppState {
     }
 
     @discardableResult
-    func openProjectAsync(at url: URL, register: Bool = true, options: ProjectOpenOptions = .init()) async throws -> VideoProject {
+    func openProjectAsync(at url: URL, register: Bool = true) async throws -> VideoProject {
         try Task.checkCancellation()
         let resolved = url.standardizedFileURL
         guard !projectPathsBeingDeleted.contains(resolved.path) else {
             throw ProjectError.deletionInProgress(resolved)
         }
-        if let existing = showExistingProject(at: resolved, register: register, options: options) {
+        if let existing = showExistingProject(at: resolved, register: register) {
             return existing
         }
         projectOpenCounts[resolved.path, default: 0] += 1
@@ -280,7 +246,7 @@ final class AppState {
         guard !projectPathsBeingDeleted.contains(resolved.path) else {
             throw ProjectError.deletionInProgress(resolved)
         }
-        if let existing = showExistingProject(at: resolved, register: register, options: options) {
+        if let existing = showExistingProject(at: resolved, register: register) {
             return existing
         }
 
@@ -290,7 +256,6 @@ final class AppState {
         if register { ProjectRegistry.shared.register(resolved) }
         doc.editorViewModel.refreshProjectId()
         recordProjectOpened(doc)
-        apply(options, to: doc.editorViewModel)
         return doc
     }
 
@@ -315,11 +280,10 @@ final class AppState {
         return await ProjectRegistry.shared.delete(entries)
     }
 
-    private func showExistingProject(at url: URL, register: Bool, options: ProjectOpenOptions) -> VideoProject? {
+    private func showExistingProject(at url: URL, register: Bool) -> VideoProject? {
         if let existing = openProjects.first(where: { Self.sameFile($0.fileURL, url) }) {
             if register { ProjectRegistry.shared.register(url) }
             showEditor(for: existing)
-            apply(options, to: existing.editorViewModel)
             return existing
         }
         return nil
@@ -341,22 +305,6 @@ final class AppState {
         guard let projectId = project.editorViewModel.projectId else { return }
         let properties = project.editorViewModel.analyticsSnapshot()
         Analytics.captureProjectActive(projectId: projectId, properties: properties)
-    }
-
-    private func apply(_ options: ProjectOpenOptions, to editor: EditorViewModel) {
-        if options.startTutorial {
-            DispatchQueue.main.async { editor.tour.start(in: editor) }
-        }
-    }
-
-    func openSample(slug: String, startTutorial: Bool, onProgress: @escaping (Double) -> Void = { _ in }) async throws {
-        let options = ProjectOpenOptions(startTutorial: startTutorial)
-        if let cached = SampleProjectService.shared.cachedURL(slug: slug) {
-            try await openProjectAsync(at: cached, register: false, options: options)
-            return
-        }
-        let url = try await SampleProjectService.shared.materialize(slug: slug, onProgress: onProgress)
-        try await openProjectAsync(at: url, register: false, options: options)
     }
 
     func openProjectFromPanel() {

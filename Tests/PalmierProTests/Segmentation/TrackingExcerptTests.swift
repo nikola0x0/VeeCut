@@ -53,7 +53,7 @@ func trackingExcerptFitsInsideHDWithEvenDimensions(display: CGSize, width: Int, 
     #expect(zip(times, times.dropFirst()).allSatisfy { abs(($1 - $0) - 1.0 / 30) < 1e-6 })
 }
 
-private func writeSolidVideo(to url: URL, frames: Int, timescale: CMTimeScale, frameDuration: CMTimeValue) async throws {
+func writeSolidVideo(to url: URL, frames: Int, timescale: CMTimeScale, frameDuration: CMTimeValue) async throws {
     let writer = try AVAssetWriter(outputURL: url, fileType: .mov)
     let input = AVAssetWriterInput(mediaType: .video, outputSettings: [
         AVVideoCodecKey: AVVideoCodecType.hevc, AVVideoWidthKey: 320, AVVideoHeightKey: 180,

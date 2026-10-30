@@ -1,7 +1,6 @@
 import Foundation
 
 struct TranscriptionToolContext {
-    let provider: TranscriptionProvider
     let preferredLocale: Locale?
 }
 
@@ -23,18 +22,12 @@ enum TranscriptionScope: Equatable {
     }
 
     @MainActor
-    func captionRequest(
-        in editor: EditorViewModel,
-        provider: TranscriptionProvider
-    ) -> EditorViewModel.CaptionRequest {
+    func captionRequest(in editor: EditorViewModel) -> EditorViewModel.CaptionRequest {
         switch self {
         case .automatic:
-            EditorViewModel.CaptionRequest(autoDetect: true, provider: provider)
+            EditorViewModel.CaptionRequest(autoDetect: true)
         case .clips, .track:
-            EditorViewModel.CaptionRequest(
-                sourceClipIds: targets(in: editor).map(\.id),
-                provider: provider
-            )
+            EditorViewModel.CaptionRequest(sourceClipIds: targets(in: editor).map(\.id))
         }
     }
 }
@@ -90,17 +83,12 @@ struct TimelineWord {
     let text: String
     let startFrame: Int
     let endFrame: Int
-    let speaker: String?
 }
 
 struct TimelineTranscript {
     let context: TranscriptionToolContext
     let words: [TimelineWord]
     let skipped: [[String: Any]]
-
-    var includesSpeakers: Bool {
-        words.contains { $0.speaker != nil }
-    }
 
     func groups(clipId filter: String? = nil) -> [TimelineTranscriptGroup] {
         var groups: [TimelineTranscriptGroup] = []
@@ -130,8 +118,6 @@ struct TimelineTranscript {
         var totalWords = 0
         var remaining = maxWords
         var lastEnd: Int?
-        var speakerRuns: [[Any]] = []
-        var currentSpeaker: String??
 
         for group in groups(clipId: clipId) {
             var visible: [TimelineWord] = []
@@ -143,11 +129,6 @@ struct TimelineTranscript {
                 visible.append(word)
                 remaining -= 1
                 lastEnd = word.endFrame
-                // Speakers as run-length turns, not a column repeated on every word.
-                if includesSpeakers, currentSpeaker != word.speaker {
-                    currentSpeaker = word.speaker
-                    speakerRuns.append([word.index, word.speaker ?? NSNull()])
-                }
             }
             guard !visible.isEmpty else { continue }
             var clipOut: [String: Any] = [
@@ -167,17 +148,12 @@ struct TimelineTranscript {
         var out: [String: Any] = [
             "fps": fps,
             "timing": "projectFrames",
-            "transcriptionSource": context.provider.rawValue,
             "clips": clipsOut,
         ]
         if segments {
             out["segmentFormat"] = ["firstWordIndex", "text", "start", "end"]
         } else {
             out["wordFormat"] = ["index", "text", "start"]
-        }
-        if includesSpeakers, !speakerRuns.isEmpty {
-            out["speakers"] = speakerRuns
-            out["speakersNote"] = "[firstWordIndex, speaker] — each run holds until the next entry."
         }
         if totalWords > maxWords {
             out["totalWords"] = totalWords
@@ -201,7 +177,7 @@ struct TimelineTranscript {
         }
         for word in words {
             if let last = run.last,
-               last.speaker != word.speaker || word.startFrame - last.endFrame > fps || run.count >= 48 {
+               word.startFrame - last.endFrame > fps || run.count >= 48 {
                 flush()
             }
             run.append(word)
@@ -282,50 +258,17 @@ extension ToolExecutor {
         return scope.targets(in: editor).isEmpty ? nil : scope
     }
 
-    func transcriptionContext(
-        _ args: [String: Any],
-        path: String,
-        estimatedCloudCost: () async -> Int
-    ) async throws -> TranscriptionToolContext {
-        let account = AccountService.shared
-        let cost = await estimatedCloudCost()
-        let provider: TranscriptionProvider = Self.canUseCloudTranscription(
-            isSignedIn: account.isSignedIn,
-            remainingCredits: account.remainingCredits,
-            estimatedCost: cost
-        ) ? .cloud : .local
-        return TranscriptionToolContext(
-            provider: provider,
-            preferredLocale: provider == .cloud ? nil : try await Self.parseLocale(args, path: path)
-        )
-    }
-
-    static func canUseCloudTranscription(isSignedIn: Bool, remainingCredits: Int, estimatedCost: Int) -> Bool {
-        guard isSignedIn else { return false }
-        guard estimatedCost > 0 else { return true }
-        return remainingCredits >= estimatedCost
+    func transcriptionContext(_ args: [String: Any], path: String) async throws -> TranscriptionToolContext {
+        TranscriptionToolContext(preferredLocale: try await Self.parseLocale(args, path: path))
     }
 
     static func parseLocale(_ args: [String: Any], path: String) async throws -> Locale? {
         guard let lang = args.string("language") else { return nil }
         let candidate = Locale(identifier: lang)
         guard let match = Transcription.matchLocale(candidates: [candidate], supported: await Transcription.supportedLocales()) else {
-            throw ToolError("\(path): on-device transcription does not support language '\(lang)'.")
+            throw ToolError("\(path): transcription does not support language '\(lang)', on-device or with Meta Muse Voice.")
         }
         return match
-    }
-
-    static func validateCloudTranscriptionAccess(for request: EditorViewModel.CaptionRequest, in editor: EditorViewModel) async throws {
-        guard request.provider == .cloud else { return }
-        let cost = await editor.captionCloudCreditCost(for: request)
-        let account = AccountService.shared
-        guard account.isSignedIn else { throw ToolError("Sign in to use Cloud transcription.") }
-        guard cost > 0 else { return }
-        let remaining = account.remainingCredits
-        guard remaining > 0 else { throw ToolError("Add credits to use Cloud transcription.") }
-        if cost > remaining {
-            throw ToolError("\(CostEstimator.stableDescription(cost)) needed. Only \(remaining) remaining.")
-        }
     }
 
     func getTranscript(_ editor: EditorViewModel, _ args: [String: Any]) async throws -> ToolResult {
@@ -339,10 +282,7 @@ extension ToolExecutor {
         }
 
         let scope = try resolveTranscriptionScope(editor, args, path: "get_transcript")
-        let cloudRequest = scope.captionRequest(in: editor, provider: .cloud)
-        let context = try await transcriptionContext(args, path: "get_transcript") {
-            await editor.captionCloudCreditCost(for: cloudRequest)
-        }
+        let context = try await transcriptionContext(args, path: "get_transcript")
         let session = TranscriptSession(context: context, scope: scope, editor: editor)
         let transcript = try await timelineTranscript(editor, session: session)
         lastTranscriptSession = session
@@ -363,10 +303,6 @@ extension ToolExecutor {
         _ editor: EditorViewModel,
         session: TranscriptSession
     ) async throws -> TimelineTranscript {
-        if session.context.provider == .cloud {
-            let request = session.scope.captionRequest(in: editor, provider: .cloud)
-            try await Self.validateCloudTranscriptionAccess(for: request, in: editor)
-        }
         let (words, skipped) = try await timelineWords(editor, session: session)
         return TimelineTranscript(context: session.context, words: words, skipped: skipped)
     }
@@ -388,17 +324,8 @@ extension ToolExecutor {
 
         let transcripts = try await transcriptsByURL(
             for: fragments,
-            fps: fps,
-            projectId: editor.projectId,
             context: session.context,
             isVideoByURL: isVideoByURL
-        )
-
-        let registry = editor.speakerRegistry
-        let assignments = editor.speakerAssignments
-        let speakerMap = await Self.alignedSpeakerLabels(
-            fragments: fragments, transcripts: transcripts.results,
-            registry: registry, assignments: assignments
         )
 
         var words: [TimelineWord] = []
@@ -413,90 +340,28 @@ extension ToolExecutor {
                     clipEndFrame: frag.clip.endFrame,
                     text: row.text,
                     startFrame: row.start,
-                    endFrame: row.end,
-                    speaker: row.speaker.map { speakerMap[frag.clip.mediaRef]?[$0] ?? $0 }
+                    endFrame: row.end
                 ))
             }
         }
         return (words, transcripts.skipped)
     }
 
-    /// Per-file speaker labels are file-local; align them project-wide by voice fingerprint.
-    private static func alignedSpeakerLabels(
-        fragments: [TranscriptFragment],
-        transcripts: [URL: TranscriptionResult],
-        registry: [SpeakerRegistryEntry],
-        assignments: [String: [String: Int]]
-    ) async -> [String: [String: String]] {
-        let namesById = Dictionary(uniqueKeysWithValues: registry.map { ($0.id, $0.name) })
-        // The identify run is the source of truth; per-file partial coverage is fine because
-        // registry names never collide with raw provider labels.
-        if !assignments.isEmpty {
-            var map: [String: [String: String]] = [:]
-            for (ref, locals) in assignments {
-                for (local, gid) in locals {
-                    map[ref, default: [:]][local] = namesById[gid] ?? "Speaker \(gid)"
-                }
-            }
-            return map
-        }
-        var refsByURL: [URL: [String]] = [:]
-        var files: [(mediaRef: String, url: URL, turns: [SpeakerIdentity.Turn])] = []
-        for frag in fragments {
-            let isNewURL = refsByURL[frag.url] == nil
-            if refsByURL[frag.url, default: []].contains(frag.clip.mediaRef) == false {
-                refsByURL[frag.url, default: []].append(frag.clip.mediaRef)
-            }
-            guard isNewURL, let transcript = transcripts[frag.url] else { continue }
-            let turns = await SpeakerIdentity.speechConfirmed(
-                SpeakerIdentity.turns(from: transcript), url: frag.url, mediaRef: frag.clip.mediaRef
-            )
-            if !turns.isEmpty { files.append((frag.clip.mediaRef, frag.url, turns)) }
-        }
-        let result = await SpeakerIdentity.assignments(files: files, registry: registry.map { ($0.id, $0.centroid) })
-        var map: [String: [String: String]] = [:]
-        for (ref, locals) in result.byFileLocal {
-            for (local, gid) in locals {
-                map[ref, default: [:]][local] = namesById[gid] ?? "Speaker \(gid)"
-            }
-        }
-        // Partial alignment would let a remapped label collide with an untouched local one.
-        guard !map.isEmpty, files.allSatisfy({ map[$0.mediaRef] != nil }) else { return [:] }
-        for refs in refsByURL.values {
-            guard let primary = refs.first, let entry = map[primary] else { continue }
-            for ref in refs.dropFirst() { map[ref] = entry }
-        }
-        return map
-    }
-
     private func transcriptsByURL(
         for fragments: [TranscriptFragment],
-        fps: Int,
-        projectId: String?,
         context: TranscriptionToolContext,
         isVideoByURL: [URL: Bool]
     ) async throws -> (results: [URL: TranscriptionResult], skipped: [[String: Any]]) {
-        let rangesByURL = sourceRangesByURL(fragments, fps: fps)
         let outcomes = await withTaskGroup(of: (URL, Result<TranscriptionResult, Error>).self) { group in
             for url in Set(fragments.map(\.url)) {
                 group.addTask {
                     do {
-                        switch context.provider {
-                        case .local:
-                            return (url, .success(try await TranscriptCache.shared.transcript(
-                                for: url,
-                                isVideo: isVideoByURL[url] ?? true,
-                                range: nil,
-                                preferredLocale: context.preferredLocale
-                            )))
-                        case .cloud:
-                            return (url, .success(try await CloudTranscription.transcribe(
-                                fileURL: url,
-                                range: rangesByURL[url],
-                                preferredLocale: nil,
-                                projectId: projectId
-                            )))
-                        }
+                        return (url, .success(try await TranscriptCache.shared.transcript(
+                            for: url,
+                            isVideo: isVideoByURL[url] ?? true,
+                            range: nil,
+                            preferredLocale: context.preferredLocale
+                        )))
                     } catch {
                         return (url, .failure(error))
                     }
@@ -519,27 +384,15 @@ extension ToolExecutor {
         return (results, skipped)
     }
 
-    private func sourceRangesByURL(_ fragments: [TranscriptFragment], fps: Int) -> [URL: ClosedRange<Double>] {
-        let rate = Double(fps)
-        guard rate > 0 else { return [:] }
-        var ranges: [URL: ClosedRange<Double>] = [:]
-        for url in Set(fragments.map(\.url)) {
-            let spans = fragments.filter { $0.url == url }.map { CaptionTranscriptMapper.sourceSpan(for: $0.clip) }
-            guard let lo = spans.map(\.start).min(), let hi = spans.map(\.end).max(), hi > lo else { continue }
-            ranges[url] = max(lo / rate - 1.0, 0)...(hi / rate + 1.0)
-        }
-        return ranges
-    }
-
-    private func timelineRows(from transcript: TranscriptionResult, clip: Clip, fps: Int) -> [(start: Int, end: Int, text: String, speaker: String?)] {
+    private func timelineRows(from transcript: TranscriptionResult, clip: Clip, fps: Int) -> [(start: Int, end: Int, text: String)] {
         let visible = CaptionTranscriptMapper.sourceSpan(for: clip)
         let rate = Double(fps)
-        let rows = transcript.words.compactMap { word -> (start: Int, end: Int, text: String, speaker: String?)? in
+        let rows = transcript.words.compactMap { word -> (start: Int, end: Int, text: String)? in
             guard let start = word.start, let end = word.end else { return nil }
             let midFrame = (start + end) / 2 * rate
             guard midFrame >= visible.start, midFrame < visible.end,
                   let frameSpan = Self.spanFrames(start: start, end: end, clip: clip, fps: fps) else { return nil }
-            return (frameSpan.start, frameSpan.end, word.text, word.speaker)
+            return (frameSpan.start, frameSpan.end, word.text)
         }
         return rows.sorted { ($0.start, $0.end) < ($1.start, $1.end) }
     }

@@ -7,7 +7,6 @@ struct MediaTab: View {
     // Toolbar state
     @State var sortMode: SortMode = .dateAdded
     @State var filterTypes: Set<ClipType> = []
-    @State var filterAI = false
     @State var searchQuery: String = ""
     @State var thumbnailSize: Double = 80
     @State var viewMode: ViewMode = .folder
@@ -33,7 +32,6 @@ struct MediaTab: View {
     @State var assetFrames: [String: CGRect] = [:]
     @State var marqueeSelection = MarqueeSelection()
 
-    @State private var mediaPanelHeight: CGFloat = 600
     @State private var showMatteSheet = false
 
     enum ViewMode: String, CaseIterable {
@@ -129,21 +127,9 @@ struct MediaTab: View {
                 .animation(.easeInOut(duration: AppTheme.Anim.transition), value: editor.mediaPanelToast)
                 .frame(maxWidth: .infinity, maxHeight: .infinity)
                 .layoutPriority(1)
-
-                if editor.showGenerationPanel && !mediaAreaCollapsed {
-                    GenerationView(maxPanelHeight: generationPanelMaxHeight)
-                        .fixedSize(horizontal: false, vertical: true)
-                        .tourAnchor(.generation)
-                        .transition(.move(edge: .bottom).combined(with: .opacity))
-                }
             }
             .layoutPriority(1)
             .onChange(of: searchQuery) { _, _ in scheduleMomentSearch() }
-        }
-        .onGeometryChange(for: CGFloat.self) { proxy in
-            proxy.size.height
-        } action: { newValue in
-            mediaPanelHeight = newValue
         }
         .onExitCommand { if editor.pendingSwapClipId != nil { editor.cancelMediaSwap() } }
         .onChange(of: editor.folders.map(\.id)) { _, _ in pruneStaleFolderState() }
@@ -295,8 +281,7 @@ struct MediaTab: View {
     }
 
     private var actionsRow: some View {
-        let showGenerate = !AccountService.shared.isMisconfigured
-        return HStack(spacing: AppTheme.Spacing.xs) {
+        HStack(spacing: AppTheme.Spacing.xs) {
             if editor.isMediaPanelSearchExpanded {
                 ExpandablePanelSearch(
                     text: $searchQuery,
@@ -306,10 +291,6 @@ struct MediaTab: View {
             } else {
                 toolbarButton(title: L10n.string("Import"), action: importMedia)
                     .tourAnchor(.importButton)
-                if showGenerate {
-                    toolbarButton(title: L10n.string("Generate"), prominent: true, action: toggleGenerationPanel)
-                        .tourAnchor(.generateButton)
-                }
                 overflowMenu
                 Spacer(minLength: AppTheme.Spacing.zero)
             }
@@ -430,10 +411,6 @@ struct MediaTab: View {
                 }
             }
             Divider()
-            Button { filterAI.toggle() } label: {
-                Label(L10n.string("AI Generated"), systemImage: filterAI ? "checkmark" : "")
-            }
-            Divider()
             Button(L10n.string("Clear Filters"), action: clearFilters)
         }
     }
@@ -485,7 +462,7 @@ struct MediaTab: View {
     }
 
     private var hasActiveFilters: Bool {
-        !filterTypes.isEmpty || filterAI
+        !filterTypes.isEmpty
     }
 
     private func toggleFilter(_ type: ClipType) {
@@ -498,7 +475,6 @@ struct MediaTab: View {
 
     private func clearFilters() {
         filterTypes.removeAll()
-        filterAI = false
     }
 
     var assetsInCurrentFolder: [MediaAsset] {
@@ -532,10 +508,9 @@ struct MediaTab: View {
 
     private func passesFilters(_ asset: MediaAsset) -> Bool {
         let typeOk = filterTypes.isEmpty || filterTypes.contains(asset.type)
-        let aiOk = !filterAI || asset.isGenerated
         let q = searchQuery.trimmingCharacters(in: .whitespaces)
         let nameOk = q.isEmpty || asset.name.localizedCaseInsensitiveContains(q)
-        return typeOk && aiOk && nameOk
+        return typeOk && nameOk
     }
 
     func sortAndFilter(_ assets: [MediaAsset]) -> [MediaAsset] {
@@ -565,37 +540,18 @@ struct MediaTab: View {
             .fixedSize()
     }
 
-    private func toolbarButton(
-        title: String,
-        prominent: Bool = false,
-        action: @escaping () -> Void
-    ) -> some View {
+    private func toolbarButton(title: String, action: @escaping () -> Void) -> some View {
         Button(action: action) {
             Text(title)
         }
-        .buttonStyle(.capsule(prominent ? .prominent : .secondary))
+        .buttonStyle(.capsule(.secondary))
         .fixedSize(horizontal: true, vertical: false)
         .focusable(false)
         .help(title)
     }
 
-    private var mediaAreaCollapsed: Bool {
-        !editor.mediaPanelVisible
-            || (editor.maximizedPanel != nil && editor.maximizedPanel != .media)
-    }
-
-    private var generationPanelMaxHeight: Double {
-        Double(max(0, mediaPanelHeight - AppTheme.GenerationPanel.mediaAreaMinHeight))
-    }
-
-    private func toggleGenerationPanel() {
-        withAnimation(.easeInOut(duration: AppTheme.Anim.transition)) {
-            editor.showGenerationPanel.toggle()
-        }
-    }
-
     private var overflowMenu: some View {
-        let canOrganize = !AccountService.shared.isMisconfigured && !editor.mediaAssets.isEmpty
+        let canOrganize = !editor.mediaAssets.isEmpty
         return toolbarMenuIcon(systemName: "ellipsis") {
             Button(action: createNewFolderInCurrent) {
                 Label(L10n.string("New Folder"), systemImage: "folder.badge.plus")

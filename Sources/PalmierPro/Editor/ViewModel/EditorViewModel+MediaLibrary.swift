@@ -540,7 +540,7 @@ extension EditorViewModel {
             guard !Task.isCancelled else { return }
             await MainActor.run {
                 guard let self else { return }
-                let recovering = Set(self.mediaAssets.lazy.filter { $0.isGenerating || $0.isRecoveringGeneration }.map(\.id))
+                let recovering = Set(self.mediaAssets.lazy.filter(\.isGenerating).map(\.id))
                 let resolved = missing.subtracting(recovering)
                 if self.missingMediaRefs != resolved {
                     self.missingMediaRefs = resolved
@@ -630,7 +630,7 @@ extension EditorViewModel {
             } else {
                 missingMediaRefs.insert(asset.id)
             }
-            if asset.isGenerating || asset.isGenerated || asset.importInput != nil {
+            if asset.isGenerating || asset.importInput != nil {
                 asset.generationStatus = .failed("Could not read media file.")
             }
             recordManifestMetadata(for: asset, batching: batchManifestUpdate)

@@ -6,7 +6,7 @@ struct NotificationsPane: View {
     var body: some View {
         SettingsToggleRow(
             title: L10n.string("Show notifications"),
-            subtitle: L10n.string("Get a notification when a generation finishes."),
+            subtitle: L10n.string("Get a notification when a background export finishes."),
             isOn: $notificationsEnabled
         )
         .onChange(of: notificationsEnabled) { _, newValue in

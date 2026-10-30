@@ -3,7 +3,7 @@ import Foundation
 enum Layout {
     // Media panel
     static let mediaPanelDefault: CGFloat = 500
-    static let mediaPanelMin: CGFloat = 280 + AppTheme.GenerationPanel.minimumWidthAdjustment
+    static let mediaPanelMin: CGFloat = 280
 
     // Inspector
     static let inspectorDefault: CGFloat = AppTheme.EditorPanel.defaultWidth
@@ -41,8 +41,6 @@ enum Layout {
 enum Defaults {
     static let pixelsPerFrame: Double = 4.0
     static let imageDurationSeconds: Double = 5.0
-    static let audioTTSDurationSeconds: Double = 10.0
-    static let audioMusicDurationSeconds: Double = 60.0
     static let textDurationSeconds: Double = 3.0
     static let aspectTolerance: Double = 0.02
 }
@@ -86,7 +84,7 @@ enum Trim {
 enum Project {
     static let fileExtension = "veecut"
     static let registryFilename = "project-registry.json"
-    static let typeIdentifier = "io.veecut.appject"
+    static let typeIdentifier = "io.veecut.project"
     static let defaultProjectName = "Untitled Project"
     static let timelineFilename = "project.json"
     static let manifestFilename = "media.json"

@@ -37,37 +37,6 @@ enum AppNotifications {
         }
     }
 
-    static func generationComplete(
-        assetId: String,
-        projectURL: URL?,
-        assetName: String,
-        assetType: ClipType,
-        count: Int
-    ) {
-        guard canUseUserNotifications, isEnabled else { return }
-
-        let content = UNMutableNotificationContent()
-        content.title = L10n.string("Generation complete")
-        content.body = generationBody(assetName: assetName, assetType: assetType, count: count)
-        content.sound = .default
-        var userInfo = ["assetId": assetId]
-        if let projectURL {
-            userInfo["projectPath"] = projectURL.path
-        }
-        content.userInfo = userInfo
-
-        let request = UNNotificationRequest(
-            identifier: "generation-complete-\(UUID().uuidString)",
-            content: content,
-            trigger: nil
-        )
-        UNUserNotificationCenter.current().add(request) { error in
-            if let error {
-                Log.app.warning("notification delivery failed error=\(error.localizedDescription)")
-            }
-        }
-    }
-
     /// Agent-triggered exports run in the background
     static func exportComplete(name: String, outputURL: URL, size: CGSize?, warningCount: Int) {
         guard canUseUserNotifications, isEnabled else { return }
@@ -129,29 +98,6 @@ enum AppNotifications {
         Bundle.main.bundleURL.pathExtension == "app"
             && (Bundle.main.bundleIdentifier?.contains(".") ?? false)
     }
-
-    static func generationBody(assetName: String, assetType: ClipType, count: Int) -> String {
-        if count > 1 {
-            switch assetType {
-            case .video, .sequence: return L10n.string("\(count) videos are ready in VeeCut.")
-            case .audio: return L10n.string("\(count) audio clips are ready in VeeCut.")
-            case .image: return L10n.string("\(count) images are ready in VeeCut.")
-            case .text: return L10n.string("\(count) text clips are ready in VeeCut.")
-            case .lottie: return L10n.string("\(count) Lottie animations are ready in VeeCut.")
-            case .subtitle: return L10n.string("\(count) subtitle files are ready in VeeCut.")
-            }
-        }
-        let name = assetName.trimmingCharacters(in: .whitespacesAndNewlines)
-        guard name.isEmpty else { return L10n.string("\(name) is ready.") }
-        switch assetType {
-        case .video, .sequence: return L10n.string("Your video is ready.")
-        case .audio: return L10n.string("Your audio clip is ready.")
-        case .image: return L10n.string("Your image is ready.")
-        case .text: return L10n.string("Your text clip is ready.")
-        case .lottie: return L10n.string("Your Lottie animation is ready.")
-        case .subtitle: return L10n.string("Your subtitle file is ready.")
-        }
-    }
 }
 
 private final class AppNotificationDelegate: NSObject, UNUserNotificationCenterDelegate {
@@ -175,8 +121,6 @@ private final class AppNotificationDelegate: NSObject, UNUserNotificationCenterD
             await MainActor.run { NSWorkspace.shared.activateFileViewerSelecting([url]) }
             return
         }
-        let assetId = userInfo["assetId"] as? String
-        let projectURL = (userInfo["projectPath"] as? String).map(URL.init(fileURLWithPath:))
-        await AppState.shared.revealGeneratedAssetFromNotification(assetId: assetId, projectURL: projectURL)
+        await AppState.shared.activateFromNotification()
     }
 }

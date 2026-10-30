@@ -73,7 +73,7 @@ struct AgentActivityHighlightTests {
     @Test func onlyMutationToolsPublishTimelineChanges() {
         let excluded: [ToolName] = [.inspectTimeline, .getTranscript, .organizeMedia]
         let included: [ToolName] = [
-            .manageTracks, .setClipProperties, .copyClipSettings, .denoiseAudio, .generateAudio,
+            .manageTracks, .setClipProperties, .copyClipSettings, .denoiseAudio,
         ]
         #expect(excluded.allSatisfy { !$0.publishesTimelineChanges })
         #expect(included.allSatisfy { $0.publishesTimelineChanges })

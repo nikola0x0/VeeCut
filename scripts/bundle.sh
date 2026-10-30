@@ -59,7 +59,6 @@ POSTHOG_PROJECT_TOKEN="${POSTHOG_PROJECT_TOKEN:-}"
 POSTHOG_HOST="${POSTHOG_HOST:-https://us.i.posthog.com}"
 PROVISION_PROFILE="${PROVISION_PROFILE:-$ROOT/scripts/Palmier_Pro_Developer_ID.provisionprofile}"
 ENTITLEMENTS="$ROOT/scripts/PalmierPro.entitlements"
-KEYCHAIN_ACCESS_GROUP="${KEYCHAIN_ACCESS_GROUP:-MMFLRC7562.io.veecut.app}"
 RESOURCES="$ROOT/Sources/PalmierPro/Resources"
 APP="$ROOT/.build/VeeCut.app"
 ZIP="$ROOT/.build/VeeCut.zip"
@@ -114,20 +113,6 @@ else
   echo "==> POSTHOG_PROJECT_TOKEN not set — product analytics will be a no-op in this build"
 fi
 
-inject_plist() {
-  local key="$1" value="$2"
-  if [ -z "$value" ]; then
-    echo "!! $key not set in $ENV_FILE — app will fatalError on launch" >&2
-    return
-  fi
-  /usr/libexec/PlistBuddy -c "Delete :$key" "$APP/Contents/Info.plist" 2>/dev/null || true
-  /usr/libexec/PlistBuddy -c "Add :$key string $value" "$APP/Contents/Info.plist"
-}
-
-echo "==> Injecting backend config into Info.plist"
-inject_plist PalmierClerkPublishableKey "${CLERK_PUBLISHABLE_KEY:-}"
-inject_plist PalmierConvexDeploymentURL "${CONVEX_DEPLOYMENT_URL:-}"
-inject_plist PalmierConvexHttpURL "${CONVEX_HTTP_URL:-}"
 cp "$RESOURCES/AppIcon.icns" "$APP/Contents/Resources/AppIcon.icns"
 
 # Flatten SwiftPM's resource bundle into the app's Resources tree.
@@ -251,13 +236,12 @@ if [ "$MODE" = "dev" ]; then
   exit 0
 fi
 
-echo "==> Embedding provisioning profile + keychain access group"
+echo "==> Embedding provisioning profile"
 if [ ! -f "$PROVISION_PROFILE" ]; then
   echo "!! provisioning profile not found at $PROVISION_PROFILE" >&2
   exit 1
 fi
 cp "$PROVISION_PROFILE" "$APP/Contents/embedded.provisionprofile"
-inject_plist PalmierClerkKeychainAccessGroup "$KEYCHAIN_ACCESS_GROUP"
 
 echo "==> Codesigning main app"
 codesign --force --options runtime --timestamp \

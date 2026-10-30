@@ -27,48 +27,26 @@ import Testing
         await editor.pendingManifestMetadataFlushTask?.value
         #expect(editor.mediaManifest.entries.map(\.name) == ["Latest"])
     }
-    @Test func draftGenerationSurvivesManifestRoundTrip() throws {
-        var input = GenerationInput(
-            prompt: "Draft", model: "flux-3", duration: 8,
-            aspectRatio: "16:9", resolution: "720p", draft: true
+    @Test func failedStatusSurvivesManifestRoundTrip() throws {
+        let failed = asset("failed")
+        failed.generationStatus = .failed("Download failed")
+        let data = try JSONEncoder().encode(failed.toManifestEntry(projectURL: nil))
+        let restored = MediaAsset(
+            entry: try JSONDecoder().decode(MediaManifestEntry.self, from: data),
+            resolvedURL: failed.url
         )
-        input.backendJobId = "draft-job"
-        input.resultURLs = ["video", "cache"]
-        let generated = MediaAsset(
-            url: URL(fileURLWithPath: "/tmp/draft.mp4"),
-            type: .video,
-            name: "Draft",
-            generationInput: input
-        )
-        let data = try JSONEncoder().encode(generated.toManifestEntry(projectURL: nil))
-        let restored = try JSONDecoder().decode(MediaManifestEntry.self, from: data)
-        #expect(restored.generationInput?.draft == true)
-        #expect(MediaAsset(entry: restored, resolvedURL: generated.url).canEnhanceDraft)
+        #expect(restored.generationStatus == .failed("Download failed"))
     }
 
-    @Test func refundedCreditsSurviveManifestRoundTrip() throws {
-        var input = GenerationInput(
-            prompt: "Fail", model: "flux-3", duration: 5,
-            aspectRatio: "16:9", resolution: "720p"
-        )
-        input.costCredits = 12
-        input.refundedCredits = 12
-        let generated = MediaAsset(
-            url: URL(fileURLWithPath: "/tmp/failed.mp4"),
-            type: .video,
-            name: "Failed",
-            generationInput: input
-        )
-        generated.generationStatus = .failed("Provider error")
-        let data = try JSONEncoder().encode(generated.toManifestEntry(projectURL: nil))
-        let asset = MediaAsset(
-            entry: try JSONDecoder().decode(MediaManifestEntry.self, from: data),
-            resolvedURL: generated.url
-        )
-        #expect(asset.generationInput?.costCredits == 12)
-        #expect(asset.generationInput?.refundedCredits == 12)
-        #expect(asset.wasGenerationRefunded)
-        asset.generationInput?.refundedCredits = 0
-        #expect(!asset.wasGenerationRefunded)
+    @Test func entriesWrittenWithGenerationMetadataStillDecode() throws {
+        let json = #"""
+        {"id":"gen","name":"Generated","type":"video","duration":5,
+         "source":{"project":{"relativePath":"media/gen.mp4"}},
+         "generationInput":{"prompt":"p","model":"m","duration":5,"aspectRatio":"16:9"},
+         "cachedRemoteURL":"https://example.com/x.mp4"}
+        """#
+        let entry = try JSONDecoder().decode(MediaManifestEntry.self, from: Data(json.utf8))
+        #expect(entry.id == "gen")
+        #expect(entry.source == .project(relativePath: "media/gen.mp4"))
     }
 }

@@ -34,14 +34,15 @@ struct OnboardingStoreTests {
         }
     }
 
-    @Test func submittingSurveyAdvancesToAccount() throws {
+    @Test func submittingSurveyCompletesOnboarding() throws {
         try withDefaults { defaults in
             let store = OnboardingStore(defaults: defaults)
             store.advance()
             store.advance()
             store.submitSurvey()
 
-            #expect(store.step == .account)
+            #expect(store.isComplete)
+            #expect(defaults.bool(forKey: OnboardingStore.completionKey))
         }
     }
 
@@ -55,9 +56,8 @@ struct OnboardingStoreTests {
             store.advance()
             store.advance()
             store.advance()
-            store.advance()
 
-            #expect(store.step == .account)
+            #expect(store.step == .profile)
         }
     }
 

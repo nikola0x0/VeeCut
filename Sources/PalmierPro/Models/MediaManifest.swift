@@ -23,14 +23,11 @@ struct MediaManifestEntry: Codable, Sendable, Equatable, Identifiable {
     var type: ClipType
     var source: MediaSource
     var duration: Double
-    var generationInput: GenerationInput?
     var sourceWidth: Int?
     var sourceHeight: Int?
     var sourceFPS: Double?
     var hasAudio: Bool?
     var folderId: String?
-    var cachedRemoteURL: String?
-    var cachedRemoteURLExpiresAt: Date?
     var generationStatus: String?
     var importInput: MediaImportInput?
 }
@@ -39,49 +36,6 @@ struct MediaImportInput: Codable, Sendable, Equatable {
     var sourceURL: String? = nil
     var sourcePath: String? = nil
     var createdAt: Date? = nil
-}
-
-struct GenerationInput: Codable, Sendable, Equatable {
-    var prompt: String
-    var model: String
-    var duration: Int
-    var aspectRatio: String
-    var resolution: String?
-    var upscaleSettings: UpscaleSettings? = nil
-    var upscaleSourceWidth: Int? = nil
-    var upscaleSourceHeight: Int? = nil
-    var upscaleSourceFPS: Double? = nil
-    var quality: String?
-    var imageURLs: [String]?
-    /// Image-only
-    var numImages: Int?
-    /// Audio-only
-    var voice: String?
-    var lyrics: String?
-    var styleInstructions: String?
-    var instrumental: Bool?
-    var targetLanguage: String?
-    var multilingual: Bool?
-    var audioInput: String?
-    /// Video-only
-    var generateAudio: Bool?
-    var draft: Bool?
-    var usesSourceVideo: Bool?
-    var referenceImageURLs: [String]?
-    var referenceVideoURLs: [String]?
-    var referenceAudioURLs: [String]?
-
-    /// Asset IDs for the references.
-    var imageURLAssetIds: [String]?
-    var referenceImageAssetIds: [String]?
-    var referenceVideoAssetIds: [String]?
-    var referenceAudioAssetIds: [String]?
-    var createdAt: Date?
-    var backendJobId: String?
-    var outputIndex: Int?
-    var resultURLs: [String]?
-    var costCredits: Int?
-    var refundedCredits: Int?
 }
 
 enum MediaSource: Codable, Sendable, Equatable {

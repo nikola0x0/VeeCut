@@ -16,7 +16,6 @@ struct AssetThumbnailView: View {
             }
             .aspectRatio(16.0 / 9.0, contentMode: .fit)
             .clipShape(RoundedRectangle(cornerRadius: AppTheme.Radius.sm))
-            .overlay(alignment: .topLeading) { thumbnailBadges }
             .overlay(alignment: .topTrailing) { hoverActions }
             .overlay(alignment: .bottomTrailing) { durationOverlay }
             .overlay(
@@ -88,7 +87,6 @@ struct AssetThumbnailView: View {
                 Divider()
             }
             Button(L10n.string("Rename")) { beginRename() }
-            AIEditMenu(asset: asset)
             Divider()
         }
         if ids.contains(where: { id in
@@ -149,16 +147,8 @@ struct AssetThumbnailView: View {
     private var thumbnailContent: some View {
         Group {
             if asset.isGenerating {
-                ZStack {
-                    if let image = generatingReferenceImage {
-                        Color.clear
-                            .overlay { Image(nsImage: image).resizable().scaledToFill().blur(radius: 12) }
-                            .clipped()
-                        AppTheme.MediaOverlay.backgroundColor.opacity(AppTheme.Opacity.strong)
-                    }
-                    GeneratingOverlay(label: asset.generatingLabel)
-                }
-                .clipped()
+                GeneratingOverlay(label: asset.generatingLabel)
+                    .clipped()
             } else if case .failed(let error) = asset.generationStatus {
                 failedThumbnail(error: error)
             } else if isMissing {
@@ -173,28 +163,6 @@ struct AssetThumbnailView: View {
                     .foregroundStyle(AppTheme.MediaOverlay.tertiaryColor)
             }
         }
-    }
-
-    private var generatingReferenceImage: NSImage? {
-        guard let input = asset.generationInput else { return nil }
-        let refIds = (input.imageURLAssetIds ?? []) + (input.referenceImageAssetIds ?? [])
-        for id in refIds {
-            guard let ref = editor.mediaAssets.first(where: { $0.id == id }), ref.type == .image else { continue }
-            if let image = ref.thumbnail ?? NSImage(contentsOf: ref.url) {
-                return image
-            }
-        }
-        return nil
-    }
-
-    @ViewBuilder
-    private var thumbnailBadges: some View {
-        HStack(spacing: AppTheme.Spacing.xs) {
-            if asset.isGenerated && !asset.isGenerating {
-                sourceBadge
-            }
-        }
-        .padding(AppTheme.Spacing.xs)
     }
 
     @ViewBuilder
@@ -223,15 +191,6 @@ struct AssetThumbnailView: View {
             .transition(.opacity)
             .help(L10n.string("Add to chat"))
         }
-    }
-
-    private var sourceBadge: some View {
-        Text(verbatim: "AI")
-            .font(.system(size: AppTheme.FontSize.xxs, weight: .semibold))
-            .foregroundStyle(AppTheme.MediaOverlay.primaryColor)
-            .padding(.horizontal, AppTheme.Spacing.sm)
-            .padding(.vertical, AppTheme.Spacing.xxs)
-            .background(AppTheme.MediaOverlay.backgroundColor.opacity(AppTheme.Opacity.prominent), in: .capsule)
     }
 
     private var durationBadge: some View {

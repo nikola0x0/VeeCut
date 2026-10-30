@@ -122,7 +122,7 @@ struct ToolExecutorSmokeTests {
         #expect(json?["fps"] as? Int == 30)
         #expect(json?["tracks"] is [Any])
         #expect(json?["currentFrame"] is Int)
-        #expect(json?["canGenerate"] is Bool)
+        #expect(json?["canGenerate"] == nil)
     }
 }
 
@@ -596,33 +596,8 @@ struct ToolExecutorReadOnlyTests {
         #expect(timelines?.first?["active"] as? Bool == true)
     }
 
-    @Test func getMediaIdentifiesEnhanceableDrafts() async throws {
-        let h = ToolHarness()
-        let asset = h.makeAsset(name: "Draft")
-        var input = GenerationInput(
-            prompt: "Draft", model: "flux-3", duration: 8,
-            aspectRatio: "16:9", resolution: "720p", draft: true
-        )
-        input.backendJobId = "draft-job"
-        input.resultURLs = ["video", "cache"]
-        asset.generationInput = input
-        h.editor.updateManifestMetadata(for: [asset])
-
-        let json = try await h.runOK("get_media", args: ["ids": [asset.id]]) as? [String: Any]
-        let result = (json?["assets"] as? [[String: Any]])?.first
-        #expect(result?["draft"] as? Bool == true)
-        #expect(result?["canEnhanceDraft"] as? Bool == true)
-    }
-
     @Test func getMediaRoundsFloatingPointNumbersToThreeDecimalPlaces() async throws {
         let h = ToolHarness()
-        var input = GenerationInput(
-            prompt: "Generate",
-            model: "model-1",
-            duration: 5,
-            aspectRatio: "16:9"
-        )
-        input.createdAt = Date(timeIntervalSinceReferenceDate: 123.123456)
         h.editor.mediaManifest.entries = [
             MediaManifestEntry(
                 id: "asset-1",
@@ -630,14 +605,11 @@ struct ToolExecutorReadOnlyTests {
                 type: .video,
                 source: .external(absolutePath: "/tmp/media.mov"),
                 duration: 12.3456789,
-                generationInput: input,
                 sourceWidth: 1920,
                 sourceHeight: 1080,
                 sourceFPS: 29.97002997,
                 hasAudio: true,
-                folderId: nil,
-                cachedRemoteURL: nil,
-                cachedRemoteURLExpiresAt: nil
+                folderId: nil
             ),
         ]
 
@@ -653,9 +625,6 @@ struct ToolExecutorReadOnlyTests {
         let entry = assets?.first
         #expect(entry?["durationSeconds"] as? Double == 12.346)
         #expect(entry?["fps"] as? Double == 29.97)
-        // Generated assets keep their prompt as a content hint; internals stay hidden.
-        #expect(entry?["prompt"] as? String == "Generate")
-        #expect(entry?["generationInput"] == nil)
         #expect(entry?["source"] == nil)
     }
 
@@ -690,35 +659,6 @@ struct ToolExecutorReadOnlyTests {
         let assets = json?["assets"] as? [[String: Any]]
         #expect(assets?.count == 1)
         #expect((assets?.first?["id"] as? String).map { a.id.hasPrefix($0) } == true)
-    }
-
-    // MARK: - list_models
-
-    /// ModelCatalog populates from Convex over the network — empty in tests. These verify
-    /// shape and filter contract regardless of whether the catalog has any entries.
-
-    @Test func listModelsReturnsWrappedShape() async throws {
-        let h = ToolHarness()
-        let body = try await h.runOK("list_models") as? [String: Any]
-        #expect(body?["models"] is [Any])
-        #expect(body?["loaded"] is Bool)
-    }
-
-    @Test func listModelsReportsCatalogNotLoadedInTestEnvironment() async throws {
-        // No Convex connection → catalog stays unloaded. Agents must use this to disambiguate
-        // empty results from "catalog not synced yet".
-        let h = ToolHarness()
-        let body = try await h.runOK("list_models") as? [String: Any]
-        #expect(body?["loaded"] as? Bool == false)
-    }
-
-    @Test func listModelsFilterIsRespectedForAllEntries() async throws {
-        let h = ToolHarness()
-        let body = try await h.runOK("list_models", args: ["type": "image"]) as? [String: Any]
-        let models = body?["models"] as? [[String: Any]]
-        for m in models ?? [] {
-            #expect(m["type"] as? String == "image")
-        }
     }
 }
 

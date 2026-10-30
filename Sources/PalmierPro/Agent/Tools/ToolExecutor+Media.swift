@@ -5,7 +5,6 @@ import ImageIO
 // get_media (library inventory) and inspect_media (frames, EXIF, transcription per asset).
 extension ToolExecutor {
     private static let getMediaAllowedKeys: Set<String> = ["ids", "folder", "pending"]
-    private static let getMediaPromptLimit = 100
 
     private static let inspectMediaAllowedKeys: Set<String> = [
         "mediaRef", "clipId", "maxFrames", "startSeconds", "endSeconds", "wordTimestamps", "overview", "language",
@@ -43,16 +42,6 @@ extension ToolExecutor {
             if entry.hasAudio == true, entry.type == .video { a["hasAudio"] = true }
             if let path = folderPathString(entry.folderId, editor: editor) { a["folder"] = path }
             if pending, let status { a["generationStatus"] = status }
-            if !idFilter.isEmpty, let status, status.hasPrefix("failed: ") {
-                feedbackState.recordError(String(status.dropFirst("failed: ".count)))
-            }
-            if let input = entry.generationInput, input.draft == true {
-                a["draft"] = true
-                if !pending, input.backendJobId != nil, (input.resultURLs?.count ?? 0) >= 2 {
-                    a["canEnhanceDraft"] = true
-                }
-            }
-            if let prompt = Self.truncatedPrompt(entry.generationInput?.prompt) { a["prompt"] = prompt }
             assets.append(a)
         }
 
@@ -78,8 +67,6 @@ extension ToolExecutor {
         let url = asset.url
         guard FileManager.default.fileExists(atPath: url.path) else {
             switch asset.generationStatus {
-            case .preparing:
-                throw ToolError("Asset \(asset.id) is still preparing. Poll get_media and retry once generationStatus becomes 'none'.")
             case .downloading:
                 throw ToolError("Asset \(asset.id) is still downloading. Poll get_media and retry once generationStatus becomes 'none'.")
             case .generating:
@@ -362,13 +349,7 @@ extension ToolExecutor {
         if let w = asset.sourceWidth { meta["width"] = w }
         if let h = asset.sourceHeight { meta["height"] = h }
         if let fps = asset.sourceFPS { meta["fps"] = fps }
-        if let prompt = truncatedPrompt(asset.generationInput?.prompt) { meta["prompt"] = prompt }
         return meta
-    }
-
-    private static func truncatedPrompt(_ prompt: String?) -> String? {
-        guard let prompt, !prompt.isEmpty else { return nil }
-        return prompt.count > getMediaPromptLimit ? String(prompt.prefix(getMediaPromptLimit)) + "…" : prompt
     }
 
     private static func imagePropertiesSummary(at url: URL) -> [String: Any]? {

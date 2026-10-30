@@ -10,7 +10,6 @@ struct TitleTabBar: View {
 
     let items: [Item]
     let selected: String?
-    var tourAnchors: [String: TourAnchorID] = [:]
     let onSelect: (String) -> Void
 
     var body: some View {
@@ -22,10 +21,9 @@ struct TitleTabBar: View {
         .panelHeaderBar()
     }
 
-    @ViewBuilder
     private func tab(_ item: Item) -> some View {
         let active = selected == item.id
-        let button = Button {
+        return Button {
             onSelect(item.id)
         } label: {
             VStack(spacing: AppTheme.Spacing.xxs) {
@@ -57,10 +55,5 @@ struct TitleTabBar: View {
         .focusable(false)
         .accessibilityLabel(L10n.string(key: item.titleKey))
         .accessibilityAddTraits(active ? .isSelected : [])
-        if let anchor = tourAnchors[item.id] {
-            button.tourAnchor(anchor)
-        } else {
-            button
-        }
     }
 }

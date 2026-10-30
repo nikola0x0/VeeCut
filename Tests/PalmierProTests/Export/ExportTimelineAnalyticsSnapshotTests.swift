@@ -5,12 +5,9 @@ import Testing
 @Suite("Export timeline analytics snapshot")
 struct ExportTimelineAnalyticsSnapshotTests {
     @Test func stripsPrivateContentAndGroupsCaptions() throws {
-        var generated = generationInput()
-        generated.prompt = "SECRET_PROMPT"
-        generated.resultURLs = ["https://example.com/private"]
         var manifest = MediaManifest()
         manifest.entries = [
-            entry("SECRET_MEDIA", "/Users/private/Movies/interview.mov", generation: generated),
+            entry("SECRET_MEDIA", "/Users/private/Movies/interview.mov"),
         ]
 
         let media = Fixtures.clip(id: "SECRET_CLIP", mediaRef: "SECRET_MEDIA", start: 0, duration: 30)
@@ -37,17 +34,17 @@ struct ExportTimelineAnalyticsSnapshotTests {
         #expect((try array(track, "clips")).count == 2)
         #expect(captions.count == 1)
         #expect(captions[0]["caption_count"] as? Int == 2)
-        for secret in ["/Users", "private", "SECRET_", "example.com"] {
+        for secret in ["/Users", "private", "SECRET_"] {
             #expect(!json.contains(secret))
         }
     }
 
-    @Test func reportsRatiosAndDeduplicatesNestedTimelines() throws {
+    @Test func countsClipsAndDeduplicatesNestedTimelines() throws {
         var manifest = MediaManifest()
         manifest.entries = [
-            entry("generated", "generated.mp4", generation: generationInput()),
-            entry("imported", "imported.mov"),
-            entry("upscaled", "upscaled.mp4", generation: generationInput(upscale: UpscaleSettings())),
+            entry("first", "first.mp4"),
+            entry("second", "second.mov"),
+            entry("third", "third.mp4"),
         ]
         var child = Fixtures.timeline()
         child.id = "child"
@@ -56,9 +53,9 @@ struct ExportTimelineAnalyticsSnapshotTests {
         var secondNest = firstNest
         secondNest.startFrame = 130
         var root = Fixtures.timeline(fps: 30, tracks: [Fixtures.videoTrack(clips: [
-            Fixtures.clip(mediaRef: "generated", start: 0, duration: 60),
-            Fixtures.clip(mediaRef: "imported", start: 60, duration: 30),
-            Fixtures.clip(mediaRef: "upscaled", start: 90, duration: 30),
+            Fixtures.clip(mediaRef: "first", start: 0, duration: 60),
+            Fixtures.clip(mediaRef: "second", start: 60, duration: 30),
+            Fixtures.clip(mediaRef: "third", start: 90, duration: 30),
             firstNest, secondNest,
         ])])
         root.id = "root"
@@ -75,11 +72,8 @@ struct ExportTimelineAnalyticsSnapshotTests {
         #expect((try array(snapshot, "timelines")).count == 2)
         #expect(rootClips.suffix(2).compactMap { $0["nested_timeline_id"] as? String }
             == ["timeline_1", "timeline_1"])
-        #expect(properties["generated_visual_clip_count"] as? Int == 1)
-        #expect(properties["imported_visual_clip_count"] as? Int == 1)
-        #expect(properties["upscaled_visual_clip_count"] as? Int == 1)
-        #expect(abs((properties["generated_visual_clip_ratio"] as? Double ?? 0) - 1.0 / 3.0) < 0.000_001)
-        #expect(properties["generated_visual_duration_ratio"] as? Double == 0.5)
+        #expect(properties["visual_clip_count"] as? Int == 3)
+        #expect((try array(snapshot, "assets")).count == 3)
         let project = try object(makeInput(.project(timelines: [root, child], rootTimelineId: child.id), manifest))
         #expect(project["scope"] as? String == "project")
         #expect(project["root_timeline_id"] as? String == "timeline_1")
@@ -114,17 +108,10 @@ struct ExportTimelineAnalyticsSnapshotTests {
         return try array(timeline, "tracks")
     }
 
-    private func entry(_ id: String, _ filename: String, generation: GenerationInput? = nil) -> MediaManifestEntry {
+    private func entry(_ id: String, _ filename: String) -> MediaManifestEntry {
         MediaManifestEntry(
             id: id, name: "PRIVATE_NAME", type: .video,
-            source: .external(absolutePath: filename), duration: 10, generationInput: generation
-        )
-    }
-
-    private func generationInput(upscale: UpscaleSettings? = nil) -> GenerationInput {
-        GenerationInput(
-            prompt: "generated", model: "model", duration: 5,
-            aspectRatio: "16:9", resolution: nil, upscaleSettings: upscale
+            source: .external(absolutePath: filename), duration: 10
         )
     }
 }

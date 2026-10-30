@@ -31,7 +31,7 @@
     "id": "ugc-editing",
     "name": "ugc-editing",
     "description": "Covers assembling raw footage, trimming bad takes and silences, choosing and applying a talking-head/b-roll format (straight intercut, stacked split, or masked/floating overlay), and caption placement for UGC-style content — agnostic to whether the clips are AI-generated or real filmed footage. Use whenever the user wants to edit, cut, assemble, format, or caption UGC-style video, or pick a talking-head + b-roll layout. Picks up after ugc-photo-prompts/ugc-video-prompts if the footage is AI-generated, or after real footage is imported via import_media.",
-    "sha": "732b02a7efa5",
+    "sha": "0e7e931da735",
     "path": "skills/ugc-editing/SKILL.md"
   }
 ]
