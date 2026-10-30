@@ -8,6 +8,8 @@ struct ProjectPackageContents: Sendable {
     var manifest: MediaManifest?
     var manifestUnreadable: Bool = false
     var maskFiles: [String: Data] = [:]
+    var historyVersions: [ProjectHistory.Version] = []
+    var historyMaskFiles: [String: Data] = [:]
 }
 
 struct ProjectPackageSnapshot: Sendable {
@@ -16,6 +18,8 @@ struct ProjectPackageSnapshot: Sendable {
     var thumbnail: Data?
     var chatSessionFiles: [(name: String, data: Data)]
     var maskFiles: [(name: String, data: Data)] = []
+    var historyVersions: [ProjectHistory.Version] = []
+    var historyMaskFiles: [String: Data] = [:]
 }
 
 private struct RestoredMediaCandidate: Sendable {
@@ -45,6 +49,7 @@ class VideoProject: NSDocument {
     private nonisolated(unsafe) var loadedProjectFile: ProjectFile?
     private nonisolated(unsafe) var loadedManifest: MediaManifest?
     private nonisolated(unsafe) var loadedMaskFiles: [String: Data] = [:]
+    private nonisolated(unsafe) var loadedHistory: (versions: [ProjectHistory.Version], maskFiles: [String: Data]) = ([], [:])
 
     /// Set when media.json existed but failed to decode, so saves preserve it instead of clobbering.
     private nonisolated(unsafe) var manifestLoadFailed = false
@@ -55,6 +60,8 @@ class VideoProject: NSDocument {
     private nonisolated(unsafe) var snapshotThumbnail: Data?
     private nonisolated(unsafe) var snapshotChatSessionFiles: [(name: String, data: Data)] = []
     private nonisolated(unsafe) var snapshotMaskFiles: [(name: String, data: Data)] = []
+    private nonisolated(unsafe) var snapshotHistoryVersions: [ProjectHistory.Version] = []
+    private nonisolated(unsafe) var snapshotHistoryMaskFiles: [String: Data] = [:]
     private nonisolated(unsafe) var snapshotSourceProjectURL: URL?
     private nonisolated(unsafe) var snapshotPreparedForWrite = false
     // AppKit saves asynchronously, but write() consumes one shared snapshot at a time.
@@ -91,6 +98,7 @@ class VideoProject: NSDocument {
         loadedManifest = contents.manifest
         manifestLoadFailed = contents.manifestUnreadable
         loadedMaskFiles = contents.maskFiles
+        loadedHistory = (contents.historyVersions, contents.historyMaskFiles)
         let timelines = loadedProjectFile?.timelines ?? []
         Log.project.notice(
             "read ok timelines=\(timelines.count)",
@@ -132,7 +140,7 @@ class VideoProject: NSDocument {
         }
 
         var maskFiles: [String: Data] = [:]
-        for mask in projectFile.trackedMasks ?? [] where !mask.isDrawnArea {
+        for mask in projectFile.trackedMasks ?? [] {
             let name = "\(TrackedMaskFile.directoryName)/\(TrackedMaskFile.fileName(maskId: mask.id))"
             if let data = try optionalData(name, in: url) {
                 maskFiles[mask.id] = data
@@ -141,11 +149,16 @@ class VideoProject: NSDocument {
             }
         }
 
+        let history = ProjectHistory.read { name in
+            try optionalData("\(ProjectHistory.directoryName)/\(name)", in: url)
+        }
         return ProjectPackageContents(
             projectFile: projectFile,
             manifest: manifest,
             manifestUnreadable: manifestUnreadable,
-            maskFiles: maskFiles
+            maskFiles: maskFiles,
+            historyVersions: history.versions,
+            historyMaskFiles: history.maskFiles
         )
     }
 
@@ -258,6 +271,10 @@ class VideoProject: NSDocument {
         let thumbnail = snapshotThumbnail
         let chatSessionFiles = snapshotChatSessionFiles
         let maskFiles = snapshotMaskFiles
+        let historyVersions = snapshotHistoryVersions
+        let historyMaskFiles = snapshotHistoryMaskFiles
+        snapshotHistoryVersions = []
+        snapshotHistoryMaskFiles = [:]
         let sourceURL = snapshotSourceProjectURL
         snapshotPreparedForWrite = false
         snapshotSourceProjectURL = nil
@@ -275,7 +292,9 @@ class VideoProject: NSDocument {
                 manifest: manifest.flatMap { try? JSONEncoder().encode($0) },
                 thumbnail: thumbnail,
                 chatSessionFiles: chatSessionFiles,
-                maskFiles: maskFiles
+                maskFiles: maskFiles,
+                historyVersions: historyVersions,
+                historyMaskFiles: historyMaskFiles
             ),
             to: url,
             sourceURL: sourceURL
@@ -295,6 +314,8 @@ class VideoProject: NSDocument {
                 ChatSessionStore.encodeSession(session).map { (name: "\(session.id.uuidString).json", data: $0) }
             }
         snapshotMaskFiles = editorViewModel.trackedMaskFileSnapshot()
+        snapshotHistoryVersions = editorViewModel.projectHistoryForSave()
+        snapshotHistoryMaskFiles = editorViewModel.trackedMaskFiles
         snapshotPreparedForWrite = true
     }
 
@@ -335,6 +356,12 @@ class VideoProject: NSDocument {
         }
         try writeChatDirectory(snapshot.chatSessionFiles, to: packageURL, fm: fm)
         try writeDirectory(TrackedMaskFile.directoryName, files: snapshot.maskFiles, to: packageURL, fm: fm)
+        try writeDirectory(
+            ProjectHistory.directoryName,
+            files: ProjectHistory.packageFiles(snapshot.historyVersions, maskFiles: snapshot.historyMaskFiles),
+            to: packageURL,
+            fm: fm
+        )
         try copyMediaDirectoryIfNeeded(from: sourceURL, to: packageURL, fm: fm)
         try fm.createDirectory(
             at: packageURL.appendingPathComponent(Project.mediaDirectoryName, isDirectory: true),
@@ -477,6 +504,10 @@ class VideoProject: NSDocument {
             loadedMaskFiles = [:]
         }
         editorViewModel.undo.attach(undoManager)
+        editorViewModel.loadProjectHistory(loadedHistory.versions, maskFiles: loadedHistory.maskFiles) { [weak self] in
+            self?.updateChangeCount(.changeCleared)
+        }
+        loadedHistory = ([], [:])
         editorViewModel.projectURL = fileURL
         editorViewModel.agentService.loadSessions(from: fileURL)
         editorViewModel.agentService.onSessionsChanged = { [weak self] in
@@ -492,7 +523,6 @@ class VideoProject: NSDocument {
             restoreAssetsFromManifest()
         }
         editorViewModel.enhancePendingDenoises()
-        if editorViewModel.markSpeakers { editorViewModel.identifySpeakers() }
 
         let editorView = EditorView()
             .environment(editorViewModel)
@@ -693,11 +723,6 @@ class VideoProject: NSDocument {
                     }
                     continue
                 }
-                if asset.isRecoveringGeneration {
-                    asset.generationStatus = .generating
-                    manifestUpdates.append(asset)
-                    continue
-                }
                 Log.project.warning("restore: media file missing id=\(candidate.id) name=\(candidate.name) path=\(candidate.url.path)")
                 missing += 1
                 missingRefs.insert(candidate.id)
@@ -711,7 +736,7 @@ class VideoProject: NSDocument {
                 asset.generationStatus = .none
                 manifestUpdates.append(asset)
             }
-            if asset.generationStatus != .none, !asset.canResumeGeneration {
+            if asset.generationStatus != .none {
                 asset.generationStatus = .none
                 manifestUpdates.append(asset)
             }
@@ -726,7 +751,6 @@ class VideoProject: NSDocument {
 
         editorViewModel.updateManifestMetadata(for: manifestUpdates)
         editorViewModel.missingMediaRefs = missingRefs
-        editorViewModel.generationService.resumePendingGenerations(editor: editorViewModel)
         Log.project.notice(
             "restore ok restored=\(restored) missing=\(missing)",
             telemetry: "Media restored",

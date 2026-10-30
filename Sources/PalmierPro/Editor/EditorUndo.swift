@@ -47,7 +47,8 @@ final class EditorUndo {
         }
     }
 
-    func perform<T>(_ actionName: String, _ work: () throws -> T) rethrows -> T {
+    /// `date` is when the action happened; only replayed history from an earlier session passes one.
+    func perform<T>(_ actionName: String, date: Date = .now, _ work: () throws -> T) rethrows -> T {
         guard let manager, !manager.isUndoing, !manager.isRedoing else {
             return try work()
         }
@@ -66,7 +67,7 @@ final class EditorUndo {
             if groupOpened {
                 manager.setActionName(actionName)
                 manager.endUndoGrouping()
-                recordCommit(actionName)
+                recordCommit(actionName, date: date)
                 onActionCommitted?()
             }
             if restoresEventGrouping { manager.groupsByEvent = true }
@@ -130,9 +131,9 @@ final class EditorUndo {
         }
     }
 
-    private func recordCommit(_ actionName: String) {
+    private func recordCommit(_ actionName: String, date: Date) {
         history.removeSubrange(historyPosition...)
-        history.append(UndoHistoryEntry(actionName: actionName, date: .now))
+        history.append(UndoHistoryEntry(actionName: actionName, date: date))
         if history.count > Self.historyLimit { history.removeFirst(history.count - Self.historyLimit) }
         historyPosition = history.count
         Log.editor.debug("undo history commit action=\(actionName) position=\(self.historyPosition)")

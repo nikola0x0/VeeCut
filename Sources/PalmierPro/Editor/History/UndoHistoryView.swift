@@ -22,7 +22,7 @@ struct UndoHistoryButton: View {
     }
 }
 
-/// Every editor action this session, newest first. Click a row to return to the moment after it.
+/// Every editor action, newest first, including ones saved in earlier sessions. Click a row to return to the moment after it.
 struct UndoHistoryList: View {
     let undo: EditorUndo
 
@@ -47,7 +47,7 @@ struct UndoHistoryList: View {
                             position: index + 1
                         )
                     }
-                    row(title: L10n.string("Opened project"), date: nil, position: 0)
+                    row(title: L10n.string("Start of history"), date: nil, position: 0)
                 }
                 .padding(AppTheme.Spacing.sm)
             }
