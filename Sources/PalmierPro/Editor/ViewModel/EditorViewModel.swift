@@ -7,24 +7,6 @@ final class PreviewPlayheadState {
     var sourceFrame: Int = 0
 }
 
-struct PendingPanelSeed {
-    let asset: MediaAsset
-    let stored: GenerationInput
-}
-
-struct PendingAudioPlacement {
-    let startFrame: Int
-    let spanSeconds: Double
-    let actionName: String
-}
-
-struct PendingTransitionPlacement {
-    let timelineId: String
-    let trackIndex: Int
-    let gapStartFrame: Int
-    let gapLengthFrames: Int
-}
-
 @Observable
 @MainActor
 final class EditorViewModel {
@@ -94,31 +76,42 @@ final class EditorViewModel {
     var denoiseFailed: Set<String> = []
     var denoiseBaked: Set<String> = []
     var speechAnalyzingCount: Int = 0
-    var speakerRegistry: [SpeakerRegistryEntry] = []
     var multicamGroups: [MulticamSource] = [] {
         didSet {
             if multicamGroups != oldValue { deadAirMaskCache.reset() }
         }
     }
-    var speakerAssignments: [String: [String: Int]] = [:]
     var trackedMasks: [TrackedMask] = []
     /// Progress (0…1) of in-flight SAM tracking jobs, keyed by clip id.
     var objectTrackingProgress: [String: Double] = [:]
     /// The canvas drawing tool in use; nil when the preview behaves normally.
     var canvasSelection: CanvasSelectionKind?
+    /// The selected canvas object; a nil `maskId` selects the whole clip.
     var canvasSubject: CanvasSubject?
+    var objectCardOpen = false
+    /// The object a shelf chip is hovering, outlined on the video.
+    var hoveredObject: CanvasSubject?
+    /// The object whose name tag is being edited.
+    var renamingObjectId: String?
+    let objectThumbnails = ObjectThumbnails()
     /// CapCut-style editing for this editor; follows View → Magnetic Timeline.
     var isMagneticTimeline = MagneticTimelinePreference.isEnabled
     var subjectTrackingClipId: String?
     var subjectTrackingFailure: SubjectTrackingFailure?
+    var subjectFollowFailure: SubjectFollowFailure?
     var subjectTrackingTask: Task<Void, Never>?
     var lookRequestTask: Task<Void, Never>?
+    var stickerTask: Task<Void, Never>?
+    var stickerFailure: StickerFailure?
+    /// Draws and cuts out a sticker for a description; replaced in tests.
+    @ObservationIgnored var stickerImageSource: @Sendable (String) async throws -> StickerImage = { description in
+        try await StickerMaker.make(description, client: try await MetaModelClient.configured())
+    }
     var lookRequestStatus: LookRequestStatus?
+    /// Clips transcribed so far while captions or a transcript are being generated.
+    var captionTranscription: (completed: Int, total: Int)?
     /// Encoded `.samtrack` contents per mask id, written into the package on save.
     var trackedMaskFiles: [String: Data] = [:]
-    var speakerIdentifyPhase: String?
-    var speakerIdentifyInFlight: Bool { speakerIdentifyPhase != nil }
-    var speakerIdentifyError: String?
 
     // MARK: - Panel focus
 
@@ -147,7 +140,14 @@ final class EditorViewModel {
         didSet { playheadState.timelineFrame = currentFrame }
     }
     var activeFrame: Int { playheadState.timelineFrame }
-    var isPlaying: Bool = false
+    var isPlaying: Bool = false {
+        didSet {
+            if isPlaying, !oldValue {
+                objectCardOpen = false
+                renamingObjectId = nil
+            }
+        }
+    }
     private(set) var playbackRate: PreviewPlaybackRate = .normal
     var selectedClipIds: Set<String> = []
     var isMarqueeSelecting: Bool = false
@@ -184,19 +184,6 @@ final class EditorViewModel {
     var isScrubbing: Bool = false
     var toolMode: ToolMode = .pointer
     var showExportDialog: Bool = false
-    var showGenerationPanel: Bool = false {
-        didSet {
-            if showGenerationPanel && !oldValue { showMediaPanelMediaTab() } else if !showGenerationPanel && oldValue { clearPendingGenerationPanelState() }
-        }
-    }
-    /// AIEditTab input consumed by GenerationView.
-    var pendingPanelSeed: PendingPanelSeed?
-    var pendingEditReplacementClipId: String?
-    var pendingEditTrimmedSource: TrimmedSource?
-    var pendingEditAudioPlacement: PendingAudioPlacement?
-    var pendingEditTransitionPlacement: PendingTransitionPlacement?
-    /// Clip ids currently awaiting an AI-generated replacement.
-    var pendingReplacements: Set<String> = []
     var agentActivity = AgentActivityHighlight()
     @ObservationIgnored var agentActivityClearTask: Task<Void, Never>?
     var cropEditingActive: Bool = false
@@ -246,7 +233,6 @@ final class EditorViewModel {
         manifest: { MediaManifest() }, projectURL: { nil }
     )
 
-    let generationService = GenerationService()
     let agentService = AgentService()
 
     var agentPanelVisible: Bool = {
@@ -297,15 +283,6 @@ final class EditorViewModel {
         }
     }
 
-    var markSpeakers: Bool = {
-        UserDefaults.standard.object(forKey: "markSpeakers") as? Bool ?? true
-    }() {
-        didSet {
-            UserDefaults.standard.set(markSpeakers, forKey: "markSpeakers")
-            syncSpeakerColors()
-        }
-    }
-
     // MARK: - Media panel navigation routing
 
     var mediaPanelOrderedItemIds: [String] = []
@@ -326,7 +303,6 @@ final class EditorViewModel {
     @ObservationIgnored var mediaImportTail: Task<MediaImportSummary, Error>?
     @ObservationIgnored var mediaImportSequence: Int = 0
     @ObservationIgnored var frameCaptureTask: Task<Void, Never>?
-    @ObservationIgnored var transitionSeedTask: Task<Void, Never>?
     @ObservationIgnored var pendingManifestMetadataUpdates: [String: MediaAsset] = [:]
     @ObservationIgnored var pendingManifestMetadataFlushTask: Task<Void, Never>?
 
@@ -367,6 +343,7 @@ final class EditorViewModel {
         }
         undo.onActionCommitted = { [weak self] in
             self?.captureCommittedEdit()
+            self?.recordProjectVersion()
         }
 
         // Re-check media presence when the app regains focus: a user may have
@@ -396,6 +373,9 @@ final class EditorViewModel {
     // MARK: - Document bridge
 
     @ObservationIgnored let undo = EditorUndo()
+    let projectHistory = ProjectHistory()
+    @ObservationIgnored var historyReplay: Task<Void, Never>?
+    @ObservationIgnored var isReplayingHistory = false
     @ObservationIgnored let projectPackageCoordinator = ProjectPackageCoordinator()
     @ObservationIgnored var onProjectCheckpointRequired: (() -> Void)?
     @ObservationIgnored var onCancelTimelineDrag: (() -> Void)?
@@ -790,7 +770,6 @@ final class EditorViewModel {
         for i in timeline.tracks.indices {
             timeline.tracks[i].clips.removeAll { $0.id == id }
         }
-        pendingReplacements.remove(id)
     }
 
 }

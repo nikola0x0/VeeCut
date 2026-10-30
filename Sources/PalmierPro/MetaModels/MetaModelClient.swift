@@ -6,6 +6,8 @@ enum MetaModelError: Error, Equatable {
     case invalidResponse
     case segmentation(SAMOutputError)
     case streamFailed(String)
+    /// Muse Image refused the prompt under Meta's content policy.
+    case contentPolicy
 }
 
 struct MetaModelClient: Sendable {
@@ -118,6 +120,39 @@ struct MetaModelClient: Sendable {
             .joined()
         guard !text.isEmpty else { throw MetaModelError.invalidResponse }
         return text
+    }
+
+    static let imageModel = "muse-image-1.0"
+    static let imageAttempts = 3
+
+    /// One Muse Image generation as PNG bytes. Retries the 503s Meta marks as retryable.
+    @concurrent
+    func generateImage(prompt: String, size: String) async throws -> Data {
+        var request = request("images/generations")
+        request.setValue("application/json", forHTTPHeaderField: "Content-Type")
+        request.httpBody = try JSONSerialization.data(withJSONObject: [
+            "model": Self.imageModel, "prompt": prompt, "n": 1, "size": size,
+            "output_format": "png", "reasoning_strength": "low",
+        ] as [String: Any])
+        var attempt = 1
+        while true {
+            let (data, response) = try await URLSession.shared.data(for: request)
+            let status = (response as? HTTPURLResponse)?.statusCode ?? 0
+            if status == 503, attempt < Self.imageAttempts {
+                try await Task.sleep(for: .seconds(attempt))
+                attempt += 1
+                continue
+            }
+            if status == 400, String(decoding: data, as: UTF8.self).contains("content_policy_violation") {
+                throw MetaModelError.contentPolicy
+            }
+            try Self.validate(response, data: data)
+            guard let object = try JSONSerialization.jsonObject(with: data) as? [String: Any],
+                  let first = (object["data"] as? [[String: Any]])?.first,
+                  let base64 = first["b64_json"] as? String,
+                  let png = Data(base64Encoded: base64) else { throw MetaModelError.invalidResponse }
+            return png
+        }
     }
 
     private static func validate(_ response: URLResponse, data: Data) throws {
