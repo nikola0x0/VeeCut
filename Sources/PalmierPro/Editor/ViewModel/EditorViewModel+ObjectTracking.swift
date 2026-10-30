@@ -11,7 +11,13 @@ enum ObjectTrackingError: Error, Equatable {
 /// Tracks an object through the source range a clip uses and registers the resulting mask.
 extension EditorViewModel {
 
-    func trackObject(clipId: String, prompt: TrackingPrompt, label: String) async throws -> TrackingResult {
+    func trackObject(
+        clipId: String,
+        prompt: TrackingPrompt,
+        label: String,
+        within: [TimedBox] = [],
+        face: FaceLink? = nil
+    ) async throws -> TrackingResult {
         guard let clip = clipFor(id: clipId) else { throw ObjectTrackingError.clipNotFound }
         guard clip.mediaType == .video, clip.sourceClipType == .video else { throw ObjectTrackingError.unsupportedClip }
         guard let asset = mediaAssets.first(where: { $0.id == clip.mediaRef }), asset.type == .video else {
@@ -27,7 +33,8 @@ extension EditorViewModel {
             sourceURL: asset.url,
             sourceRange: start...end,
             label: label,
-            prompt: prompt
+            prompt: prompt,
+            within: within
         )
         let client = try await MetaModelClient.configured()
 
@@ -40,8 +47,10 @@ extension EditorViewModel {
             }
         }
         try Task.checkCancellation()
-        registerTrackedMask(result.mask, frames: result.frames, file: result.file)
-        Log.editor.notice("tracked object mask=\(result.mask.id) frames=\(result.frames.count) clip=\(clipId)")
-        return result
+        var mask = result.mask
+        mask.face = face
+        registerTrackedMask(mask, frames: result.frames, file: result.file)
+        Log.editor.notice("tracked object mask=\(mask.id) frames=\(result.frames.count) clip=\(clipId)")
+        return TrackingResult(mask: mask, frames: result.frames, file: result.file)
     }
 }

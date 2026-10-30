@@ -249,6 +249,7 @@ struct EffectRenderingTests {
             "stylize.invert": [:],
             "blur.noiseReduction": ["amount": 1],
             "blur.motion": ["radius": 20, "angle": 0],
+            "retouch.smoothSkin": ["amount": 1, "blemishes": 1],
         ]
 
         func frame(_ effects: [Effect]?) async throws -> [UInt8] {
@@ -266,9 +267,9 @@ struct EffectRenderingTests {
             return ColorProbeHelpers.srgbBytes(cg, size: renderSize)
         }
 
-        // Vibrance's delta is the least predictable across renderers, so render it
-        // (catches a bad filter key) but don't assert a pixel change.
-        let noOpOnSaturated: Set<String> = ["color.vibrance"]
+        // Vibrance's delta is the least predictable across renderers, and Smooth Skin leaves a flat non-skin
+        // frame alone (SkinSmoothingKernelTests covers it), so render them but don't assert a pixel change.
+        let noOpOnSaturated: Set<String> = ["color.vibrance", "retouch.smoothSkin"]
         // color.curves / color.hueCurves carry JSON curves, not Double params — covered by their own tests.
         let jsonCurveEffects: Set<String> = ["color.curves", "color.hueCurves"]
         let base = try await frame(nil)

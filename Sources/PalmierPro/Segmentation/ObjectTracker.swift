@@ -21,12 +21,20 @@ enum TrackingPrompt: Sendable, Equatable {
     case target(TrackingTarget)
 }
 
+/// An object's 0…1 top-left source box at a source time.
+struct TimedBox: Sendable, Equatable {
+    let seconds: Double
+    let box: CGRect
+}
+
 struct TrackingRequest: Sendable {
     let mediaRef: String
     let sourceURL: URL
     let sourceRange: ClosedRange<Double>
     let label: String
     let prompt: TrackingPrompt
+    /// For a concept: keep the match that lies most inside these boxes, e.g. the face of one person.
+    var within: [TimedBox] = []
 }
 
 struct TrackingResult: Sendable {
@@ -94,10 +102,12 @@ enum ObjectTracker {
             progress(min(1, Double(seenFrames.count) / Double(expectedFrames)))
         }
 
-        let preferredID: Int? = if case .target = request.prompt { 1 } else { nil }
-        guard let frames = preferredID.flatMap({ framesByObject[$0] })
-            ?? framesByObject.values.max(by: { $0.count < $1.count }),
-              !frames.isEmpty else { throw TrackingError.objectNotFound }
+        let chosen: [Int: MaskFrame]? = switch request.prompt {
+        case .target: framesByObject[1]
+        case .concept where request.within.isEmpty: framesByObject.values.max(by: { $0.count < $1.count })
+        case .concept: mostInside(Array(framesByObject.values), within: request.within, startSeconds: range.lowerBound, fps: fps)
+        }
+        guard let frames = chosen, !frames.isEmpty else { throw TrackingError.objectNotFound }
 
         let mask = TrackedMask(
             mediaRef: request.mediaRef,
@@ -108,6 +118,39 @@ enum ObjectTracker {
             sourceHeight: height
         )
         return TrackingResult(mask: mask, frames: frames, file: TrackedMaskFile.encode(frames))
+    }
+
+    /// The match whose boxes lie most inside `within` over the frames, or nil when none touches it.
+    static func mostInside(
+        _ objects: [[Int: MaskFrame]],
+        within: [TimedBox],
+        startSeconds: Double,
+        fps: Double
+    ) -> [Int: MaskFrame]? {
+        let areas = within.sorted { $0.seconds < $1.seconds }
+        guard !areas.isEmpty, fps > 0 else { return nil }
+        func area(at seconds: Double) -> CGRect {
+            var low = 0, high = areas.count - 1
+            while low < high {
+                let mid = (low + high) / 2
+                if areas[mid].seconds < seconds { low = mid + 1 } else { high = mid }
+            }
+            let after = areas[low], before = areas[max(low - 1, 0)]
+            return abs(before.seconds - seconds) < abs(after.seconds - seconds) ? before.box : after.box
+        }
+        let scored = objects.map { frames in
+            (frames, frames.reduce(0.0) { total, entry in
+                let box = entry.value.box
+                guard box.sourceWidth > 0, box.sourceHeight > 0, box.right > box.left, box.bottom > box.top else { return total }
+                let w = Double(box.sourceWidth), h = Double(box.sourceHeight)
+                let rect = CGRect(x: Double(box.left) / w, y: Double(box.top) / h,
+                                  width: Double(box.right - box.left) / w, height: Double(box.bottom - box.top) / h)
+                let inside = rect.intersection(area(at: startSeconds + Double(entry.key) / fps))
+                return inside.isNull ? total : total + inside.width * inside.height / (rect.width * rect.height)
+            })
+        }
+        guard let best = scored.max(by: { $0.1 < $1.1 }), best.1 > 0 else { return nil }
+        return best.0
     }
 
     static func targetPrompt(

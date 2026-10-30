@@ -92,7 +92,7 @@ struct EffectDescriptor: Identifiable, Sendable {
 
 enum EffectRegistry {
 
-    static let all: [EffectDescriptor] = color + wheels + hueCurves + lut + curves + detail + blur + stylize + key
+    static let all: [EffectDescriptor] = color + wheels + hueCurves + lut + curves + detail + retouch + blur + stylize + key
 
     private static let color: [EffectDescriptor] = [
         EffectDescriptor(
@@ -354,6 +354,19 @@ enum EffectRegistry {
         ),
     ]
 
+    private static let retouch: [EffectDescriptor] = [
+        EffectDescriptor(
+            id: "retouch.smoothSkin", displayName: L10n.key("Smooth Skin"), category: L10n.key("Retouch"),
+            params: [
+                EffectParamSpec(key: "amount", label: L10n.key("Smoothing"), range: 0...1, defaultValue: 0, unit: ""),
+                EffectParamSpec(key: "blemishes", label: L10n.key("Blemishes"), range: 0...1, defaultValue: 0, unit: ""),
+            ],
+            apply: { image, p, extent in
+                SkinSmoothingKernel.apply(image, extent: extent, amount: p.value("amount"), blemishes: p.value("blemishes"))
+            }
+        ),
+    ]
+
     private static let key: [EffectDescriptor] = [
         EffectDescriptor(
             id: "key.chroma", displayName: L10n.key("Chroma Key"), category: L10n.key("Key"),
@@ -380,7 +393,7 @@ enum EffectRegistry {
     static let canonicalOrder: [String] = [
         "color.exposure", "color.contrast", "color.highlightsShadows", "color.blacksWhites",
         "color.temperature", "color.vibrance", "color.saturation", "color.wheels", "color.curves",
-        "color.hueCurves", "color.lut", "detail.clarity", "key.chroma", "blur.gaussian", "blur.sharpen",
+        "color.hueCurves", "color.lut", "retouch.smoothSkin", "detail.clarity", "key.chroma", "blur.gaussian", "blur.sharpen",
         "blur.noiseReduction", "blur.motion", "stylize.invert", "stylize.grain", "stylize.vignette",
         "stylize.glow",
     ]
