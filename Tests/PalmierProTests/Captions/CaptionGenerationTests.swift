@@ -608,3 +608,14 @@ private func mediaAsset(_ id: String, hasAudio: Bool = true) -> MediaAsset {
         #expect(readback.length > 0)
     }
 }
+
+@MainActor
+@Suite struct CaptionSourceFailureTests {
+    @Test func offlineMediaReportsOfflineInsteadOfNoSpeech() async {
+        let e = editor([Fixtures.videoTrack(clips: [Fixtures.clip(mediaRef: "missing", start: 0, duration: 90)])])
+
+        await #expect(throws: EditorViewModel.CaptionError.sourcesOffline) {
+            try await e.generateCaptions(for: EditorViewModel.CaptionRequest(autoDetect: true))
+        }
+    }
+}

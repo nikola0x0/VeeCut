@@ -2,44 +2,16 @@ import AVFoundation
 import Foundation
 import Speech
 
-enum TranscriptionProvider: String, CaseIterable, Sendable, Codable {
-    case local
-    case cloud
-
-    var label: String {
-        switch self {
-        case .local: L10n.key("Local")
-        case .cloud: L10n.key("Cloud")
-        }
-    }
-}
-
 struct TranscriptionWord: Sendable, Codable {
     let text: String
     let start: Double?
     let end: Double?
-    let speaker: String?
-
-    init(text: String, start: Double?, end: Double?, speaker: String? = nil) {
-        self.text = text
-        self.start = start
-        self.end = end
-        self.speaker = speaker
-    }
 }
 
 struct TranscriptionSegment: Sendable, Codable {
     let text: String
     let start: Double
     let end: Double
-    let speaker: String?
-
-    init(text: String, start: Double, end: Double, speaker: String? = nil) {
-        self.text = text
-        self.start = start
-        self.end = end
-        self.speaker = speaker
-    }
 }
 
 struct TranscriptionResult: Sendable, Codable {
@@ -58,12 +30,11 @@ struct TranscriptionResult: Sendable, Codable {
                 TranscriptionWord(
                     text: $0.text,
                     start: $0.start.map { $0 + offset },
-                    end: $0.end.map { $0 + offset },
-                    speaker: $0.speaker
+                    end: $0.end.map { $0 + offset }
                 )
             },
             segments: segments.map {
-                TranscriptionSegment(text: $0.text, start: $0.start + offset, end: $0.end + offset, speaker: $0.speaker)
+                TranscriptionSegment(text: $0.text, start: $0.start + offset, end: $0.end + offset)
             }
         )
     }
@@ -79,7 +50,7 @@ enum TranscriptionError: LocalizedError {
     var errorDescription: String? {
         switch self {
         case .unsupportedLocale(let id):
-            return "On-device transcription is not available for \(id)."
+            return "Transcription is not available for \(id)."
         case .modelInstallFailed(let reason):
             return "Could not install the on-device speech model: \(reason)"
         case .decodeFailed:
@@ -111,13 +82,26 @@ enum Transcription {
         return result.offsetting(by: sourceRange?.lowerBound ?? 0)
     }
 
+    /// On-device locales, plus Muse Voice languages the device can't transcribe.
     static func supportedLocales() async -> [Locale] {
-        await SpeechTranscriber.supportedLocales
+        supportedLocales(onDevice: await SpeechTranscriber.supportedLocales)
+    }
+
+    static func supportedLocales(onDevice: [Locale]) -> [Locale] {
+        let onDeviceLanguages = Set(onDevice.compactMap { $0.language.languageCode?.identifier })
+        return onDevice + MetaVoiceTranscription.locales.filter {
+            !onDeviceLanguages.contains($0.language.languageCode?.identifier ?? "")
+        }
     }
 
     static func bestSupportedLocale(from supported: [Locale]) -> Locale? {
         let candidates = Locale.preferredLanguages.map(Locale.init(identifier:)) + [Locale.current]
         return matchLocale(candidates: candidates, supported: supported)
+    }
+
+    /// The language Auto transcribes in: the first preferred language either on-device recognition or Muse Voice supports.
+    static func autoLocale() async -> Locale? {
+        bestSupportedLocale(from: await supportedLocales())
     }
 
     static func matchLocale(candidates: [Locale], supported: [Locale]) -> Locale? {
@@ -145,14 +129,15 @@ enum Transcription {
             return result.offsetting(by: sourceRange.lowerBound)
         }
 
+        guard let requested = if let preferredLocale { preferredLocale } else { await autoLocale() } else {
+            throw TranscriptionError.unsupportedLocale(Locale.current.identifier(.bcp47))
+        }
         let supported = await SpeechTranscriber.supportedLocales
-        let locale: Locale
-        if let preferredLocale, let match = matchLocale(candidates: [preferredLocale], supported: supported) {
-            locale = match
-        } else if let auto = bestSupportedLocale(from: supported) {
-            locale = auto
-        } else {
-            throw TranscriptionError.unsupportedLocale((preferredLocale ?? Locale.current).identifier(.bcp47))
+        guard let locale = matchLocale(candidates: [requested], supported: supported) else {
+            guard MetaVoiceTranscription.languageName(for: requested) != nil else {
+                throw TranscriptionError.unsupportedLocale(requested.identifier(.bcp47))
+            }
+            return try await MetaVoiceTranscription.transcribe(fileURL: fileURL, locale: requested)
         }
         Log.transcription.notice(
             "transcribe locale=\(locale.identifier(.bcp47))",
@@ -324,8 +309,7 @@ enum Transcription {
                 segments.append(TranscriptionSegment(
                     text: segmentText,
                     start: result.range.start.seconds,
-                    end: result.range.end.seconds,
-                    speaker: nil
+                    end: result.range.end.seconds
                 ))
             }
 
@@ -336,7 +320,7 @@ enum Transcription {
                 let range = run.audioTimeRange
                 let start = range.map(\.start.seconds)
                 let end = range.map { ($0.start + $0.duration).seconds }
-                words.append(TranscriptionWord(text: trimmed, start: start, end: end, speaker: nil))
+                words.append(TranscriptionWord(text: trimmed, start: start, end: end))
             }
         }
 

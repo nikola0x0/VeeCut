@@ -41,4 +41,10 @@ struct TranscriptionLocaleTests {
         let result = Transcription.matchLocale(candidates: [Locale(identifier: "ja_JP")], supported: supported)
         #expect(result == nil)
     }
+
+    @Test func autoPicksAPreferredLanguageOnlyMuseVoiceSupports() {
+        let supported = Transcription.supportedLocales(onDevice: [Locale(identifier: "en_US")])
+        let result = Transcription.matchLocale(candidates: ["vi_VN", "en_US"].map(Locale.init(identifier:)), supported: supported)
+        #expect(result?.language.languageCode?.identifier == "vi")
+    }
 }
