@@ -70,7 +70,6 @@ final class ToolExecutor {
         mcpClientInfo = clientInfo
     }
 
-    var feedbackState = FeedbackState()
     var lastTranscriptSession: TranscriptSession?
 
     func execute(
@@ -191,7 +190,6 @@ final class ToolExecutor {
                 editor: editor
             )
         }
-        feedbackState.record(result, for: tool)
         let elapsed = started.duration(to: .now).seconds
         let telemetry = result.isError ? "Agent tool failed" : "Agent tool finished"
         let payload: Telemetry.Payload = [
@@ -254,7 +252,7 @@ final class ToolExecutor {
     private static func canReadInactiveProject(_ tool: ToolName) -> Bool {
         switch tool {
         case .getTimeline, .inspectTimeline, .getMedia, .inspectMedia, .searchMedia,
-             .getMulticam, .getTranscript, .detectBeats, .inspectColor, .listModels, .sendFeedback:
+             .getMulticam, .getTranscript, .detectBeats, .inspectColor:
             true
         default:
             false
@@ -330,6 +328,9 @@ final class ToolExecutor {
         case .applyColor:    return try applyColor(editor, args)
         case .applyEffect:   return try applyEffect(editor, args)
         case .trackObject:   return try await trackObject(editor, args)
+        case .followObject:  return try followObject(editor, args)
+        case .smoothSkin:    return try await smoothSkin(editor, args)
+        case .addSticker:    return try await addSticker(editor, args)
         case .denoiseAudio:  return try denoiseAudio(editor, args)
         case .inspectColor:  return try await inspectColor(editor, args)
         case .addClips:         return try addClips(editor, args)
@@ -357,14 +358,8 @@ final class ToolExecutor {
         case .addCaptions:   return try await addCaptions(editor, args)
         case .exportProject: return try await exportProject(editor, args)
         case .manageExports: return try manageExports(editor, args)
-        case .generateVideo: return try generate(editor, args, type: .video)
-        case .generateImage: return try generate(editor, args, type: .image)
-        case .generateAudio: return try await generateAudio(editor, args)
-        case .upscaleMedia:  return try upscaleMedia(editor, args)
         case .importMedia:   return try await importMedia(editor, args)
-        case .listModels:    return listModels(args)
         case .organizeMedia: return try organizeMedia(editor, args)
-        case .sendFeedback:  return try await sendFeedback(editor, args)
         case .setProjectSettings: return try setProjectSettings(editor, args)
         case .createTimeline:     return try createTimeline(editor, args)
         case .setActiveTimeline:  return try setActiveTimeline(editor, args)

@@ -46,6 +46,11 @@ extension ToolExecutor {
             }
         }
         let matte = try resolveRegion(input.region, clipIds: input.clipIds, editor: editor, path: "apply_effect")
+        if adds.contains(where: { $0.type == EditorViewModel.smoothSkinEffect }) {
+            guard let matte, !matte.invert, matte.maskIds.allSatisfy({ editor.trackedMask(id: $0)?.face != nil }) else {
+                throw ToolError("\(EditorViewModel.smoothSkinEffect) only goes on a face: use smooth_skin.")
+            }
+        }
         let clearsBlur = matte == nil && adds.contains { $0.type == Effect.gaussianBlurType && $0.params?[Effect.gaussianBlurRadiusKey] != nil }
         let clearedBlurIds = clearsBlur ? input.clipIds.filter { editor.clipFor(id: $0)?.blurKeyframeTrack != nil } : []
 

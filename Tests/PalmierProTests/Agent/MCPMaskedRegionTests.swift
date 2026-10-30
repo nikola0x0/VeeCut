@@ -83,6 +83,20 @@ struct MCPMaskedRegionTests {
         }
     }
 
+    @Test func smoothSkinIsRefusedOutsideAFace() async throws {
+        let (harness, mask) = makeHarness()
+        try await withClient(harness) { client in
+            let result = try await client.callTool(name: "apply_effect", arguments: [
+                "clipIds": .array([.string(clip.id)]),
+                "effects": .array([.object(["type": .string("retouch.smoothSkin")])]),
+                "region": .object(["maskId": .string(mask.id), "side": .string("inside")]),
+            ])
+            #expect(result.isError == true)
+            #expect(try text(result.content).contains("smooth_skin"))
+            #expect(harness.editor.clipFor(id: clip.id)?.effectRegions == nil)
+        }
+    }
+
     @Test func insideAndOutsideRegionsKeepSeparateStacks() async throws {
         let (harness, mask) = makeHarness()
         try await withClient(harness) { client in

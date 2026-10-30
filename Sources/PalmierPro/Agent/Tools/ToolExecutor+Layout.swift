@@ -173,6 +173,7 @@ extension ToolExecutor {
                     editor.timeline.tracks[loc.trackIndex].clips[loc.clipIndex].transform = p.transform
                     editor.timeline.tracks[loc.trackIndex].clips[loc.clipIndex].crop = p.crop
                     editor.timeline.tracks[loc.trackIndex].clips[loc.clipIndex].positionTrack = nil
+                    editor.timeline.tracks[loc.trackIndex].clips[loc.clipIndex].subjectFollow = nil
                     editor.timeline.tracks[loc.trackIndex].clips[loc.clipIndex].scaleTrack = nil
                     editor.timeline.tracks[loc.trackIndex].clips[loc.clipIndex].rotationTrack = nil
                     editor.timeline.tracks[loc.trackIndex].clips[loc.clipIndex].cropTrack = nil

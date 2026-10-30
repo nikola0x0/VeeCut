@@ -1059,7 +1059,10 @@ extension ToolExecutor {
         case "position":
             let kfs = try Self.parsePairKeyframes(rows, path: "keyframes")
             applyKeyframes = {
-                editor.commitClipProperty(clipId: input.clipId) { $0.positionTrack = kfs.keyframes.isEmpty ? nil : kfs }
+                editor.commitClipProperty(clipId: input.clipId) {
+                    $0.positionTrack = kfs.keyframes.isEmpty ? nil : kfs
+                    $0.subjectFollow = nil
+                }
             }
         case "scale":
             let kfs = try Self.parsePairKeyframes(rows, path: "keyframes")

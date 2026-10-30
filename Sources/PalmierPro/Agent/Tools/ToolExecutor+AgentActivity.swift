@@ -14,8 +14,7 @@ extension ToolName {
         .manageMulticam, .changeCam,
         .removeWords, .removeSilence,
         .addTexts, .updateText, .addCaptions,
-        .applyColor, .applyEffect, .denoiseAudio,
-        .generateAudio,
+        .applyColor, .applyEffect, .followObject, .addSticker, .smoothSkin, .denoiseAudio,
     ]
 
     var publishesTimelineChanges: Bool {
