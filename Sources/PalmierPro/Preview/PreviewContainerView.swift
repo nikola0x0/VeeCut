@@ -22,6 +22,9 @@ struct PreviewContainerView: View {
             } else {
                 canvas
             }
+            if isTimeline {
+                ObjectDock()
+            }
             if isImage {
                 imageSettingsBar
             } else if !isSubtitle {
@@ -37,7 +40,7 @@ struct PreviewContainerView: View {
 
     private var canvas: some View {
         GeometryReader { geo in
-            let aspect = generatingAspect ?? CGFloat(editor.timeline.width) / CGFloat(editor.timeline.height)
+            let aspect = CGFloat(editor.timeline.width) / CGFloat(editor.timeline.height)
             let fitSize = fitSize(in: geo.size, aspect: aspect)
             let scaledWidth = fitSize.width * editor.canvasZoom
             let scaledHeight = fitSize.height * editor.canvasZoom
@@ -62,8 +65,8 @@ struct PreviewContainerView: View {
                     offlinePreview(assetId: overlay.assetId, path: overlay.path, isUnprocessable: overlay.isUnprocessable)
                 }
                 CanvasViewingOverlay(selection: canvasOverlays)
-                if isTimeline, let subject = editor.canvasSubject {
-                    SubjectMaskOverlayView(subject: subject)
+                if isTimeline, !editor.isPlaying {
+                    CanvasObjectHighlights()
                 }
                 if isTimeline, let kind = editor.canvasSelection {
                     SubjectSelectionOverlayView(kind: kind)
@@ -97,15 +100,16 @@ struct PreviewContainerView: View {
                               captionPreview == nil,
                               editor.canvasSelection == nil,
                               !editor.cropEditingActive,
-                              editor.chromaKeySamplingClipId == nil,
-                              let id = PreviewHitTester.clipID(
-                                at: value.location,
-                                viewSize: CGSize(width: scaledWidth, height: scaledHeight),
-                                editor: editor
-                              ) else { return }
-                        editor.selectPreviewClip(id)
+                              editor.chromaKeySamplingClipId == nil else { return }
+                        selectOnCanvas(at: value.location, viewSize: CGSize(width: scaledWidth, height: scaledHeight))
                     }
             )
+            .overlay {
+                if isTimeline, !editor.isPlaying, editor.canvasSelection == nil, captionPreview == nil,
+                   !editor.cropEditingActive, editor.chromaKeySamplingClipId == nil {
+                    CanvasObjectOverlay()
+                }
+            }
             .overlay(
                 Rectangle()
                     .stroke(
@@ -117,15 +121,31 @@ struct PreviewContainerView: View {
             .offset(x: editor.canvasOffset.width, y: editor.canvasOffset.height)
         }
         .clipped()
-        .overlay(alignment: .leading) {
-            if isTimeline { CanvasToolPalette() }
-        }
         .overlay(alignment: .top) {
             if isTimeline { UndoStepToast(undo: editor.undo) }
         }
         .overlay(alignment: .bottom) {
             if isTimeline { SubjectActionBar() }
         }
+    }
+
+    /// A click inside an object's outline selects the object; anywhere else clears it and selects the clip.
+    private func selectOnCanvas(at location: CGPoint, viewSize: CGSize) {
+        guard let id = PreviewHitTester.clipID(at: location, viewSize: viewSize, editor: editor) else {
+            editor.clearCanvasObject()
+            return
+        }
+        if !editor.isPlaying, let clip = editor.clipFor(id: id), clip.mediaType == .video,
+           let source = PreviewHitTester.sourcePoint(
+               of: location, clip: clip, frame: editor.activeFrame,
+               videoRect: PreviewHitTester.videoContentRect(in: viewSize, timeline: editor.timeline)
+           ),
+           let maskId = editor.canvasObjectId(atSource: source, clipId: id) {
+            editor.selectCanvasObject(clipId: id, maskId: maskId)
+            return
+        }
+        editor.clearCanvasObject()
+        editor.selectPreviewClip(id)
     }
 
     // MARK: - Transport bar
@@ -478,13 +498,6 @@ struct PreviewContainerView: View {
         return editor.mediaAssets.first { $0.id == id }
     }
 
-    private var generatingAspect: CGFloat? {
-        guard let asset = activeMediaAsset, asset.isGenerating else { return nil }
-        let parts = (asset.generationInput?.aspectRatio ?? "").split(separator: ":").compactMap { Double($0) }
-        guard parts.count == 2, parts[0] > 0, parts[1] > 0 else { return nil }
-        return CGFloat(parts[0] / parts[1])
-    }
-
     private var activeFailedError: String? {
         guard let asset = activeMediaAsset,
               case .failed(let error) = asset.generationStatus else { return nil }
@@ -579,40 +592,12 @@ struct PreviewContainerView: View {
 
     private func generatingPreview(label: String) -> some View {
         ZStack {
-            if let image = activeGeneratingReferenceImage {
-                Color.clear
-                    .overlay { Image(nsImage: image).resizable().scaledToFill().blur(radius: 24) }
-                    .clipped()
-            }
             AppTheme.MediaOverlay.backgroundColor.opacity(AppTheme.Opacity.strong)
             GeneratingOverlay(label: label, size: .preview)
         }
         .frame(maxWidth: .infinity, maxHeight: .infinity)
         .clipped()
         .allowsHitTesting(false)
-    }
-
-    private var activeGeneratingReferenceImage: NSImage? {
-        guard let input = activeMediaAsset?.generationInput else { return nil }
-        let refIds = (input.imageURLAssetIds ?? []) + (input.referenceImageAssetIds ?? [])
-        for id in refIds {
-            guard let ref = editor.mediaAssets.first(where: { $0.id == id }), ref.type == .image else { continue }
-            if let image = ref.thumbnail ?? NSImage(contentsOf: ref.url) {
-                return image
-            }
-        }
-        return nil
-    }
-
-    private static func unprocessablePrefill(path: String?) -> String {
-        let file = path.map { ($0 as NSString).lastPathComponent } ?? "(unknown)"
-        return """
-        A clip's media couldn't be prepared for playback.
-
-        File: \(file)
-
-        What were you doing when this happened?
-        """
     }
 
     private func offlinePreview(assetId: String?, path: String?, isUnprocessable: Bool) -> some View {
@@ -643,13 +628,7 @@ struct PreviewContainerView: View {
                         .truncationMode(.middle)
                         .padding(.horizontal, AppTheme.Spacing.lg)
                 }
-                if isUnprocessable {
-                    Button(L10n.string("Report a Problem")) {
-                        FeedbackWindowController.shared.show(prefill: Self.unprocessablePrefill(path: path))
-                    }
-                    .buttonStyle(.capsule(.prominent, size: .regular))
-                    .padding(.top, AppTheme.Spacing.xs)
-                } else {
+                if !isUnprocessable {
                     HStack(spacing: AppTheme.Spacing.sm) {
                         if let assetId {
                             Button(L10n.string("Relink…")) { relinkFile(assetId: assetId) }
@@ -674,7 +653,7 @@ struct PreviewContainerView: View {
                 Image(systemName: "exclamationmark.triangle.fill")
                     .font(.system(size: AppTheme.FontSize.display))
                     .foregroundStyle(.red.opacity(AppTheme.Opacity.prominent))
-                Text(L10n.string("Generation Failed"))
+                Text(L10n.string("Processing Failed"))
                     .font(.system(size: AppTheme.FontSize.lg, weight: .semibold))
                     .foregroundStyle(AppTheme.MediaOverlay.primaryColor)
                 ScrollView {
@@ -688,33 +667,6 @@ struct PreviewContainerView: View {
                 }
                 .frame(maxWidth: 520, maxHeight: 240)
                 .fixedSize(horizontal: false, vertical: true)
-                if activeMediaAsset?.wasGenerationRefunded == true {
-                    Text(L10n.string("You were not charged for this generation"))
-                        .font(.system(size: AppTheme.FontSize.sm, weight: .medium))
-                        .foregroundStyle(AppTheme.Status.successColor)
-                        .multilineTextAlignment(.center)
-                        .padding(.horizontal, AppTheme.Spacing.lg)
-                }
-                if let asset = activeMediaAsset, asset.pendingDownloadURL != nil {
-                    Button {
-                        editor.generationService.retryDownload(asset: asset, editor: editor)
-                    } label: {
-                        HStack(spacing: AppTheme.Spacing.xs) {
-                            Image(systemName: "arrow.clockwise")
-                            Text(L10n.string("Retry Download"))
-                        }
-                        .font(.system(size: AppTheme.FontSize.sm, weight: .medium))
-                        .foregroundStyle(AppTheme.MediaOverlay.primaryColor)
-                        .padding(.horizontal, AppTheme.Spacing.md)
-                        .padding(.vertical, AppTheme.Spacing.sm)
-                    }
-                    .buttonStyle(.plain)
-                    .background(AppTheme.MediaOverlay.primaryColor.opacity(AppTheme.Opacity.soft), in: .capsule)
-                    .overlay(Capsule().strokeBorder(
-                        AppTheme.MediaOverlay.primaryColor.opacity(AppTheme.Opacity.muted),
-                        lineWidth: AppTheme.BorderWidth.hairline
-                    ))
-                }
             }
             .padding(AppTheme.Spacing.xl)
             .fixedSize(horizontal: false, vertical: true)

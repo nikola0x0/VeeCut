@@ -118,6 +118,7 @@ final class EditorWindowController: NSWindowController, NSWindowDelegate {
                 editorViewModel.deleteMediaPanelItems()
             } else if !editorViewModel.selectedTimelineMarkerIds.isEmpty {
                 editorViewModel.deleteSelectedTimelineMarker()
+            } else if editorViewModel.deleteSelectedCanvasObject() {
             } else if shift {
                 if editorViewModel.selectedGap != nil {
                     editorViewModel.rippleDeleteSelectedGap()
@@ -296,7 +297,9 @@ extension EditorWindowController: EditorActions {
     @objc func trimEndToPlayhead(_ sender: Any?) { editorViewModel.trimEndToPlayhead() }
     @objc func selectForwardOnTrack(_ sender: Any?) { editorViewModel.selectForwardFromCurrentSelection(scope: .track) }
     @objc func selectForwardOnAllTracks(_ sender: Any?) { editorViewModel.selectForwardFromCurrentSelection(scope: .allTracks) }
-    @objc func deleteSelectedClips(_ sender: Any?) { editorViewModel.deleteSelectedClips() }
+    @objc func deleteSelectedClips(_ sender: Any?) {
+        if !editorViewModel.deleteSelectedCanvasObject() { editorViewModel.deleteSelectedClips() }
+    }
     @objc func rippleDeleteSelected(_ sender: Any?) {
         if editorViewModel.selectedGap != nil {
             editorViewModel.rippleDeleteSelectedGap()

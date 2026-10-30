@@ -43,29 +43,14 @@ final class AgentService {
         }
     }
 
-    var route: AgentRoute {
-        AgentRouting.route(
-            model: model,
-            credentials: credentials,
-            hasHostedCredits: AccountService.shared.isSignedIn && AccountService.shared.hasCredits,
-            hasPaidPlan: AccountService.shared.isPaid
-        )
-    }
-
     var canStream: Bool {
-        route != .unavailable
+        !credentials[model.provider].isEmpty
     }
 
     var availableModels: [AgentModel] { AgentModel.allCases }
 
-    func canSelectModel(_ candidate: AgentModel) -> Bool {
-        !candidate.requiresPaidHostedPlan
-            || AccountService.shared.isPaid
-            || !credentials[candidate.provider].isEmpty
-    }
-
     var activeBYOKProvider: AgentProvider? {
-        route == .direct ? model.provider : nil
+        canStream ? model.provider : nil
     }
 
     var reasoningEffort: AgentReasoningEffort {
@@ -86,28 +71,15 @@ final class AgentService {
         let credentials = await AgentCredentialSnapshot.loadFromKeychain()
         self.credentials = credentials
 
-        switch AgentRouting.route(
-            model: settings.model,
-            credentials: credentials,
-            hasHostedCredits: AccountService.shared.isSignedIn && AccountService.shared.hasCredits,
-            hasPaidPlan: AccountService.shared.isPaid
-        ) {
-        case .direct:
-            return BYOKClient(
-                apiKey: credentials[settings.model.provider],
-                settings: settings
-            )
-        case .hosted:
-            return PalmierClient(settings: settings)
-        case .unavailable:
-            return nil
-        }
+        let apiKey = credentials[settings.model.provider]
+        guard !apiKey.isEmpty else { return nil }
+        return BYOKClient(apiKey: apiKey, settings: settings)
     }
 
     var model: AgentModel {
         didSet {
             userDefaults.set(model.rawValue, forKey: "agentModel")
-            if case .unavailable = route {
+            if !canStream {
                 streamError = .unavailable(model)
             } else if case .some(.unavailable) = streamError {
                 streamError = nil
@@ -157,6 +129,30 @@ final class AgentService {
                 clipId: ref.clip.id
             ))
         }
+    }
+
+    /// Set when a mention asks for the chat input; the input box takes focus and clears it.
+    var inputFocusRequested = false
+
+    /// Tags a picked object in the chat, showing the agent panel and focusing its input.
+    func attachMention(forObject maskId: String, clipId: String) {
+        guard let editor, let mask = editor.trackedMask(id: maskId), editor.clipFor(id: clipId) != nil else { return }
+        editor.agentPanelVisible = true
+        inputFocusRequested = true
+        pruneDetachedMentions()
+        let object = AgentObjectMention(maskId: maskId, clipId: clipId)
+        guard !mentions.contains(where: { $0.object == object }) else { return }
+        let displayName = Self.disambiguatedObjectMentionName(for: mask, object: object, existing: mentions)
+        appendMentionToken(displayName)
+        mentions.append(AgentMention(displayName: displayName, object: object, mediaRef: mask.mediaRef))
+    }
+
+    static func disambiguatedObjectMentionName(for mask: TrackedMask, object: AgentObjectMention, existing: [AgentMention]) -> String {
+        let base = AgentMention.makeDisplayName(from: mask.label)
+        let candidate = base.isEmpty ? "Object" : base
+        guard existing.contains(where: { $0.displayName == candidate && $0.object != object }) else { return candidate }
+        let suffix = existing.contains(where: { $0.object?.maskId == mask.id }) ? object.clipId : mask.id
+        return "\(candidate)#\(suffix.prefix(6))"
     }
 
     func attachSelectedTimelineRangeMention() {
@@ -275,7 +271,6 @@ final class AgentService {
         draft = ""
         mentions.removeAll()
         streamError = nil
-        toolExecutor?.resetFeedbackState()
     }
 
     func newChat() {
@@ -291,7 +286,6 @@ final class AgentService {
         currentSessionId = session.id
         messages = []
         streamError = nil
-        toolExecutor?.resetFeedbackState()
         onSessionsChanged?()
     }
 
@@ -372,7 +366,6 @@ final class AgentService {
         streamError = nil
         kickOffStream(
             conversationID: conversationID,
-            traceID: UUID(),
             settings: runSettings
         )
     }
@@ -391,7 +384,6 @@ final class AgentService {
 
     private func kickOffStream(
         conversationID: UUID,
-        traceID: UUID,
         settings: AgentRunSettings
     ) {
         currentTask?.cancel()
@@ -404,7 +396,6 @@ final class AgentService {
             }
             await self?.runLoop(
                 conversationID: conversationID,
-                traceID: traceID,
                 settings: settings
             )
         }
@@ -412,7 +403,6 @@ final class AgentService {
 
     private func runLoop(
         conversationID: UUID,
-        traceID: UUID,
         settings: AgentRunSettings
     ) async {
         let chosenModel = settings.model
@@ -431,7 +421,7 @@ final class AgentService {
         loop: while !Task.isCancelled {
             resolveOrphanToolUses()
             let apiMsgs = await apiMessages()
-            guard let inputMessageID = messages.last(where: { $0.role == .user })?.id else {
+            guard messages.contains(where: { $0.role == .user }) else {
                 streamError = .upstream("The agent request has no user message.")
                 break loop
             }
@@ -443,15 +433,7 @@ final class AgentService {
                 let stream = client.stream(
                     system: AgentInstructions.serverInstructions + AgentInstructions.skillsSection(SkillStore.shared.skillIndex),
                     tools: tools,
-                    messages: apiMsgs,
-                    context: AgentRequestContext(
-                        conversationID: conversationID,
-                        traceID: traceID,
-                        spanID: UUID(),
-                        inputMessageID: inputMessageID,
-                        outputMessageID: assistantID,
-                        projectID: editor?.projectId
-                    )
+                    messages: apiMsgs
                 )
 
                 let finalSnapshot = try await presentAgentStream(

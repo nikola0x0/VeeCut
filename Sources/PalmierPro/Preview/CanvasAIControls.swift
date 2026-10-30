@@ -1,99 +1,50 @@
 import SwiftUI
 
-/// Canvas tools on the preview's leading edge.
-struct CanvasToolPalette: View {
-    @Environment(EditorViewModel.self) private var editor
-
-    var body: some View {
-        VStack(spacing: AppTheme.Spacing.xs) {
-            toolButton(.subject, systemImage: "person.crop.rectangle",
-                       help: L10n.string("Select Subject — scribble over, circle, or click what to track"))
-            toolButton(.area, systemImage: "square.dashed",
-                       help: L10n.string("Draw Area — drag a rectangle or draw a loop around a part of the frame"))
-        }
-        .padding(AppTheme.Spacing.xs)
-        .background(
-            RoundedRectangle(cornerRadius: AppTheme.Radius.md)
-                .fill(AppTheme.MediaOverlay.backgroundColor.opacity(AppTheme.Opacity.high))
-        )
-        .padding(.leading, AppTheme.Spacing.smMd)
-    }
-
-    private func toolButton(_ kind: CanvasSelectionKind, systemImage: String, help: String) -> some View {
-        let active = editor.canvasSelection == kind
-        return Button {
-            editor.toggleCanvasSelection(kind)
-        } label: {
-            Image(systemName: systemImage)
-                .font(.system(size: AppTheme.FontSize.md, weight: AppTheme.FontWeight.medium))
-                .frame(width: AppTheme.IconSize.mdLg, height: AppTheme.IconSize.mdLg)
-                .foregroundStyle(active ? AppTheme.MediaOverlay.primaryColor : AppTheme.MediaOverlay.secondaryColor)
-                .background(
-                    RoundedRectangle(cornerRadius: AppTheme.Radius.sm)
-                        .fill(active ? AppTheme.Accent.canvasAI : AppTheme.Background.clearColor)
-                )
-        }
-        .buttonStyle(.plain)
-        .disabled(editor.isSubjectTracking)
-        .help(help)
-    }
-}
-
-/// Floating bar over the preview: selection hint, tracking progress and failures.
+/// Floating bar over the preview for tracking failures. Tool hints and progress show in the dock.
 struct SubjectActionBar: View {
     @Environment(EditorViewModel.self) private var editor
 
     var body: some View {
         Group {
-            if let clipId = editor.subjectTrackingClipId {
-                trackingRow(progress: editor.objectTrackingProgress[clipId] ?? 0)
-            } else if let failure = editor.subjectTrackingFailure {
-                failureRow(failure)
-            } else if let subject = editor.canvasSubject {
-                trackedRow(isArea: editor.trackedMask(id: subject.maskId)?.isDrawnArea == true)
-            } else if let kind = editor.canvasSelection {
-                switch kind {
-                case .subject: hint(L10n.string("Scribble over the subject, circle it, or click it"))
-                case .area: hint(L10n.string("Drag a rectangle, or draw a loop around the area"))
-                }
+            if let failure = editor.subjectTrackingFailure {
+                failureRow(message(for: failure)) { editor.subjectTrackingFailure = nil }
+            } else if let failure = editor.subjectFollowFailure {
+                failureRow(message(for: failure)) { editor.subjectFollowFailure = nil }
+            } else if let failure = editor.stickerFailure {
+                failureRow(message(for: failure)) { editor.stickerFailure = nil }
             }
         }
         .padding(.bottom, AppTheme.Spacing.lgXl)
     }
 
-    private func trackingRow(progress: Double) -> some View {
+    private func failureRow(_ message: String, dismiss: @escaping () -> Void) -> some View {
         capsule {
-            ProgressView(value: progress)
-                .progressViewStyle(.linear)
-                .tint(AppTheme.Accent.canvasAI)
-                .frame(width: AppTheme.ComponentSize.projectCardWidth)
-            Text(L10n.string("Tracking subject…"))
+            Text(message)
                 .foregroundStyle(AppTheme.MediaOverlay.primaryColor)
-            barButton(L10n.string("Cancel")) { _ = editor.cancelSubjectInteraction() }
+            barButton(L10n.string("Dismiss"), action: dismiss)
         }
     }
 
-    private func failureRow(_ failure: SubjectTrackingFailure) -> some View {
-        capsule {
-            Text(message(for: failure))
-                .foregroundStyle(AppTheme.MediaOverlay.primaryColor)
-            barButton(L10n.string("Dismiss")) { _ = editor.cancelSubjectInteraction() }
+    private func message(for failure: StickerFailure) -> String {
+        switch failure {
+        case .noProject: L10n.string("Save the project first, so the sticker has somewhere to live.")
+        case .emptyDescription: L10n.string("Describe the sticker in a few words.")
+        case .missingAPIKey: L10n.string("Add a Meta Model API key in Settings to draw stickers.")
+        case .contentPolicy: L10n.string("Muse Image won\u{2019}t draw that. Try describing it differently.")
+        case .nothingToCutOut: L10n.string("Couldn\u{2019}t cut the sticker out of its background. Try again.")
+        case .subject(let failure): message(for: failure)
+        case .failed: L10n.string("Couldn\u{2019}t reach Muse Image. Check your connection and try again.")
         }
     }
 
-    private func trackedRow(isArea: Bool) -> some View {
-        capsule {
-            Text(isArea
-                ? L10n.string("Area added. Add looks in the Subject inspector.")
-                : L10n.string("Subject tracked. Add looks in the Subject inspector."))
-                .foregroundStyle(AppTheme.MediaOverlay.primaryColor)
-            barButton(L10n.string("Done")) { editor.canvasSubject = nil }
-        }
-    }
-
-    private func hint(_ text: String) -> some View {
-        capsule {
-            Text(verbatim: text).foregroundStyle(AppTheme.MediaOverlay.secondaryColor)
+    private func message(for failure: SubjectFollowFailure) -> String {
+        switch failure {
+        case .clipNotFound: L10n.string("That clip is no longer on the timeline.")
+        case .notVisual: L10n.string("Audio clips can\u{2019}t follow an object.")
+        case .sameClip: L10n.string("A clip can\u{2019}t follow an object inside itself.")
+        case .maskNotLoaded: L10n.string("The object\u{2019}s tracking is still loading. Try again in a moment.")
+        case .noOverlap: L10n.string("The text and the object\u{2019}s clip don\u{2019}t overlap on the timeline.")
+        case .subjectAbsent: L10n.string("The object doesn\u{2019}t show while this clip plays.")
         }
     }
 
@@ -102,6 +53,7 @@ struct SubjectActionBar: View {
         case .missingAPIKey: L10n.string("Add a Meta Model API key in Settings to track subjects.")
         case .notFound: L10n.string("No subject found there. Try scribbling right on it.")
         case .modelFailed: L10n.string("SAM couldn't follow that spot. Scribble across more of the subject, or try another frame.")
+        case .serviceFailed: L10n.string("Meta\u{2019}s SAM service had a problem. Try again in a moment.")
         case .failed: L10n.string("Tracking failed. Try again.")
         }
     }

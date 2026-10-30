@@ -30,23 +30,18 @@ struct AgentInputBox<LeadingTools: View>: View {
         self.leadingTools = leadingTools()
     }
 
-    @FocusState private var focused: Bool
+    @State private var focused = false
     @State private var mentionQuery: String? = nil
     @State private var highlightedMentionIndex: Int = 0
     @State private var mentionTab: MentionTab = .all
     @State private var mentionScrollTick: Int = 0
     @State private var isDropTargeted = false
-    @State private var textEditorID = UUID()
     @Namespace private var sendStopNamespace
 
     private var showMentionPicker: Bool { mentionQuery != nil }
 
-    private var mentionCandidates: [MediaAsset] {
-        let q = (mentionQuery ?? "").lowercased()
-        let typed = mentionTab.clipType.map { t in editor.mediaAssets.filter { $0.type == t } }
-            ?? editor.mediaAssets
-        let matched = q.isEmpty ? typed : typed.filter { $0.mentionDisplayName.lowercased().contains(q) }
-        return Array(matched.prefix(50))
+    private var mentionCandidates: [MentionCandidate] {
+        MentionCandidate.candidates(query: mentionQuery ?? "", tab: mentionTab, editor: editor)
     }
 
     var body: some View {
@@ -62,10 +57,15 @@ struct AgentInputBox<LeadingTools: View>: View {
                         highlightedIndex: $highlightedMentionIndex,
                         tab: $mentionTab,
                         scrollTick: mentionScrollTick,
-                        onPick: { asset in pickMention(asset) }
+                        onPick: { candidate in pickMention(candidate) }
                     )
                 }
                 .onChange(of: mentionTab) { _, _ in highlightedMentionIndex = 0 }
+                .onChange(of: editor.agentService.inputFocusRequested, initial: true) { _, requested in
+                    guard requested else { return }
+                    focused = true
+                    editor.agentService.inputFocusRequested = false
+                }
             bottomBar
         }
         .glassEffect(.regular, in: .rect(cornerRadius: AppTheme.Radius.xl))
@@ -86,41 +86,25 @@ struct AgentInputBox<LeadingTools: View>: View {
 
     private var textField: some View {
         ZStack(alignment: .topLeading) {
-            TextEditor(text: $draft)
-                .id(textEditorID)
-                .font(.body)
-                .scrollContentBackground(.hidden)
-                .scrollIndicators(.never)
-                .padding(.horizontal, AppTheme.Spacing.mdLg)
-                .padding(.top, AppTheme.Spacing.smMd)
-                .padding(.bottom, AppTheme.Spacing.xs)
-                .focused($focused)
-                .frame(minHeight: 32, maxHeight: 64)
-                .onChange(of: draft) { old, new in
-                    updateMentionQuery(from: new)
-                    if !old.isEmpty && new.isEmpty {
-                        let wasFocused = focused
-                        textEditorID = UUID()
-                        if wasFocused {
-                            Task { @MainActor in focused = true }
-                        }
-                    }
-                }
-                .onPasteCommand(of: [.fileURL, .image, .png, .jpeg, .tiff], perform: handlePaste)
-                .onKeyPress(phases: [.down, .repeat]) { press in handleKey(press) }
-                // NSTextView eats Tab before the general onKeyPress fires.
-                .onKeyPress(.tab, phases: .down) { press in
-                    guard showMentionPicker else { return .ignored }
-                    cycleMentionTab(reverse: press.modifiers.contains(.shift))
-                    return .handled
-                }
+            MentionTextView(
+                text: $draft,
+                mentions: mentions,
+                isFocused: $focused,
+                onCommand: handleCommand,
+                onPaste: handlePaste
+            )
+            .padding(.horizontal, AppTheme.Spacing.mdLg)
+            .padding(.top, AppTheme.Spacing.smMd)
+            .padding(.bottom, AppTheme.Spacing.xs)
+            .frame(minHeight: 32, maxHeight: 64, alignment: .topLeading)
+            .onChange(of: draft) { _, new in updateMentionQuery(from: new) }
 
             if draft.isEmpty {
                 Text(L10n.string("Ask, or type @ to reference media"))
                     .font(.body)
                     .foregroundStyle(AppTheme.Text.mutedColor)
-                    .padding(.horizontal, AppTheme.Spacing.lgXl)
-                    .padding(.top, AppTheme.Spacing.mdLg)
+                    .padding(.horizontal, AppTheme.Spacing.mdLg)
+                    .padding(.top, AppTheme.Spacing.smMd)
                     .allowsHitTesting(false)
             }
         }
@@ -178,40 +162,33 @@ struct AgentInputBox<LeadingTools: View>: View {
         mentionScrollTick &+= 1
     }
 
-    private func handleKey(_ press: KeyPress) -> KeyPress.Result {
+    private func handleCommand(_ command: MentionTextView.Command) -> Bool {
         if showMentionPicker {
-            let isArrow = press.key == .upArrow || press.key == .downArrow
-            if press.phase == .repeat && !isArrow { return .handled }
             let candidates = mentionCandidates
-            switch press.key {
-            case .upArrow:
+            switch command {
+            case .moveUp:
                 moveMentionHighlight(by: -1, within: candidates)
-                return .handled
-            case .downArrow:
+            case .moveDown:
                 moveMentionHighlight(by: 1, within: candidates)
-                return .handled
-            case .return:
+            case .submit, .newline:
                 if candidates.indices.contains(highlightedMentionIndex) {
                     pickMention(candidates[highlightedMentionIndex])
                 }
-                return .handled
-            case .escape:
+            case .tab:
+                cycleMentionTab(reverse: false)
+            case .backtab:
+                cycleMentionTab(reverse: true)
+            case .cancel:
                 mentionQuery = nil
-                return .handled
-            default:
-                return .ignored
             }
+            return true
         }
-
-        guard press.phase == .down else { return .ignored }
-        if press.key == .return, !press.modifiers.contains(.shift), canSend {
-            onSend()
-            return .handled
-        }
-        return .ignored
+        guard command == .submit, canSend else { return false }
+        onSend()
+        return true
     }
 
-    private func moveMentionHighlight(by delta: Int, within candidates: [MediaAsset]) {
+    private func moveMentionHighlight(by delta: Int, within candidates: [MentionCandidate]) {
         guard !candidates.isEmpty else { return }
         let next = min(candidates.count - 1, max(0, highlightedMentionIndex + delta))
         guard next != highlightedMentionIndex else { return }
@@ -234,6 +211,18 @@ struct AgentInputBox<LeadingTools: View>: View {
         guard newQuery != mentionQuery else { return }
         mentionQuery = newQuery
         highlightedMentionIndex = 0
+    }
+
+    private func pickMention(_ candidate: MentionCandidate) {
+        switch candidate {
+        case .media(let asset):
+            pickMention(asset)
+        case .object(let mask, let clipId):
+            if let lastAt = draft.lastIndex(of: "@") { draft = String(draft[..<lastAt]) }
+            editor.agentService.attachMention(forObject: mask.id, clipId: clipId)
+            mentionQuery = nil
+            highlightedMentionIndex = 0
+        }
     }
 
     private func pickMention(_ asset: MediaAsset) {
@@ -269,12 +258,13 @@ struct AgentInputBox<LeadingTools: View>: View {
         return handled
     }
 
-    private func handlePaste(_: [NSItemProvider]) {
+    /// Imports pasted files and images as mentions; returns false for plain text.
+    private func handlePaste() -> Bool {
         let pb = NSPasteboard.general
-        if let urls = pb.readObjects(forClasses: [NSURL.self]) as? [URL], !urls.isEmpty {
+        if let urls = pb.readObjects(forClasses: [NSURL.self], options: [.urlReadingFileURLsOnly: true]) as? [URL], !urls.isEmpty {
             urls.compactMap { editor.addMediaAsset(from: $0) }
                 .forEach { editor.agentService.attachMention(for: $0) }
-            return
+            return true
         }
         for (type, ext) in [(NSPasteboard.PasteboardType.png, "png"), (.tiff, "tiff")] {
             if let data = pb.data(forType: type) {
@@ -282,10 +272,9 @@ struct AgentInputBox<LeadingTools: View>: View {
                     guard let asset = await editor.importPastedImageData(data, fileExtension: ext) else { return }
                     editor.agentService.attachMention(for: asset)
                 }
-                return
+                return true
             }
         }
-        // onPasteCommand swallows the default paste, so echo text manually.
-        if let text = pb.string(forType: .string) { draft += text }
+        return false
     }
 }

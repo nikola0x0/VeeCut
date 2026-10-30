@@ -47,7 +47,8 @@ struct AgentMessageView: View {
         if !texts.isEmpty {
             HStack {
                 Spacer(minLength: 48)
-                Text(verbatim: texts.joined(separator: "\n"))
+                mentionPillText(texts.joined(separator: "\n"), mentions: message.mentions)
+                    .textRenderer(MentionPillRenderer())
                     .font(.body)
                     .foregroundStyle(AppTheme.Text.primaryColor)
                     .lineSpacing(3)

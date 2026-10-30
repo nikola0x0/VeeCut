@@ -41,6 +41,14 @@ enum AgentMentionContext {
             var entry: [String: Any] = [
                 "mention": "@\(mention.displayName)",
             ]
+            if let object = mention.object {
+                entry["kind"] = "object"
+                entry["maskId"] = object.maskId
+                entry["clipId"] = object.clipId
+                if let name = editor?.trackedMask(id: object.maskId)?.label { entry["name"] = name }
+                entry["clip"] = clipSummary(for: object.clipId, editor: editor)
+                return entry
+            }
             if let timelineRange = mention.timelineRange {
                 entry["kind"] = "timelineRange"
                 entry["timelineRange"] = timelineRange.summary
@@ -62,7 +70,10 @@ enum AgentMentionContext {
 
     private static func mentionNotes(_ mentions: [AgentMention]) -> [String] {
         var notes: [String] = []
-        if mentions.contains(where: { $0.referencesTimelineClips }) {
+        if mentions.contains(where: { $0.object != nil }) {
+            notes.append("Entries with kind \"object\" are subjects or regions the user picked on the video; to edit only that object pass region {maskId, side: \"inside\"} to apply_color or apply_effect on its clipId, or side \"outside\" for everything else.")
+        }
+        if mentions.contains(where: { $0.referencesTimelineClips && $0.object == nil }) {
             notes.append("Entries with \"clipId\" refer to timeline clips; use clipId for timeline edits and pass it to inspect_media when inspecting visible source media.")
         }
         if mentions.contains(where: { $0.referencesTimelineRange }) {
@@ -106,6 +117,7 @@ struct AgentMention: Identifiable, Hashable, Codable {
     let type: ClipType?
     let clipId: String?
     let timelineRange: AgentTimelineRangeMention?
+    let object: AgentObjectMention?
 
     var referencesTimelineClips: Bool { clipId != nil }
     var referencesTimelineRange: Bool { timelineRange != nil }
@@ -118,6 +130,17 @@ struct AgentMention: Identifiable, Hashable, Codable {
         self.type = type
         self.clipId = clipId
         self.timelineRange = nil
+        self.object = nil
+    }
+
+    init(id: UUID = UUID(), displayName: String, object: AgentObjectMention, mediaRef: String) {
+        self.id = id
+        self.displayName = displayName
+        self.mediaRef = mediaRef
+        self.type = .video
+        self.clipId = object.clipId
+        self.timelineRange = nil
+        self.object = object
     }
 
     init(id: UUID = UUID(), displayName: String, timelineRange: AgentTimelineRangeMention) {
@@ -127,6 +150,7 @@ struct AgentMention: Identifiable, Hashable, Codable {
         self.type = nil
         self.clipId = nil
         self.timelineRange = timelineRange
+        self.object = nil
     }
 
     static func makeDisplayName(from raw: String) -> String {
@@ -150,6 +174,12 @@ extension MediaAsset {
     var mentionDisplayName: String {
         AgentMention.makeDisplayName(from: name)
     }
+}
+
+/// An object picked on the video, tagged in chat.
+struct AgentObjectMention: Hashable, Codable {
+    let maskId: String
+    let clipId: String
 }
 
 struct AgentTimelineRangeMention: Hashable, Codable {

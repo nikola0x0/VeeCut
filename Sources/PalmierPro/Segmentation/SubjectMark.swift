@@ -57,31 +57,18 @@ enum SubjectMark: Equatable {
     }
 }
 
-/// What a drag on the preview draws in area mode, in view points:
-/// a closed loop is a freehand outline, any other drag is the rectangle it spans.
-enum AreaMark {
-    static let maxOutlinePoints = 64
-    /// Smallest drawn area, as a fraction of the source frame on each side.
-    static let minSourceExtent: CGFloat = 0.01
+/// A soft brush stroke painted over a region, in view points. SAM gets the region the brush covered as its box
+/// and points spread along the stroke as hints.
+enum BrushMark {
+    static let maxHintPoints = 10
 
-    static func outline(_ stroke: [CGPoint]) -> [CGPoint]? {
-        guard case .loop(let loop)? = SubjectMark.classify(stroke) else {
-            let box = SubjectMark.boundingBox(stroke)
-            guard !box.isNull, min(box.width, box.height) >= SubjectMark.tapLength else { return nil }
-            return [
-                CGPoint(x: box.minX, y: box.minY), CGPoint(x: box.maxX, y: box.minY),
-                CGPoint(x: box.maxX, y: box.maxY), CGPoint(x: box.minX, y: box.maxY),
-            ]
-        }
-        return SubjectMark.resample(loop, count: min(loop.count, maxOutlinePoints))
+    /// The area the brush touched: the stroke's bounds grown by the brush radius. Nil for an empty stroke.
+    static func covered(_ stroke: [CGPoint], radius: CGFloat) -> CGRect? {
+        guard !stroke.isEmpty, radius.isFinite, radius >= 0 else { return nil }
+        return SubjectMark.boundingBox(stroke).insetBy(dx: -radius, dy: -radius)
     }
 
-    /// The outline in 0…1 source coordinates when it is finite and encloses a usable area.
-    static func validatedSourceOutline(_ outline: [CGPoint]) -> [CGPoint]? {
-        guard outline.count >= 3, outline.allSatisfy({ $0.x.isFinite && $0.y.isFinite }) else { return nil }
-        let clamped = outline.map { CGPoint(x: min(max($0.x, 0), 1), y: min(max($0.y, 0), 1)) }
-        let box = SubjectMark.boundingBox(clamped)
-        guard box.width >= minSourceExtent, box.height >= minSourceExtent else { return nil }
-        return clamped
+    static func hintPoints(_ stroke: [CGPoint]) -> [CGPoint] {
+        SubjectMark.resample(stroke, count: min(stroke.count, maxHintPoints))
     }
 }

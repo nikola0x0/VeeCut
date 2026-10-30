@@ -1,92 +1,34 @@
 import SwiftUI
 
-/// Looks applied inside or outside a clip's tracked subjects, each effect tunable in place.
+/// Fine-tuning for a clip's objects: a lilac or peach card per object, the shared background card, and edge softness.
 struct SubjectTab: View {
     @Environment(EditorViewModel.self) private var editor
     let clip: Clip
 
-    /// Subjects tracked on this clip's media, the one just selected on the canvas first.
-    private var masks: [TrackedMask] {
-        let all = editor.trackedMasks(forMedia: clip.mediaRef)
-        guard let current = editor.canvasSubject, current.clipId == clip.id,
-              let index = all.firstIndex(where: { $0.id == current.maskId }) else { return all }
-        var ordered = all
-        ordered.insert(ordered.remove(at: index), at: 0)
-        return ordered
+    private var masks: [TrackedMask] { editor.trackedMasks(forMedia: clip.mediaRef) }
+
+    /// The object selected in the dock, else every object on this clip's media.
+    private var shownMasks: [TrackedMask] {
+        guard let current = editor.validCanvasSubject, current.clipId == clip.id,
+              let mask = masks.first(where: { $0.id == current.maskId }) else { return masks }
+        return [mask]
     }
 
     var body: some View {
-        addSubjectBar
-        looksGroup(target: masks.first)
-        if masks.isEmpty {
-            emptyState
-        } else {
-            ForEach(masks) { mask in
-                subjectGroup(mask)
-            }
-            backgroundGroup
-        }
-    }
-
-    // MARK: - Background
-
-    /// One background per clip: everything outside the subjects it keeps sharp.
-    private var backgroundGroup: some View {
-        let regions = (clip.effectRegions ?? []).filter(\.matte.invert)
-        let kept = Set(regions.first?.matte.maskIds ?? masks.map(\.id))
-        let anyMaskId = masks[0].id
-        return EditorPanelGroup(L10n.string("Background")) {
-            EmptyView()
-        } content: {
-            quickActions(outside: true, maskId: anyMaskId)
-            addEffectMenu(outside: true, maskId: anyMaskId)
-            if masks.count > 1 || !regions.isEmpty {
-                VStack(alignment: .leading, spacing: AppTheme.Spacing.xs) {
-                    Text(L10n.string("Keep sharp"))
-                        .font(.system(size: AppTheme.FontSize.sm))
-                        .foregroundStyle(AppTheme.Text.secondaryColor)
-                    ForEach(masks) { mask in
-                        Toggle(isOn: Binding(
-                            get: { kept.contains(mask.id) },
-                            set: { editor.setKeepsSharp($0, maskId: mask.id, clipId: clip.id) }
-                        )) {
-                            Text(verbatim: mask.label).font(.system(size: AppTheme.FontSize.sm))
-                        }
-                        .toggleStyle(.checkbox)
-                        .disabled(regions.isEmpty || (kept.contains(mask.id) && kept.count == 1))
-                    }
+        VStack(alignment: .leading, spacing: AppTheme.Spacing.mdLg) {
+            if masks.isEmpty {
+                emptyState
+            } else {
+                ForEach(shownMasks) { mask in
+                    objectCard(mask)
                 }
-            }
-            ForEach(regions) { region in
-                regionSection(region)
+                backgroundCard
+                edgeSoftnessRow
             }
         }
-    }
-
-    private var addSubjectBar: some View {
-        VStack(alignment: .leading, spacing: AppTheme.Spacing.sm) {
-            HStack(spacing: AppTheme.Spacing.xs) {
-                Button {
-                    if editor.canvasSelection != .subject { editor.toggleCanvasSelection(.subject) }
-                } label: {
-                    Label(L10n.string("Select Subject"), systemImage: "scribble")
-                        .frame(maxWidth: .infinity)
-                }
-                .buttonStyle(.capsule(.prominent, size: .regular))
-                Button {
-                    if editor.canvasSelection != .area { editor.toggleCanvasSelection(.area) }
-                } label: {
-                    Label(L10n.string("Draw Area"), systemImage: "square.dashed")
-                        .frame(maxWidth: .infinity)
-                }
-                .buttonStyle(.capsule(.secondary, size: .regular))
-            }
-            TrackByNameField { editor.trackSubject(named: $0, clipId: clip.id) }
-        }
-        .disabled(editor.isSubjectTracking)
-        .padding(AppTheme.EditorPanel.contentInsets)
+        .padding(.horizontal, AppTheme.Spacing.smMd)
+        .padding(.vertical, AppTheme.Spacing.smMd)
         .frame(maxWidth: .infinity, alignment: .leading)
-        .background(AppTheme.Background.surfaceColor)
     }
 
     private var emptyState: some View {
@@ -97,7 +39,7 @@ struct SubjectTab: View {
             Text(L10n.string("No subjects yet"))
                 .font(.system(size: AppTheme.FontSize.md, weight: AppTheme.FontWeight.semibold))
                 .foregroundStyle(AppTheme.Text.primaryColor)
-            Text(L10n.string("Scribble over, circle, or click someone in the preview, or track an area by name like \u{201C}sky\u{201D}. VeeCut follows it through the clip so you can change just it or everything else. Draw Area marks a fixed part of the frame instead."))
+            Text(L10n.string("Pick someone on the video, paint over a region, or find something by name from the dock under the preview. Fine-tune its effects here."))
                 .font(.system(size: AppTheme.FontSize.sm))
                 .foregroundStyle(AppTheme.Text.secondaryColor)
                 .multilineTextAlignment(.center)
@@ -107,141 +49,161 @@ struct SubjectTab: View {
         .padding(AppTheme.Spacing.xl)
     }
 
-    private func subjectGroup(_ mask: TrackedMask) -> some View {
-        let maskId = mask.id
-        let regions = (clip.effectRegions ?? []).filter { !$0.matte.invert && $0.matte.maskId == maskId }
-        return EditorPanelGroup(mask.label) {
-            Button {
-                editor.deleteSubject(maskId: maskId)
-            } label: {
-                Image(systemName: "trash")
-                    .font(.system(size: AppTheme.FontSize.sm))
-                    .foregroundStyle(AppTheme.Text.tertiaryColor)
-                    .frame(width: AppTheme.IconSize.sm, height: AppTheme.IconSize.sm)
-                    .hoverHighlight()
-            }
-            .buttonStyle(.plain)
-            .help(mask.isDrawnArea ? L10n.string("Delete this area and its looks") : L10n.string("Delete this subject and its looks"))
+    // MARK: - Cards
+
+    private func objectCard(_ mask: TrackedMask) -> some View {
+        let regions = (clip.effectRegions ?? []).filter { !$0.matte.invert && $0.matte.maskId == mask.id }
+        return SubjectCard(fill: AppTheme.ObjectKind.fill) {
+            ObjectCardHeader(mask: mask, clipId: clip.id)
         } content: {
-            HStack(spacing: AppTheme.Spacing.sm) {
-                Text(L10n.string("Name"))
-                    .font(.system(size: AppTheme.FontSize.sm))
-                    .foregroundStyle(AppTheme.Text.secondaryColor)
-                    .frame(width: AppTheme.Slider.labelColumn, alignment: .leading)
-                SubjectNameField(name: mask.label) { editor.renameSubject(maskId: maskId, to: $0) }
-            }
-            Text(mask.isDrawnArea ? L10n.string("Drawn area. Stays in place for the whole clip.") : L10n.string("Tracked with SAM 3.1"))
-                .font(.system(size: AppTheme.FontSize.xs))
-                .foregroundStyle(AppTheme.Text.tertiaryColor)
-            quickActions(outside: false, maskId: maskId)
-            addEffectMenu(outside: false, maskId: maskId)
-            ForEach(regions) { region in
-                regionSection(region)
-            }
+            effectRows(regions)
+            addEffectMenu(outside: false, maskId: mask.id)
         }
     }
 
-    // MARK: - Looks
-
-    /// Full looks, as presets or described to Muse Spark: around one subject and the shared background,
-    /// or for the whole clip when it has no subject.
-    private func looksGroup(target mask: TrackedMask?) -> some View {
-        EditorPanelGroup(L10n.string("Looks")) {
-            EmptyView()
+    private var backgroundCard: some View {
+        let regions = (clip.effectRegions ?? []).filter(\.matte.invert)
+        let kept = Set(regions.first?.matte.maskIds ?? masks.map(\.id))
+        return SubjectCard(fill: AppTheme.Tint.peachColor) {
+            Text(L10n.string("Background"))
+                .font(.system(size: AppTheme.FontSize.sm, weight: AppTheme.FontWeight.semibold))
+                .foregroundStyle(AppTheme.Tint.inkColor)
         } content: {
-            Text(lookTargetDescription(mask))
-                .font(.system(size: AppTheme.FontSize.xs))
-                .foregroundStyle(AppTheme.Text.tertiaryColor)
-            HStack(spacing: AppTheme.Spacing.xs) {
-                ForEach(SubjectLook.allCases.filter { $0.placement == .both }, id: \.self) { look in
-                    Button {
-                        editor.applySubjectLook(look, clipId: clip.id, maskId: mask?.id)
-                    } label: {
-                        Text(L10n.string(key: look.titleKey))
-                            .lineLimit(1)
-                            .frame(maxWidth: .infinity)
+            effectRows(regions)
+            addEffectMenu(outside: true, maskId: masks[0].id)
+            if !regions.isEmpty {
+                VStack(alignment: .leading, spacing: AppTheme.Spacing.xs) {
+                    Text(L10n.string("Keep sharp"))
+                        .font(.system(size: AppTheme.FontSize.xs))
+                        .foregroundStyle(AppTheme.Text.tertiaryColor)
+                    FlowChips {
+                        ForEach(masks) { mask in
+                            keepSharpChip(mask, kept: kept)
+                        }
                     }
-                    .buttonStyle(.capsule(.secondary, size: .regular))
                 }
             }
-            DescribeLookField { editor.requestLook(described: $0, clipId: clip.id, maskId: mask?.id) }
-                .disabled(editor.isRequestingLook)
-            if let status = editor.lookRequestStatus, status.clipId == clip.id {
-                lookRequestStatusRow(status)
-            }
         }
     }
 
-    private func lookTargetDescription(_ mask: TrackedMask?) -> String {
-        guard let mask else { return L10n.string("Applies to the whole clip. Tune it in the Adjust tab.") }
-        return masks.count > 1
-            ? L10n.string("Applies to \(mask.label) and the background.")
-            : L10n.string("Applies to the subject and the background.")
+    private func keepSharpChip(_ mask: TrackedMask, kept: Set<String>) -> some View {
+        let isKept = kept.contains(mask.id)
+        return Button {
+            editor.setKeepsSharp(!isKept, maskId: mask.id, clipId: clip.id)
+        } label: {
+            HStack(spacing: AppTheme.Spacing.xs) {
+                ObjectThumbnail(maskId: mask.id)
+                Text(verbatim: mask.label).lineLimit(1)
+                if isKept { Image(systemName: "checkmark").font(.system(size: AppTheme.FontSize.xxs, weight: AppTheme.FontWeight.bold)) }
+            }
+            .font(.system(size: AppTheme.FontSize.sm))
+            .foregroundStyle(AppTheme.Tint.inkColor)
+            .padding(.leading, AppTheme.Spacing.xs)
+            .padding(.trailing, AppTheme.Spacing.smMd)
+            .frame(height: AppTheme.IconSize.lgXl)
+            .background(Capsule(style: .continuous).fill(
+                isKept ? AppTheme.ObjectKind.fill : AppTheme.Interaction.fill(AppTheme.Opacity.faint)
+            ))
+        }
+        .buttonStyle(.plain)
+        .disabled(isKept && kept.count == 1)
+        .help(isKept ? L10n.string("Kept sharp: background effects skip it") : L10n.string("Background effects apply to it too"))
     }
 
     @ViewBuilder
-    private func lookRequestStatusRow(_ status: LookRequestStatus) -> some View {
-        switch status {
-        case .running:
-            HStack(spacing: AppTheme.Spacing.sm) {
-                ProgressView().controlSize(.small)
-                Text(L10n.string("Muse Spark is building the look…"))
-                    .font(.system(size: AppTheme.FontSize.sm))
-                    .foregroundStyle(AppTheme.Text.secondaryColor)
-                Spacer(minLength: 0)
-                Button(L10n.string("Cancel")) { editor.cancelLookRequest() }
-                    .controlSize(.small)
-            }
-        case .applied(_, let name, let wholeClip, let skipped):
+    private var edgeSoftnessRow: some View {
+        let preferred = editor.validCanvasSubject?.clipId == clip.id ? editor.validCanvasSubject?.maskId : nil
+        if let softness = editor.edgeSoftness(clipId: clip.id, preferring: preferred) {
             VStack(alignment: .leading, spacing: AppTheme.Spacing.xxs) {
-                Text(wholeClip
-                    ? L10n.string("Applied \u{201C}\(name)\u{201D}. Tune it in the Adjust tab.")
-                    : L10n.string("Applied \u{201C}\(name)\u{201D}. Tune it below."))
-                    .font(.system(size: AppTheme.FontSize.sm))
-                    .foregroundStyle(AppTheme.Text.secondaryColor)
-                if !skipped.isEmpty {
-                    Text(L10n.string("Skipped unsupported: \(skipped.joined(separator: ", "))"))
+                sliderRow(
+                    label: L10n.string("Edge softness"),
+                    value: softness.value,
+                    range: EffectMatte.featherRange,
+                    defaultValue: EditorViewModel.subjectFeather,
+                    unit: "px"
+                ) { value, commit in
+                    editor.setEdgeSoftness(value, clipId: clip.id, commit: commit)
+                }
+                if softness.mixed {
+                    Text(L10n.string("Mixed: dragging sets every region to the same softness."))
                         .font(.system(size: AppTheme.FontSize.xs))
                         .foregroundStyle(AppTheme.Text.tertiaryColor)
                 }
             }
-            .fixedSize(horizontal: false, vertical: true)
-        case .failed(_, let failure):
-            Text(lookFailureMessage(failure))
-                .font(.system(size: AppTheme.FontSize.sm))
-                .foregroundStyle(AppTheme.Text.secondaryColor)
-                .fixedSize(horizontal: false, vertical: true)
         }
     }
 
-    private func lookFailureMessage(_ failure: LookRequestFailure) -> String {
-        switch failure {
-        case .missingAPIKey: L10n.string("Add a Meta Model API key in Settings to describe looks.")
-        case .unusable: L10n.string("Muse Spark couldn\u{2019}t build that look. Try describing it differently.")
-        case .failed: L10n.string("Couldn\u{2019}t reach Muse Spark. Check your connection and try again.")
-        }
-    }
+    // MARK: - Effect rows
 
-    // MARK: - Quick actions
-
-    private func quickActions(outside: Bool, maskId: String) -> some View {
-        LazyVGrid(
-            columns: [GridItem(.flexible(), spacing: AppTheme.Spacing.xs), GridItem(.flexible(), spacing: AppTheme.Spacing.xs)],
-            spacing: AppTheme.Spacing.xs
-        ) {
-            ForEach(SubjectLook.allCases.filter { $0.placement == (outside ? .background : .subject) }, id: \.self) { look in
-                Button {
-                    editor.applySubjectLook(look, clipId: clip.id, maskId: maskId)
-                } label: {
-                    HStack(spacing: AppTheme.Spacing.sm) {
-                        sideSwatch(outside: outside)
-                        Text(L10n.string(key: look.titleKey))
-                            .lineLimit(1)
-                        Spacer(minLength: 0)
-                    }
-                    .frame(maxWidth: .infinity)
+    @ViewBuilder
+    private func effectRows(_ regions: [EffectRegion]) -> some View {
+        ForEach(regions) { region in
+            ForEach(region.effects) { effect in
+                if let descriptor = EffectRegistry.descriptor(id: effect.type) {
+                    effectRow(effect, descriptor: descriptor, in: region)
                 }
-                .buttonStyle(.capsule(.secondary, size: .regular))
+            }
+        }
+    }
+
+    private func effectRow(_ effect: Effect, descriptor: EffectDescriptor, in region: EffectRegion) -> some View {
+        VStack(alignment: .leading, spacing: AppTheme.Spacing.xs) {
+            HStack(spacing: AppTheme.Spacing.sm) {
+                if let main = descriptor.params.first {
+                    paramRow(effect, spec: main, label: L10n.string(key: descriptor.displayName), in: region)
+                } else {
+                    Text(L10n.string(key: descriptor.displayName))
+                        .font(.system(size: AppTheme.FontSize.sm))
+                        .foregroundStyle(AppTheme.Text.secondaryColor)
+                    Spacer(minLength: 0)
+                }
+                Toggle(String(), isOn: Binding(
+                    get: { effect.enabled },
+                    set: { enabled in
+                        editRegionEffect(effect.id, in: region, actionName: enabled
+                            ? L10n.string("Enable Effect") : L10n.string("Disable Effect")) { $0.enabled = enabled }
+                    }
+                ))
+                .toggleStyle(.switch)
+                .controlSize(.mini)
+                .labelsHidden()
+                .tint(AppTheme.Accent.primary)
+                .accessibilityLabel(L10n.string(key: descriptor.displayName))
+            }
+            let extra = descriptor.params.dropFirst()
+            if extra.count == 1, let spec = extra.first {
+                paramRow(effect, spec: spec, label: L10n.string(key: spec.label), in: region)
+            } else if !extra.isEmpty {
+                MoreSettings {
+                    ForEach(extra, id: \.key) { spec in
+                        paramRow(effect, spec: spec, label: L10n.string(key: spec.label), in: region)
+                    }
+                }
+            }
+        }
+        .opacity(effect.enabled ? AppTheme.Opacity.opaque : AppTheme.Opacity.strong)
+        .contentShape(Rectangle())
+        .contextMenu {
+            Button(L10n.string("Remove"), role: .destructive) {
+                editor.editSubjectRegion(clipId: clip.id, regionId: region.id, commit: true,
+                                         actionName: L10n.string("Remove Effect")) { region in
+                    region.effects.removeAll { $0.id == effect.id }
+                }
+            }
+        }
+    }
+
+    private func paramRow(_ effect: Effect, spec: EffectParamSpec, label: String, in region: EffectRegion) -> some View {
+        sliderRow(
+            label: label,
+            value: effect.params[spec.key]?.resolved(at: 0, default: spec.defaultValue) ?? spec.defaultValue,
+            range: spec.range,
+            defaultValue: spec.defaultValue,
+            unit: spec.unit
+        ) { value, commit in
+            editRegionEffect(effect.id, in: region, commit: commit,
+                             actionName: L10n.string("Change \(L10n.string(key: spec.label))")) {
+                $0.params[spec.key] = EffectParam(value: value)
             }
         }
     }
@@ -263,88 +225,14 @@ struct SubjectTab: View {
                 }
             }
         } label: {
-            HStack(spacing: AppTheme.Spacing.sm) {
-                sideSwatch(outside: outside)
-                Text(outside ? L10n.string("Add to Background") : L10n.string("Add to Subject"))
-            }
+            Label(L10n.string("Add effect"), systemImage: "plus")
+                .font(.system(size: AppTheme.FontSize.sm, weight: AppTheme.FontWeight.medium))
+                .foregroundStyle(AppTheme.Accent.canvasAI)
         }
         .menuStyle(.button)
-        .controlSize(.small)
+        .buttonStyle(.plain)
+        .menuIndicator(.hidden)
         .fixedSize()
-    }
-
-    // MARK: - Applied regions
-
-    private func regionSection(_ region: EffectRegion) -> some View {
-        VStack(alignment: .leading, spacing: AppTheme.Spacing.sm) {
-            sliderRow(
-                label: L10n.string("Edge Feather"),
-                value: region.matte.feather,
-                range: EffectMatte.featherRange,
-                defaultValue: EditorViewModel.subjectFeather,
-                unit: "px"
-            ) { value, commit in
-                editor.editSubjectRegion(clipId: clip.id, regionId: region.id, commit: commit,
-                                         actionName: L10n.string("Change Edge Feather")) { $0.matte.feather = value }
-            }
-            ForEach(region.effects) { effect in
-                effectRows(effect, in: region)
-            }
-        }
-    }
-
-    @ViewBuilder
-    private func effectRows(_ effect: Effect, in region: EffectRegion) -> some View {
-        if let descriptor = EffectRegistry.descriptor(id: effect.type) {
-            HStack(spacing: AppTheme.Spacing.sm) {
-                Text(L10n.string(key: descriptor.displayName))
-                    .font(.system(size: AppTheme.FontSize.sm, weight: AppTheme.FontWeight.medium))
-                    .foregroundStyle(effect.enabled ? AppTheme.Text.primaryColor : AppTheme.Text.mutedColor)
-                Spacer(minLength: 0)
-                Toggle(String(), isOn: Binding(
-                    get: { effect.enabled },
-                    set: { enabled in
-                        editRegionEffect(effect.id, in: region, actionName: enabled
-                            ? L10n.string("Enable Effect") : L10n.string("Disable Effect")) { $0.enabled = enabled }
-                    }
-                ))
-                .toggleStyle(.switch)
-                .controlSize(.mini)
-                .labelsHidden()
-                .tint(AppTheme.Accent.primary)
-                .accessibilityLabel(L10n.string(key: descriptor.displayName))
-                Button {
-                    editor.editSubjectRegion(clipId: clip.id, regionId: region.id, commit: true,
-                                             actionName: L10n.string("Remove Effect")) { region in
-                        region.effects.removeAll { $0.id == effect.id }
-                    }
-                } label: {
-                    Image(systemName: "xmark")
-                        .font(.system(size: AppTheme.FontSize.xs, weight: AppTheme.FontWeight.semibold))
-                        .foregroundStyle(AppTheme.Text.tertiaryColor)
-                        .frame(width: AppTheme.IconSize.xs, height: AppTheme.IconSize.xs)
-                        .hoverHighlight(cornerRadius: AppTheme.Radius.xs)
-                }
-                .buttonStyle(.plain)
-                .help(L10n.string("Remove"))
-            }
-            .padding(.top, AppTheme.Spacing.xs)
-            ForEach(descriptor.params, id: \.key) { spec in
-                sliderRow(
-                    label: L10n.string(key: spec.label),
-                    value: effect.params[spec.key]?.resolved(at: 0, default: spec.defaultValue) ?? spec.defaultValue,
-                    range: spec.range,
-                    defaultValue: spec.defaultValue,
-                    unit: spec.unit
-                ) { value, commit in
-                    editRegionEffect(effect.id, in: region, commit: commit,
-                                     actionName: L10n.string("Change \(L10n.string(key: spec.label))")) {
-                        $0.params[spec.key] = EffectParam(value: value)
-                    }
-                }
-                .opacity(effect.enabled ? AppTheme.Opacity.opaque : AppTheme.Opacity.strong)
-            }
-        }
     }
 
     private func editRegionEffect(
@@ -359,8 +247,6 @@ struct SubjectTab: View {
             body(&region.effects[index])
         }
     }
-
-    // MARK: - Pieces
 
     private func sliderRow(
         label: String,
@@ -395,83 +281,183 @@ struct SubjectTab: View {
         }
         .frame(height: AppTheme.EditorPanel.fieldMinHeight)
     }
+}
 
-    private func sideSwatch(outside: Bool) -> some View {
-        RoundedRectangle(cornerRadius: AppTheme.Radius.xs, style: .continuous)
-            .fill(Color(outside ? AppTheme.Palette.peach : AppTheme.Palette.lilac))
-            .frame(width: AppTheme.ComponentSize.subjectSideSwatch, height: AppTheme.ComponentSize.subjectSideSwatch)
-            .accessibilityHidden(true)
+/// An effect's further settings behind a "More" row that opens on a click anywhere on it.
+private struct MoreSettings<Content: View>: View {
+    @ViewBuilder let content: Content
+    @State private var isExpanded = false
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: AppTheme.Spacing.xs) {
+            Button {
+                withAnimation(.easeOut(duration: AppTheme.Anim.transition)) { isExpanded.toggle() }
+            } label: {
+                HStack(spacing: AppTheme.Spacing.xs) {
+                    Image(systemName: "chevron.right")
+                        .font(.system(size: AppTheme.FontSize.xxs, weight: AppTheme.FontWeight.semibold))
+                        .rotationEffect(.degrees(isExpanded ? 90 : 0))
+                    Text(L10n.string("More"))
+                        .font(.system(size: AppTheme.FontSize.xs))
+                    Spacer(minLength: 0)
+                }
+                .foregroundStyle(AppTheme.Text.tertiaryColor)
+                .contentShape(Rectangle())
+            }
+            .buttonStyle(.plain)
+            if isExpanded { content }
+        }
     }
 }
 
-/// Editable subject name; commits on Return or when focus leaves.
-private struct SubjectNameField: View {
-    let name: String
-    let onCommit: (String) -> Void
+/// A rounded card with a tinted header band; the chevron folds its body away.
+private struct SubjectCard<Header: View, Content: View>: View {
+    let fill: Color
+    @ViewBuilder let header: Header
+    @ViewBuilder let content: Content
+    @State private var isCollapsed = false
+
+    var body: some View {
+        let shape = RoundedRectangle(cornerRadius: AppTheme.Radius.md, style: .continuous)
+        VStack(alignment: .leading, spacing: 0) {
+            HStack(spacing: AppTheme.Spacing.xs) {
+                Button {
+                    withAnimation(.easeOut(duration: AppTheme.Anim.transition)) { isCollapsed.toggle() }
+                } label: {
+                    Image(systemName: "chevron.right")
+                        .font(.system(size: AppTheme.FontSize.xs, weight: AppTheme.FontWeight.semibold))
+                        .rotationEffect(.degrees(isCollapsed ? 0 : 90))
+                        .foregroundStyle(AppTheme.Tint.inkColor)
+                        .frame(width: AppTheme.IconSize.xs, height: AppTheme.IconSize.xs)
+                        .contentShape(Rectangle())
+                }
+                .buttonStyle(.plain)
+                .help(isCollapsed ? L10n.string("Expand") : L10n.string("Collapse"))
+                header
+            }
+            .padding(.horizontal, AppTheme.Spacing.smMd)
+            .frame(maxWidth: .infinity, minHeight: AppTheme.IconSize.xl, alignment: .leading)
+            .background(fill)
+            if !isCollapsed {
+                VStack(alignment: .leading, spacing: AppTheme.Spacing.sm) { content }
+                    .padding(AppTheme.Spacing.smMd)
+                    .frame(maxWidth: .infinity, alignment: .leading)
+            }
+        }
+        .background(shape.fill(AppTheme.Background.raisedColor))
+        .clipShape(shape)
+        .overlay(shape.stroke(AppTheme.Border.subtleColor, lineWidth: AppTheme.BorderWidth.hairline))
+    }
+}
+
+/// Thumbnail, name with a pencil for inline rename, and a menu for chat and delete.
+private struct ObjectCardHeader: View {
+    @Environment(EditorViewModel.self) private var editor
+    let mask: TrackedMask
+    let clipId: String
+    @State private var renaming = false
     @State private var draft = ""
     @FocusState private var focused: Bool
 
     var body: some View {
-        TextField(String(), text: $draft)
-            .textFieldStyle(.roundedBorder)
-            .font(.system(size: AppTheme.FontSize.sm))
-            .controlSize(.small)
-            .focused($focused)
-            .onSubmit { onCommit(draft) }
-            .onChange(of: focused) { _, isFocused in if !isFocused { onCommit(draft) } }
-            .onChange(of: name, initial: true) { _, newName in draft = newName }
-            .onExitCommand { draft = name; focused = false }
-            .accessibilityLabel(L10n.string("Subject name"))
+        HStack(spacing: AppTheme.Spacing.xs) {
+            ObjectThumbnail(maskId: mask.id)
+            if renaming {
+                TextField(String(), text: $draft)
+                    .textFieldStyle(.roundedBorder)
+                    .controlSize(.small)
+                    .focused($focused)
+                    .onAppear { focused = true }
+                    .onSubmit(commit)
+                    .onExitCommand { renaming = false }
+                    .onChange(of: focused) { _, isFocused in if !isFocused { commit() } }
+                    .accessibilityLabel(L10n.string("Object name"))
+            } else {
+                Text(verbatim: mask.label)
+                    .font(.system(size: AppTheme.FontSize.sm, weight: AppTheme.FontWeight.semibold))
+                    .lineLimit(1)
+                    .onTapGesture(count: 2, perform: startRename)
+                Button(action: startRename) {
+                    Image(systemName: "pencil")
+                        .font(.system(size: AppTheme.FontSize.xs, weight: AppTheme.FontWeight.semibold))
+                        .frame(width: AppTheme.IconSize.xs, height: AppTheme.IconSize.xs)
+                        .hoverHighlight(cornerRadius: AppTheme.Radius.xs)
+                }
+                .buttonStyle(.plain)
+                .help(L10n.string("Rename"))
+            }
+            Spacer(minLength: 0)
+            Menu {
+                Button(L10n.string("Ask in Chat")) { editor.insertObjectMention(CanvasSubject(clipId: clipId, maskId: mask.id)) }
+                Button(L10n.string("Delete"), role: .destructive) { editor.deleteSubject(maskId: mask.id) }
+            } label: {
+                Image(systemName: "ellipsis")
+                    .font(.system(size: AppTheme.FontSize.sm))
+            }
+            .menuStyle(.button)
+            .buttonStyle(.plain)
+            .menuIndicator(.hidden)
+            .fixedSize()
+        }
+        .foregroundStyle(AppTheme.Tint.inkColor)
+        .help(L10n.string("Tracked with SAM 3.1"))
+    }
+
+    private func startRename() {
+        draft = mask.label
+        renaming = true
+    }
+
+    private func commit() {
+        guard renaming else { return }
+        renaming = false
+        editor.renameSubject(maskId: mask.id, to: draft)
     }
 }
 
-/// Tracks an area or object by name ("sky", "the red car") instead of drawing on it.
-private struct TrackByNameField: View {
-    let onTrack: (String) -> Void
-    @State private var name = ""
+/// Chips that wrap onto new lines when the inspector is narrow.
+private struct FlowChips<Content: View>: View {
+    @ViewBuilder let content: Content
 
     var body: some View {
-        HStack(spacing: AppTheme.Spacing.xs) {
-            TextField(L10n.string("Track by name: sky, the red car…"), text: $name)
-                .textFieldStyle(.roundedBorder)
-                .font(.system(size: AppTheme.FontSize.sm))
-                .controlSize(.small)
-                .onSubmit(track)
-                .accessibilityLabel(L10n.string("Track by name"))
-            Button(L10n.string("Track"), action: track)
-                .controlSize(.small)
-                .disabled(name.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty)
-        }
-    }
-
-    private func track() {
-        onTrack(name)
-        name = ""
+        FlowLayout(spacing: AppTheme.Spacing.xs) { content }
     }
 }
 
-/// Describes a look in words ("warm golden hour", "90s film") for Muse Spark to build.
-private struct DescribeLookField: View {
-    let onCreate: (String) -> Void
-    @State private var text = ""
+private struct FlowLayout: SwiftUI.Layout {
+    let spacing: CGFloat
 
-    var body: some View {
-        HStack(spacing: AppTheme.Spacing.xs) {
-            TextField(L10n.string("Describe a look: warm golden hour, 90s film\u{2026}"), text: $text)
-                .textFieldStyle(.roundedBorder)
-                .font(.system(size: AppTheme.FontSize.sm))
-                .controlSize(.small)
-                .onSubmit(create)
-                .accessibilityLabel(L10n.string("Describe a look"))
-            Button(L10n.string("Create"), action: create)
-                .controlSize(.small)
-                .disabled(text.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty)
+    func sizeThatFits(proposal: ProposedViewSize, subviews: Subviews, cache: inout ()) -> CGSize {
+        let rows = arrange(subviews, width: proposal.width ?? .infinity)
+        return CGSize(width: rows.map(\.width).max() ?? 0, height: rows.last.map { $0.y + $0.height } ?? 0)
+    }
+
+    func placeSubviews(in bounds: CGRect, proposal: ProposedViewSize, subviews: Subviews, cache: inout ()) {
+        for row in arrange(subviews, width: bounds.width) {
+            var x = bounds.minX
+            for index in row.indices {
+                let size = subviews[index].sizeThatFits(.unspecified)
+                subviews[index].place(at: CGPoint(x: x, y: bounds.minY + row.y), proposal: ProposedViewSize(size))
+                x += size.width + spacing
+            }
         }
     }
 
-    private func create() {
-        guard !text.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty else { return }
-        onCreate(text)
-        text = ""
+    private func arrange(_ subviews: Subviews, width: CGFloat) -> [(indices: [Int], width: CGFloat, y: CGFloat, height: CGFloat)] {
+        var rows: [(indices: [Int], width: CGFloat, y: CGFloat, height: CGFloat)] = []
+        var current: [Int] = [], rowWidth: CGFloat = 0, rowHeight: CGFloat = 0, y: CGFloat = 0
+        for index in subviews.indices {
+            let size = subviews[index].sizeThatFits(.unspecified)
+            if !current.isEmpty, rowWidth + spacing + size.width > width {
+                rows.append((current, rowWidth, y, rowHeight))
+                y += rowHeight + spacing
+                current = []; rowWidth = 0; rowHeight = 0
+            }
+            rowWidth += (current.isEmpty ? 0 : spacing) + size.width
+            rowHeight = max(rowHeight, size.height)
+            current.append(index)
+        }
+        if !current.isEmpty { rows.append((current, rowWidth, y, rowHeight)) }
+        return rows
     }
 }

@@ -1,15 +1,16 @@
 import Foundation
 
-/// The tracked subject the canvas controls act on.
-struct CanvasSubject: Equatable {
+/// The canvas object the tag and card act on: one subject or area, or the whole clip when `maskId` is nil.
+struct CanvasSubject: Hashable {
     let clipId: String
-    let maskId: String
+    let maskId: String?
 }
 
-/// What drawing on the preview creates: a subject SAM tracks, or a static area.
+/// The canvas tool in use: Pick marks a subject with a scribble, circle or click; Brush paints over a region.
+/// Both hand the mark to SAM to track.
 enum CanvasSelectionKind: Equatable {
     case subject
-    case area
+    case brush
 }
 
 enum SubjectTrackingFailure: Equatable {
@@ -17,6 +18,8 @@ enum SubjectTrackingFailure: Equatable {
     case notFound
     /// SAM accepted the request but could not follow the marked spot.
     case modelFailed
+    /// Meta's service failed while tracking; nothing about the mark was wrong.
+    case serviceFailed
     case failed
 }
 
@@ -48,9 +51,20 @@ extension EditorViewModel {
             canvasSelection = nil
             return true
         }
-        if canvasSubject != nil || subjectTrackingFailure != nil {
-            canvasSubject = nil
+        if subjectTrackingFailure != nil {
             subjectTrackingFailure = nil
+            return true
+        }
+        if subjectFollowFailure != nil {
+            subjectFollowFailure = nil
+            return true
+        }
+        if objectCardOpen {
+            objectCardOpen = false
+            return true
+        }
+        if canvasSubject != nil {
+            clearCanvasObject()
             return true
         }
         return false
@@ -72,9 +86,21 @@ extension EditorViewModel {
     }
 
     private func startSubjectTracking(clipId: String, prompt: TrackingPrompt, label: String) {
+        runSubjectTracking(clipId: clipId) { [weak self] in
+            guard let self else { throw CancellationError() }
+            return try await self.trackObject(clipId: clipId, prompt: prompt, label: label).mask
+        }
+    }
+
+    /// Runs one tracking job with the dock's progress, Escape cancel and failure messages, then selects the result.
+    func runSubjectTracking(
+        clipId: String,
+        track: @escaping @MainActor () async throws -> TrackedMask,
+        then completion: @escaping @MainActor (TrackedMask) -> Void = { _ in }
+    ) {
         canvasSelection = nil
         subjectTrackingFailure = nil
-        canvasSubject = nil
+        clearCanvasObject()
         subjectTrackingClipId = clipId
         subjectTrackingTask = Task { [weak self] in
             guard let self else { return }
@@ -83,9 +109,10 @@ extension EditorViewModel {
                 self.subjectTrackingClipId = nil
             }
             do {
-                let result = try await self.trackObject(clipId: clipId, prompt: prompt, label: label)
+                let mask = try await track()
                 guard !Task.isCancelled, self.clipFor(id: clipId) != nil else { return }
-                self.focusSubject(clipId: clipId, maskId: result.mask.id)
+                self.selectCanvasObject(clipId: clipId, maskId: mask.id)
+                completion(mask)
             } catch is CancellationError {
             } catch MetaModelError.missingAPIKey {
                 self.subjectTrackingFailure = .missingAPIKey
@@ -94,33 +121,13 @@ extension EditorViewModel {
             } catch MetaModelError.streamFailed(let detail) {
                 guard !Task.isCancelled else { return }
                 Log.editor.error("subject tracking model failure clip=\(clipId) detail=\(detail)")
-                self.subjectTrackingFailure = .modelFailed
+                self.subjectTrackingFailure = detail.contains(#""code":"server_error""#) ? .serviceFailed : .modelFailed
             } catch {
                 guard !Task.isCancelled else { return }
                 Log.editor.error("subject tracking failed clip=\(clipId) error=\(String(describing: error))")
                 self.subjectTrackingFailure = .failed
             }
         }
-    }
-
-    /// Adds a static area drawn on `clipId` as one undoable step. `outline` is in 0…1 source coordinates.
-    func drawArea(clipId: String, outline: [CGPoint]) {
-        guard !isSubjectTracking, let clip = clipFor(id: clipId), clip.mediaType == .video,
-              let outline = AreaMark.validatedSourceOutline(outline) else { return }
-        let areaCount = trackedMasks(forMedia: clip.mediaRef).filter(\.isDrawnArea).count
-        let area = TrackedMask.drawnArea(outline: outline, mediaRef: clip.mediaRef, label: L10n.string("Area \(areaCount + 1)"))
-        MatteStore.shared.install(area, frames: [:])
-        let actionName = L10n.string("Draw Area")
-        undo.perform(actionName) { replaceTrackedMasks(with: trackedMasks + [area], actionName: actionName) }
-        canvasSelection = nil
-        focusSubject(clipId: clipId, maskId: area.id)
-    }
-
-    private func focusSubject(clipId: String, maskId: String) {
-        canvasSubject = CanvasSubject(clipId: clipId, maskId: maskId)
-        selectedClipIds = [clipId]
-        inspectorPanelVisible = true
-        inspectorClipTabRequest = .subject
     }
 
     /// The clip's background matte: its existing background region, else outside every subject on its media.
@@ -202,9 +209,35 @@ extension EditorViewModel {
         }
     }
 
-    /// Effects that can run inside a subject region: tunable numeric settings, no keying, no file resources.
+    /// Edge softness of the clip's regions: the region inside `maskId`, else the first; `mixed` when they differ.
+    func edgeSoftness(clipId: String, preferring maskId: String?) -> (value: Double, mixed: Bool)? {
+        guard let regions = clipFor(id: clipId)?.effectRegions, let first = regions.first else { return nil }
+        let preferred = regions.first { !$0.matte.invert && $0.matte.maskId == maskId } ?? first
+        return (preferred.matte.feather, regions.contains { $0.matte.feather != preferred.matte.feather })
+    }
+
+    /// Sets every region's edge softness on the clip: live while dragging, one undo step on `commit`.
+    func setEdgeSoftness(_ value: Double, clipId: String, commit: Bool) {
+        guard value.isFinite, clipFor(id: clipId)?.effectRegions?.isEmpty == false else { return }
+        let feather = min(max(value, EffectMatte.featherRange.lowerBound), EffectMatte.featherRange.upperBound)
+        let body: (inout Clip) -> Void = { clip in
+            clip.effectRegions = clip.effectRegions?.map { region in
+                var region = region
+                region.matte.feather = feather
+                return region
+            }
+        }
+        if commit {
+            commitClipProperties(clipIds: [clipId], actionName: L10n.string("Change Edge Softness"), body)
+        } else {
+            applyClipProperties(clipIds: [clipId], body)
+        }
+    }
+
+    /// Effects that can run inside a subject region: tunable numeric settings, no keying, no file resources,
+    /// and not Smooth Skin, which only goes on a face.
     static let subjectEffectDescriptors: [EffectDescriptor] = EffectRegistry.all.filter {
-        !$0.params.isEmpty && !$0.id.hasPrefix("key.") && $0.resourceKey == nil
+        !$0.params.isEmpty && !$0.id.hasPrefix("key.") && $0.resourceKey == nil && $0.id != smoothSkinEffect
     }
 
     /// Live (`commit == false`) or undoable edit of one subject region; an emptied region is removed.
@@ -224,7 +257,7 @@ extension EditorViewModel {
     }
 
     func nextSubjectName(mediaRef: String) -> String {
-        L10n.string("Subject \(trackedMasks(forMedia: mediaRef).filter { !$0.isDrawnArea }.count + 1)")
+        L10n.string("Subject \(trackedMasks(forMedia: mediaRef).count + 1)")
     }
 
     /// Renames a subject as one undoable edit. Blank or unchanged names are ignored.
@@ -259,7 +292,7 @@ extension EditorViewModel {
                 replaceTrackedMasks(with: trackedMasks.filter { $0.id != maskId }, actionName: actionName)
             }
         }
-        if canvasSubject?.maskId == maskId { canvasSubject = nil }
+        if canvasSubject?.maskId == maskId { clearCanvasObject() }
     }
 
     /// Swaps the subject list, registering the inverse so undo and redo restore it exactly.

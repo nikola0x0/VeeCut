@@ -1,92 +1,66 @@
 import SwiftUI
 
-/// Tints the selected subject on the preview so the user can confirm SAM grabbed the right thing,
-/// or outlines a drawn area.
+/// Tints the selected subject on the preview so the user can confirm SAM grabbed the right thing.
 struct SubjectMaskOverlayView: View {
     @Environment(EditorViewModel.self) private var editor
-    let subject: CanvasSubject
+    let clipId: String
+    let maskId: String
 
     var body: some View {
         GeometryReader { geometry in
             let frame = editor.playheadState.timelineFrame
-            if let outline = areaOutline(frame: frame, viewSize: geometry.size) {
-                Path { path in path.addLines(outline); path.closeSubpath() }
-                    .fill(AppTheme.Accent.canvasAI.opacity(AppTheme.Opacity.medium))
-                    .overlay(
-                        Path { path in path.addLines(outline); path.closeSubpath() }
-                            .stroke(AppTheme.Accent.canvasAI, style: StrokeStyle(lineWidth: AppTheme.BorderWidth.medium, dash: AppTheme.Canvas.areaDash))
-                    )
-                    .allowsHitTesting(false)
-            } else if let placement = placement(frame: frame, viewSize: geometry.size) {
-                Image(decorative: placement.image, scale: 1)
-                    .resizable()
-                    .interpolation(.medium)
-                    .frame(width: placement.size.width, height: placement.size.height)
-                    .scaleEffect(x: placement.flipX ? -1 : 1, y: placement.flipY ? -1 : 1)
-                    .rotationEffect(.degrees(placement.rotation))
-                    .position(placement.center)
-                    .allowsHitTesting(false)
+            if let (image, placement) = tint(frame: frame, viewSize: geometry.size) {
+                SourceTintView(image: image, placement: placement)
             }
         }
     }
 
-    private struct Placement {
-        let image: CGImage
-        let center: CGPoint
-        let size: CGSize
-        let rotation: Double
-        let flipX: Bool
-        let flipY: Bool
-    }
-
-    /// A drawn area's outline in view points while its clip is under the playhead.
-    private func areaOutline(frame: Int, viewSize: CGSize) -> [CGPoint]? {
-        guard let area = editor.trackedMask(id: subject.maskId)?.area,
-              let clip = editor.clipFor(id: subject.clipId), clip.contains(timelineFrame: frame) else { return nil }
-        let videoRect = PreviewHitTester.videoContentRect(in: viewSize, timeline: editor.timeline)
-        let points = area.compactMap { PreviewHitTester.viewPoint(ofSource: $0, clip: clip, frame: frame, videoRect: videoRect) }
-        return points.count == area.count ? points : nil
-    }
-
-    private func placement(frame: Int, viewSize: CGSize) -> Placement? {
-        guard let clip = editor.clipFor(id: subject.clipId), clip.contains(timelineFrame: frame),
+    private func tint(frame: Int, viewSize: CGSize) -> (CGImage, PreviewHitTester.SourcePlacement)? {
+        guard let clip = editor.clipFor(id: clipId), clip.contains(timelineFrame: frame),
               let seconds = clip.sourceSeconds(atTimelineFrame: frame, fps: editor.timeline.fps),
-              let (mask, maskFrame) = MatteStore.shared.frame(maskId: subject.maskId, sourceSeconds: seconds),
-              let maskFrame, let image = SubjectTint.image(for: maskFrame) else { return nil }
+              let maskFrame = MatteStore.shared.frame(maskId: maskId, sourceSeconds: seconds)?.frame,
+              let source = MatteStore.shared.sourceBounds(maskId: maskId, sourceSeconds: seconds),
+              let image = SubjectTint.image(for: maskFrame) else { return nil }
         let videoRect = PreviewHitTester.videoContentRect(in: viewSize, timeline: editor.timeline)
-        let box = maskFrame.box
-        let w = Double(mask.sourceWidth), h = Double(mask.sourceHeight)
-        let center = CGPoint(x: Double(box.left + box.right) / 2 / w, y: Double(box.top + box.bottom) / 2 / h)
-        guard let viewCenter = PreviewHitTester.viewPoint(ofSource: center, clip: clip, frame: frame, videoRect: videoRect) else {
-            return nil
-        }
-        let t = clip.transformAt(frame: frame)
-        let clipSize = CGSize(width: t.width * videoRect.width, height: t.height * videoRect.height)
-        return Placement(
-            image: image,
-            center: viewCenter,
-            size: CGSize(
-                width: Double(box.right - box.left) / w * clipSize.width,
-                height: Double(box.bottom - box.top) / h * clipSize.height
-            ),
-            rotation: t.rotation,
-            flipX: t.flipHorizontal,
-            flipY: t.flipVertical
-        )
+        return PreviewHitTester.placement(ofSource: source, clip: clip, frame: frame, videoRect: videoRect).map { (image, $0) }
+    }
+}
+
+/// A tint image drawn over part of a clip's source frame, following the clip's transform.
+struct SourceTintView: View {
+    let image: CGImage
+    let placement: PreviewHitTester.SourcePlacement
+
+    var body: some View {
+        Image(decorative: image, scale: 1)
+            .resizable()
+            .interpolation(.medium)
+            .frame(width: placement.size.width, height: placement.size.height)
+            .scaleEffect(x: placement.flipX ? -1 : 1, y: placement.flipY ? -1 : 1)
+            .rotationEffect(.degrees(placement.rotation))
+            .position(placement.center)
+            .allowsHitTesting(false)
     }
 }
 
 /// Builds and caches the tint image for the most recent mask frame.
 @MainActor
-private enum SubjectTint {
+enum SubjectTint {
     private static var cached: (frame: MaskFrame, image: CGImage)?
+
+    /// The canvas accent at tint strength, premultiplied.
+    static var rgba: ForegroundCandidates.RGBA {
+        let color = AppTheme.Accent.canvasAINSColor.usingColorSpace(.sRGB) ?? AppTheme.Accent.canvasAINSColor
+        let alpha = AppTheme.Opacity.medium
+        return ForegroundCandidates.RGBA(
+            r: UInt8(color.redComponent * alpha * 255), g: UInt8(color.greenComponent * alpha * 255),
+            b: UInt8(color.blueComponent * alpha * 255), a: UInt8(alpha * 255)
+        )
+    }
 
     static func image(for frame: MaskFrame) -> CGImage? {
         if let cached, cached.frame == frame { return cached.image }
-        let color = AppTheme.Accent.canvasAINSColor.usingColorSpace(.sRGB) ?? AppTheme.Accent.canvasAINSColor
-        let alpha = AppTheme.Opacity.medium
-        let r = UInt8(color.redComponent * alpha * 255), g = UInt8(color.greenComponent * alpha * 255)
-        let b = UInt8(color.blueComponent * alpha * 255), a = UInt8(alpha * 255)
+        let (r, g, b, a) = (rgba.r, rgba.g, rgba.b, rgba.a)
         let coverage = frame.coverage()
         var pixels = [UInt8](repeating: 0, count: frame.width * frame.height * 4)
         for index in 0..<(frame.width * frame.height) where coverage[index] != 0 {

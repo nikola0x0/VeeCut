@@ -1,11 +1,12 @@
 import SwiftUI
 
 enum MentionTab: CaseIterable, Hashable {
-    case all, video, image, audio
+    case all, objects, video, image, audio
 
     var localizedLabel: String {
         switch self {
         case .all: L10n.key("All")
+        case .objects: L10n.key("Objects")
         case .video: L10n.key("Video")
         case .image: L10n.key("Image")
         case .audio: L10n.key("Audio")
@@ -14,7 +15,7 @@ enum MentionTab: CaseIterable, Hashable {
 
     var clipType: ClipType? {
         switch self {
-        case .all: nil
+        case .all, .objects: nil
         case .video: .video
         case .image: .image
         case .audio: .audio
@@ -24,6 +25,7 @@ enum MentionTab: CaseIterable, Hashable {
     var localizedEmptyLabel: String {
         switch self {
         case .all: L10n.key("No media")
+        case .objects: L10n.key("No objects on this clip")
         case .video: L10n.key("No video clips")
         case .image: L10n.key("No images")
         case .audio: L10n.key("No audio")
@@ -31,14 +33,53 @@ enum MentionTab: CaseIterable, Hashable {
     }
 }
 
+/// Something `@` can reference: an object picked on the shelf's clip, or a media asset.
+@MainActor
+enum MentionCandidate {
+    case object(TrackedMask, clipId: String)
+    case media(MediaAsset)
+
+    static let limit = 50
+
+    var id: String {
+        switch self {
+        case .object(let mask, _): mask.id
+        case .media(let asset): asset.id
+        }
+    }
+
+    var displayName: String {
+        switch self {
+        case .object(let mask, _): AgentMention.makeDisplayName(from: mask.label)
+        case .media(let asset): asset.mentionDisplayName
+        }
+    }
+
+    /// The shelf clip's objects first, then media, filtered by tab and a case-insensitive name match.
+    @MainActor
+    static func candidates(query: String, tab: MentionTab, editor: EditorViewModel) -> [MentionCandidate] {
+        var all: [MentionCandidate] = []
+        if tab == .all || tab == .objects, let clipId = editor.shelfClipId {
+            all += editor.canvasObjects(clipId: clipId).map { .object($0, clipId: clipId) }
+        }
+        if tab != .objects {
+            let assets = tab.clipType.map { type in editor.mediaAssets.filter { $0.type == type } } ?? editor.mediaAssets
+            all += assets.map(MentionCandidate.media)
+        }
+        let q = query.lowercased()
+        let matched = q.isEmpty ? all : all.filter { $0.displayName.lowercased().contains(q) }
+        return Array(matched.prefix(limit))
+    }
+}
+
 /// Pure render. State lives on `AgentInputBox` so keyboard nav follows the focused TextEditor.
 struct MentionPopover: View {
     let query: String
-    let candidates: [MediaAsset]
+    let candidates: [MentionCandidate]
     @Binding var highlightedIndex: Int
     @Binding var tab: MentionTab
     let scrollTick: Int
-    let onPick: (MediaAsset) -> Void
+    let onPick: (MentionCandidate) -> Void
 
     @State private var visibleIDs: Set<String> = []
 
@@ -67,17 +108,17 @@ struct MentionPopover: View {
             ScrollViewReader { proxy in
                 ScrollView {
                     LazyVStack(spacing: 0) {
-                        ForEach(Array(candidates.enumerated()), id: \.element.id) { index, asset in
-                            mentionRow(asset: asset, isHighlighted: index == highlightedIndex)
+                        ForEach(Array(candidates.enumerated()), id: \.element.id) { index, candidate in
+                            mentionRow(candidate, isHighlighted: index == highlightedIndex)
                                 .contentShape(Rectangle())
-                                .onTapGesture { onPick(asset) }
+                                .onTapGesture { onPick(candidate) }
                                 .onHover { hovering in if hovering { highlightedIndex = index } }
-                                .id(asset.id)
+                                .id(candidate.id)
                                 .onScrollVisibilityChange(threshold: 0.95) { visible in
                                     if visible {
-                                        visibleIDs.insert(asset.id)
+                                        visibleIDs.insert(candidate.id)
                                     } else {
-                                        visibleIDs.remove(asset.id)
+                                        visibleIDs.remove(candidate.id)
                                     }
                                 }
                         }
@@ -131,17 +172,22 @@ struct MentionPopover: View {
         .padding(AppTheme.Spacing.xs)
     }
 
-    private func mentionRow(asset: MediaAsset, isHighlighted: Bool) -> some View {
+    private func mentionRow(_ candidate: MentionCandidate, isHighlighted: Bool) -> some View {
         HStack(spacing: AppTheme.Spacing.sm) {
             Group {
-                if let thumb = asset.thumbnail {
-                    Image(nsImage: thumb).resizable().aspectRatio(contentMode: .fill)
-                } else {
+                switch candidate {
+                case .media(let asset):
+                    if let thumb = asset.thumbnail {
+                        Image(nsImage: thumb).resizable().aspectRatio(contentMode: .fill)
+                    } else {
+                        placeholder(systemImage: asset.type.sfSymbolName)
+                    }
+                case .object:
                     ZStack {
-                        Rectangle().fill(.quaternary)
-                        Image(systemName: asset.type.sfSymbolName)
+                        Rectangle().fill(AppTheme.ObjectKind.fill)
+                        Image(systemName: "person.crop.rectangle")
                             .font(.system(size: AppTheme.FontSize.xs))
-                            .foregroundStyle(AppTheme.Text.tertiaryColor)
+                            .foregroundStyle(AppTheme.Tint.inkColor)
                     }
                 }
             }
@@ -149,11 +195,11 @@ struct MentionPopover: View {
             .clipShape(RoundedRectangle(cornerRadius: AppTheme.Radius.sm))
 
             VStack(alignment: .leading, spacing: 1) {
-                Text(asset.mentionDisplayName)
+                Text(verbatim: candidate.displayName)
                     .font(.system(size: AppTheme.FontSize.xs, weight: .medium))
                     .foregroundStyle(AppTheme.Text.primaryColor)
                     .lineLimit(1)
-                Text(asset.type.localizedTrackLabel)
+                Text(verbatim: subtitle(candidate))
                     .font(.system(size: AppTheme.FontSize.xxs))
                     .foregroundStyle(AppTheme.Text.tertiaryColor)
             }
@@ -162,5 +208,21 @@ struct MentionPopover: View {
         .padding(.horizontal, AppTheme.Spacing.sm)
         .padding(.vertical, 4)
         .background(isHighlighted ? AppTheme.Accent.primary.opacity(0.15) : .clear)
+    }
+
+    private func placeholder(systemImage: String) -> some View {
+        ZStack {
+            Rectangle().fill(.quaternary)
+            Image(systemName: systemImage)
+                .font(.system(size: AppTheme.FontSize.xs))
+                .foregroundStyle(AppTheme.Text.tertiaryColor)
+        }
+    }
+
+    private func subtitle(_ candidate: MentionCandidate) -> String {
+        switch candidate {
+        case .media(let asset): asset.type.localizedTrackLabel
+        case .object: L10n.string("Tracked object")
+        }
     }
 }

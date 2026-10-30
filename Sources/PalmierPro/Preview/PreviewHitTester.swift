@@ -70,6 +70,29 @@ enum PreviewHitTester {
         return CGPoint(x: rect.midX + lx * c - ly * s, y: rect.midY + lx * s + ly * c)
     }
 
+    /// Where an image covering `source` (0…1 of the clip's source frame) draws in view space.
+    struct SourcePlacement {
+        let center: CGPoint
+        let size: CGSize
+        let rotation: Double
+        let flipX: Bool
+        let flipY: Bool
+    }
+
+    static func placement(ofSource source: CGRect, clip: Clip, frame: Int, videoRect: CGRect) -> SourcePlacement? {
+        guard let center = viewPoint(ofSource: CGPoint(x: source.midX, y: source.midY), clip: clip, frame: frame, videoRect: videoRect) else {
+            return nil
+        }
+        let t = clip.transformAt(frame: frame)
+        return SourcePlacement(
+            center: center,
+            size: CGSize(width: source.width * t.width * videoRect.width, height: source.height * t.height * videoRect.height),
+            rotation: t.rotation,
+            flipX: t.flipHorizontal,
+            flipY: t.flipVertical
+        )
+    }
+
     /// Point in the clip's unrotated, unflipped local space, normalized to its full (uncropped) frame.
     private static func unflippedSourcePoint(of point: CGPoint, clip: Clip, frame: Int, videoRect: CGRect) -> CGPoint? {
         let t = clip.transformAt(frame: frame)

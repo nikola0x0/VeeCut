@@ -3,7 +3,7 @@ import SwiftUI
 
 enum AppTheme {
 
-    private static func adaptive(light: NSColor, dark: NSColor) -> NSColor {
+    fileprivate static func adaptive(light: NSColor, dark: NSColor) -> NSColor {
         NSColor(name: nil) { appearance in
             appearance.bestMatch(from: [.aqua, .darkAqua]) == .darkAqua ? dark : light
         }
@@ -12,6 +12,7 @@ enum AppTheme {
     /// VeeCut brand colors. Pastels mark meaning (clip kinds, subject vs. background); periwinkle marks selection.
     enum Palette {
         static let peach = NSColor(srgbRed: 252/255, green: 216/255, blue: 205/255, alpha: 1)
+        static let slate = NSColor(srgbRed: 110/255, green: 106/255, blue: 133/255, alpha: 1)
         static let blush = NSColor(srgbRed: 254/255, green: 235/255, blue: 246/255, alpha: 1)
         static let lilac = NSColor(srgbRed: 235/255, green: 214/255, blue: 251/255, alpha: 1)
         static let periwinkle = NSColor(srgbRed: 104/255, green: 127/255, blue: 229/255, alpha: 1)
@@ -19,6 +20,29 @@ enum AppTheme {
         static let periwinkleLight = NSColor(srgbRed: 140/255, green: 158/255, blue: 240/255, alpha: 1)
         static let ink = NSColor(srgbRed: 43/255, green: 37/255, blue: 64/255, alpha: 1)
         static let paper = NSColor(srgbRed: 245/255, green: 240/255, blue: 252/255, alpha: 1)
+    }
+
+    /// Pastel fills for chips, cards and buttons: the pastel in light mode, a deep tint of the same hue on dark surfaces.
+    enum Tint {
+        static let lilac = AppTheme.adaptive(light: Palette.lilac, dark: NSColor(srgbRed: 66/255, green: 56/255, blue: 99/255, alpha: 1))
+        static let peach = AppTheme.adaptive(light: Palette.peach, dark: NSColor(srgbRed: 92/255, green: 60/255, blue: 52/255, alpha: 1))
+        static let blush = AppTheme.adaptive(light: Palette.blush, dark: NSColor(srgbRed: 82/255, green: 50/255, blue: 74/255, alpha: 1))
+        /// Text and icons on a tint.
+        static let ink = AppTheme.adaptive(light: Palette.ink, dark: Palette.paper)
+
+        static var lilacColor: Color { Color(lilac) }
+        static var peachColor: Color { Color(peach) }
+        static var blushColor: Color { Color(blush) }
+        static var inkColor: Color { Color(ink) }
+    }
+
+    /// Picked objects: lilac on chips and cards; chat pills use fixed shades that read on light and dark backgrounds.
+    enum ObjectKind {
+        static var fill: Color { Tint.lilacColor }
+        static let pill = Color(Palette.periwinkle)
+        static let pillText = Color.white
+        static let neutralPill = Color(Palette.slate)
+        static let neutralPillText = Color.white
     }
 
     enum History {
@@ -30,7 +54,7 @@ enum AppTheme {
     enum Canvas {
         static let markerWidth: CGFloat = 5
         static let markerGlow: CGFloat = 6
-        static let areaDash: [CGFloat] = [6, 4]
+        static let brushRadius: CGFloat = 18
     }
 
     enum Brand {
@@ -363,10 +387,6 @@ enum AppTheme {
         static let mdLg: CGFloat = 12
         static let lg: CGFloat = 14
         static let xl: CGFloat = 20
-
-        static func concentric(outer: CGFloat, padding: CGFloat) -> CGFloat {
-            max(outer - padding, 0)
-        }
     }
 
     // MARK: - Spacing
@@ -465,6 +485,11 @@ enum AppTheme {
         static let timelineBadgeMinWidth: CGFloat = 16
         static let timelineDotSize: CGFloat = 5
         static let subjectSideSwatch: CGFloat = 8
+        /// Fits a chip of height `IconSize.lgXl` with an even `Spacing.xs` gap around it.
+        static let objectThumbnail: CGFloat = IconSize.lgXl - Spacing.xs * 2
+        static let objectTagMaxWidth: CGFloat = 180
+        static let dockDescribeWidth: CGFloat = 260
+        static let transcriptionCardWidth: CGFloat = 260
         static let updateOverlayWidth: CGFloat = 640
     }
 
@@ -480,7 +505,6 @@ enum AppTheme {
     enum Settings {
         static let sidebarWidth: CGFloat = 220
         static let contentMaxWidth: CGFloat = 640
-        static let creditInputWidth: CGFloat = 56
         static let skillsSearchWidth: CGFloat = 260
         static let skillRowIconFrame: CGFloat = 42
         static let skillStatusWidth: CGFloat = 124
@@ -515,7 +539,7 @@ enum AppTheme {
         static let homeDefault = NSSize(width: 1200, height: 800)
         static let homeMin = NSSize(width: 760, height: 480)
         static let projectMin = NSSize(
-            width: 960 + GenerationPanel.minimumWidthAdjustment,
+            width: 960,
             height: 600
         )
         static let projectTitlebarLeadingWidth: CGFloat = 228
@@ -532,19 +556,8 @@ enum AppTheme {
         static let defaultCenter = CGPoint(x: centerSnapValue, y: defaultCenterY)
     }
 
-    enum GenerationPanel {
-        static let typeTabWidth: CGFloat = IconSize.xl + Spacing.lg
-        static let minimumWidthAdjustment: CGFloat = typeTabWidth + Spacing.xxl
-        static let mediaAreaMinHeight: CGFloat = 60
-        static let loadingHeight: CGFloat = 180
-        static let promptMinHeight: CGFloat = 40
-        static let referenceTileWidth: CGFloat = 72
-        static let referenceTileHeight: CGFloat = 48
-    }
-
     enum MediaPanel {
         static let contextRowHeight: CGFloat = IconSize.smMd
-        static let speakerNameFieldWidth: CGFloat = 96
         static let captionIndexTimecodeWidth: CGFloat = 68
         static let captionIndexDurationWidth: CGFloat = 28
         static let transcriptSourceMenuWidth: CGFloat = 116
@@ -597,6 +610,8 @@ enum AppTheme {
     enum Anim {
         static let hover: Double = 0.15
         static let transition: Double = 0.2
+        /// Fluid spring for UI that grows out of and folds back into its container.
+        static let fluid = Animation.spring(response: 0.38, dampingFraction: 0.82)
         static let pulse: Double = 0.8
         static let slipPreviewRefresh: Duration = .milliseconds(67)
         static let agentChangeHighlightHold: Double = 1.0

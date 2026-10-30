@@ -277,11 +277,38 @@ struct SubjectLookTests {
         #expect(editor.clipFor(id: "clip")?.effectRegions?.first?.matte.maskIds == ["mask"])
     }
 
-    @Test func escapeDismissesSelectionModeBeforeSubject() {
+    @Test func edgeSoftnessReportsMixedRegionsAndOneDragUnifiesThemInOneUndoStep() throws {
         let editor = editorWithSubject()
+        editor.applySubjectLook(.popSubject, clipId: "clip", maskId: "mask")
+        editor.applySubjectLook(.darkenBackground, clipId: "clip", maskId: "mask")
+        let background = try #require(editor.clipFor(id: "clip")?.effectRegions?.first { $0.matte.invert })
+        editor.editSubjectRegion(clipId: "clip", regionId: background.id, commit: true, actionName: "Feather") { $0.matte.feather = 20 }
+
+        let before = try #require(editor.edgeSoftness(clipId: "clip", preferring: "mask"))
+        #expect(before.value == EditorViewModel.subjectFeather && before.mixed)
+
+        editor.setEdgeSoftness(12, clipId: "clip", commit: false)
+        editor.setEdgeSoftness(12, clipId: "clip", commit: true)
+        #expect(editor.clipFor(id: "clip")?.effectRegions?.map(\.matte.feather) == [12, 12])
+        #expect(editor.edgeSoftness(clipId: "clip", preferring: "mask")?.mixed == false)
+
+        undoManager.undo()
+        #expect(Set(editor.clipFor(id: "clip")?.effectRegions?.map(\.matte.feather) ?? []) == [EditorViewModel.subjectFeather, 20])
+    }
+
+    @Test func edgeSoftnessIsNilWithoutRegions() {
+        #expect(editorWithSubject().edgeSoftness(clipId: "clip", preferring: "mask") == nil)
+    }
+
+    @Test func escapeDismissesTheToolThenTheCardThenTheSubject() {
+        let editor = editorWithSubject()
+        editor.objectCardOpen = true
         editor.toggleCanvasSelection(.subject)
         #expect(editor.cancelSubjectInteraction())
         #expect(editor.canvasSelection == nil)
+        #expect(editor.objectCardOpen)
+        #expect(editor.cancelSubjectInteraction())
+        #expect(!editor.objectCardOpen)
         #expect(editor.canvasSubject != nil)
         #expect(editor.cancelSubjectInteraction())
         #expect(editor.canvasSubject == nil)
