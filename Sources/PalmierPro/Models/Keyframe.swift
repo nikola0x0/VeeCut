@@ -251,7 +251,10 @@ extension Clip {
             if opacityTrack?.keyframes.isEmpty == true { opacityTrack = nil }
         case .position:
             positionTrack?.remove(at: o)
-            if positionTrack?.keyframes.isEmpty == true { positionTrack = nil }
+            if positionTrack?.keyframes.isEmpty == true {
+                positionTrack = nil
+                subjectFollow = nil
+            }
         case .scale:
             scaleTrack?.remove(at: o)
             if scaleTrack?.keyframes.isEmpty == true { scaleTrack = nil }

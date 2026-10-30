@@ -55,7 +55,6 @@ struct InspectorView: View {
         case subject
         case audio
         case multicam
-        case ai
 
         var titleKey: String {
             switch self {
@@ -66,7 +65,6 @@ struct InspectorView: View {
             case .subject: L10n.key("Subject")
             case .audio: L10n.key("Audio")
             case .multicam: L10n.key("Multicam")
-            case .ai: L10n.key("AI Edit")
             }
         }
 
@@ -79,7 +77,6 @@ struct InspectorView: View {
             case .subject: "person.crop.rectangle"
             case .audio: "waveform"
             case .multicam: "square.grid.2x2"
-            case .ai: "wand.and.stars"
             }
         }
     }
@@ -319,7 +316,6 @@ struct InspectorView: View {
 
     private func availableTabs(
         for selection: InspectorClipSelection,
-        resolvedClipAsset: MediaAsset?,
         selectedMulticamGroupId: String?
     ) -> [ClipTab] {
         let audios = selection.audioClips
@@ -336,10 +332,6 @@ struct InspectorView: View {
         if subjectClip(in: selection) != nil { tabs.append(.subject) }
         if !audios.isEmpty { tabs.append(.audio) }
         if selectedMulticamGroupId != nil { tabs.append(.multicam) }
-        if aiEditEligible(selection: selection, resolvedClipAsset: resolvedClipAsset)
-            && !AccountService.shared.isMisconfigured {
-            tabs.append(.ai)
-        }
         return tabs
     }
 
@@ -358,36 +350,15 @@ struct InspectorView: View {
         return nil
     }
 
-    private func aiEditEligible(
-        selection: InspectorClipSelection,
-        resolvedClipAsset: MediaAsset?
-    ) -> Bool {
-        let visualCount = selection.textClips.count + selection.nonTextVisualClips.count
-        let audios = selection.audioClips
-        guard resolvedClipAsset != nil else { return false }
-        if visualCount == 0 { return audios.count == 1 }
-        guard visualCount == 1, let visual = selection.firstVisualClip else { return false }
-        if audios.isEmpty { return true }
-        let partners = Set(editor.linkedPartnerIds(of: visual.id))
-        return audios.allSatisfy { partners.contains($0.id) }
-    }
-
     private func activeTab(in tabs: [ClipTab]) -> ClipTab? {
         return tabs.contains(preferredTab) ? preferredTab : tabs.first
     }
 
-    private func resolvedClipAsset(for selection: InspectorClipSelection) -> MediaAsset? {
-        guard let clip = selection.firstVisualClip ?? selection.firstAudioClip else { return nil }
-        return editor.mediaAssets.first { $0.id == clip.mediaRef }
-    }
-
     @ViewBuilder
     private func clipInspectorContent(selection: InspectorClipSelection) -> some View {
-        let clipAsset = resolvedClipAsset(for: selection)
         let multicamGroupId = selectedMulticamGroupId(for: selection)
         let tabs = availableTabs(
             for: selection,
-            resolvedClipAsset: clipAsset,
             selectedMulticamGroupId: multicamGroupId
         )
         let selectedTab = activeTab(in: tabs)
@@ -396,10 +367,7 @@ struct InspectorView: View {
                 tabBar(tabs, selectedTab: selectedTab)
             }
             Group {
-                if selectedTab == .ai, let asset = clipAsset {
-                    AIEditTab(asset: asset, clipId: selection.firstVisualClip?.id ?? selection.firstAudioClip?.id)
-                        .tourAnchor(.aiEditPanel)
-                } else if selectedTab == .effects {
+                if selectedTab == .effects {
                     ScrollView { effectsTabContent(clips: selection.nonTextVisualClips) }
                 } else {
                     ScrollView {
@@ -427,7 +395,7 @@ struct InspectorView: View {
                                 if let clip = subjectClip(in: selection) {
                                     SubjectTab(clip: clip)
                                 }
-                            case .effects, .ai, .none:
+                            case .effects, .none:
                                 EmptyView()
                             }
                         }
@@ -442,8 +410,7 @@ struct InspectorView: View {
             items: tabs.map {
                 TitleTabBar.Item(titleKey: $0.titleKey, systemImage: $0.systemImage)
             },
-            selected: selectedTab?.titleKey,
-            tourAnchors: tabs.contains(.ai) ? [ClipTab.ai.titleKey: .aiEditTab] : [:]
+            selected: selectedTab?.titleKey
         ) { title in
             if let tab = tabs.first(where: { $0.titleKey == title }) { preferredTab = tab }
         }
@@ -509,6 +476,7 @@ struct InspectorView: View {
                     clip.opacity = 1
                     clip.opacityTrack = nil
                     clip.positionTrack = nil
+                    clip.subjectFollow = nil
                     clip.scaleTrack = nil
                     clip.rotationTrack = nil
                     clip.fadeInFrames = 0
@@ -534,9 +502,13 @@ struct InspectorView: View {
                         clip.transform.centerX = Transform().centerX
                         clip.transform.centerY = Transform().centerY
                         clip.positionTrack = nil
+                        clip.subjectFollow = nil
                     }
                 }
             )
+            if let single, single.mediaType == .image {
+                SubjectFollowRow(clip: single)
+            }
             animatableRow(
                 label: L10n.string("Scale"),
                 clips: clips,
@@ -910,15 +882,7 @@ struct InspectorView: View {
     private func mediaAssetInspectorContent(_ asset: MediaAsset) -> some View {
         VStack(spacing: AppTheme.Spacing.zero) {
             assetInspectorHeader(asset)
-            ScrollView {
-                VStack(alignment: .leading, spacing: AppTheme.Spacing.zero) {
-                    if let gen = asset.generationInput {
-                        inputSection(gen)
-                    }
-                    AIEditTab(asset: asset, usesOwnScrollView: false)
-                }
-                .frame(maxWidth: .infinity, alignment: .leading)
-            }
+            Spacer(minLength: AppTheme.Spacing.zero)
         }
     }
 
@@ -998,117 +962,6 @@ struct InspectorView: View {
         .frame(maxWidth: .infinity, alignment: .leading)
     }
 
-    private func inputSection(_ gen: GenerationInput) -> some View {
-        let hasReferences = GenerationReferencesStrip.hasResolvableReferences(gen, in: editor.mediaAssets)
-        let metadata = inputMetadataSummary(gen)
-        return EditorPanelGroup(
-            L10n.string("Generation Input"),
-            contentSpacing: AppTheme.Spacing.zero,
-            contentInsets: EdgeInsets(
-                top: AppTheme.Spacing.xxs,
-                leading: AppTheme.Spacing.smMd,
-                bottom: AppTheme.Spacing.md,
-                trailing: AppTheme.Spacing.smMd
-            )
-        ) {
-            if hasReferences {
-                GenerationReferencesStrip(generationInput: gen)
-            }
-            if !gen.prompt.isEmpty || !metadata.isEmpty {
-                VStack(alignment: .leading, spacing: AppTheme.Spacing.sm) {
-                    if !gen.prompt.isEmpty {
-                        promptSection(prompt: gen.prompt)
-                    }
-                    if !gen.prompt.isEmpty, !metadata.isEmpty {
-                        Rectangle()
-                            .fill(AppTheme.Border.subtleColor)
-                            .frame(height: AppTheme.BorderWidth.hairline)
-                    }
-                    if !metadata.isEmpty {
-                        generationMetadataRow(gen, metadata: metadata)
-                    }
-                }
-                .padding(.horizontal, AppTheme.Spacing.smMd)
-                .padding(.vertical, AppTheme.Spacing.sm)
-                .frame(maxWidth: .infinity, alignment: .leading)
-                .themedSurface(
-                    AppTheme.Background.raisedColor,
-                    cornerRadius: AppTheme.Radius.sm,
-                    borderWidth: AppTheme.BorderWidth.hairline
-                )
-                .padding(.top, hasReferences ? AppTheme.Spacing.md : AppTheme.Spacing.zero)
-            }
-        }
-        .padding(.top, AppTheme.Spacing.xxs)
-    }
-
-    private func promptSection(prompt: String) -> some View {
-        VStack(alignment: .leading, spacing: AppTheme.Spacing.xs) {
-            HStack(spacing: AppTheme.Spacing.sm) {
-                Text(L10n.string("Prompt"))
-                    .font(.system(size: AppTheme.FontSize.xs, weight: AppTheme.FontWeight.medium))
-                    .foregroundStyle(AppTheme.Text.tertiaryColor)
-                Spacer()
-                PromptCopyButton(text: prompt)
-            }
-            Text(verbatim: prompt)
-                .font(.system(size: AppTheme.FontSize.sm))
-                .lineSpacing(AppTheme.Spacing.xxs)
-                .foregroundStyle(AppTheme.Text.secondaryColor)
-                .textSelection(.enabled)
-                .fixedSize(horizontal: false, vertical: true)
-        }
-    }
-
-    private func generationMetadataRow(_ gen: GenerationInput, metadata: String) -> some View {
-        HStack(spacing: AppTheme.Spacing.sm) {
-            if let iconKey = ModelRegistry.providerIconKey(for: gen.model) {
-                ProviderLogo(iconKey: iconKey, size: AppTheme.IconSize.xs)
-            } else {
-                Image(systemName: "sparkles")
-                    .font(.system(size: AppTheme.FontSize.xxs))
-                    .foregroundStyle(AppTheme.Text.tertiaryColor)
-                    .frame(width: AppTheme.IconSize.xs, height: AppTheme.IconSize.xs)
-                    .accessibilityHidden(true)
-            }
-            Text(verbatim: metadata)
-                .font(.system(size: AppTheme.FontSize.xs))
-                .foregroundStyle(AppTheme.Text.tertiaryColor)
-                .lineLimit(1)
-                .truncationMode(.tail)
-                .textSelection(.enabled)
-                .help(Text(verbatim: metadata))
-            Spacer(minLength: AppTheme.Spacing.xs)
-            if let cost = gen.costCredits {
-                HStack(spacing: AppTheme.Spacing.xxs) {
-                    Image(systemName: "dollarsign.circle.fill")
-                    Text(verbatim: cost.formatted())
-                }
-                .font(.system(size: AppTheme.FontSize.xs, weight: AppTheme.FontWeight.medium))
-                .monospacedDigit()
-                .foregroundStyle(AppTheme.Text.tertiaryColor)
-                .fixedSize()
-                .accessibilityElement(children: .combine)
-                .accessibilityLabel(CostEstimator.localizedUsedCredits(cost))
-            }
-        }
-    }
-
-    private func inputMetadataSummary(_ gen: GenerationInput) -> String {
-        var values = [ModelRegistry.displayName(for: gen.model)]
-        if gen.draft == true { values.append(L10n.string("Draft")) }
-        if !gen.aspectRatio.isEmpty {
-            values.append(ImageModelConfig.aspectRatioDisplayLabel(gen.aspectRatio))
-        }
-        if let resolution = gen.resolution, !resolution.isEmpty {
-            values.append(resolution)
-        }
-        if gen.duration > 0 {
-            values.append("\(gen.duration)s")
-        }
-        return values.joined(separator: " · ")
-    }
-
     // MARK: - Helpers
 
     private var selectedMediaAsset: MediaAsset? {
@@ -1168,32 +1021,5 @@ enum VolumeScale {
     static func linearFromDb(_ db: Double) -> Double {
         guard db > floorDb else { return 0 }
         return pow(10, min(db, ceilingDb) / 20)
-    }
-}
-
-struct PromptCopyButton: View {
-    let text: String
-    @State private var copied = false
-
-    var body: some View {
-        Button(action: copy) {
-            Image(systemName: copied ? "checkmark" : "doc.on.doc")
-                .font(.system(size: AppTheme.FontSize.xs, weight: .medium))
-                .foregroundStyle(copied ? AppTheme.Text.primaryColor : AppTheme.Text.mutedColor)
-                .contentTransition(.symbolEffect(.replace))
-        }
-        .buttonStyle(.plain)
-        .help(copied ? L10n.string("Copied") : L10n.string("Copy prompt"))
-    }
-
-    private func copy() {
-        let pb = NSPasteboard.general
-        pb.clearContents()
-        pb.setString(text, forType: .string)
-        copied = true
-        Task {
-            try? await Task.sleep(nanoseconds: 1_400_000_000)
-            copied = false
-        }
     }
 }

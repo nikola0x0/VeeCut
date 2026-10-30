@@ -206,6 +206,9 @@ struct Clip: Codable, Sendable, Equatable, Identifiable {
     /// How this clip composites over the tracks below it. nil = normal (source-over).
     var blendMode: BlendMode?
 
+    /// The tracked object this clip's position keyframes were made from; moving the clip shifts the whole path.
+    var subjectFollow: SubjectFollowLink?
+
     private enum CodingKeys: String, CodingKey {
         case id, mediaRef, mediaType, sourceClipType, startFrame, durationFrames
         case trimStartFrame, trimEndFrame, speed, volume
@@ -214,7 +217,7 @@ struct Clip: Codable, Sendable, Equatable, Identifiable {
         case linkGroupId, captionGroupId, multicamGroupId, textContent, textStyle, textAnimation, wordTimings
         case textFillMode
         case opacityTrack, positionTrack, scaleTrack, rotationTrack, cropTrack, volumeTrack
-        case effects, effectRegions, blendMode
+        case effects, effectRegions, blendMode, subjectFollow
     }
 
     /// Frame where this clip ends on the timeline
@@ -546,7 +549,8 @@ extension Clip {
             volumeTrack: try? c.decode(KeyframeTrack<Double>.self, forKey: .volumeTrack),
             effects: try? c.decode([Effect].self, forKey: .effects),
             effectRegions: try? c.decode([EffectRegion].self, forKey: .effectRegions),
-            blendMode: try? c.decode(BlendMode.self, forKey: .blendMode)
+            blendMode: try? c.decode(BlendMode.self, forKey: .blendMode),
+            subjectFollow: try? c.decode(SubjectFollowLink.self, forKey: .subjectFollow)
         )
     }
 }

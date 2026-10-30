@@ -293,7 +293,12 @@ extension EditorViewModel {
         let newX = setX ?? tl.x
         let newY = setY ?? tl.y
         let sz = clip.sizeAt(frame: frame)
-        if clip.positionTrack?.isActive == true {
+        if clip.subjectFollow != nil, let track = clip.positionTrack, track.isActive {
+            let center = CGPoint(x: newX + sz.width / 2, y: newY + sz.height / 2)
+            if !refollow(&clip, centeredAt: center, frame: frame) {
+                clip.positionTrack = track.translated(dx: newX - tl.x, dy: newY - tl.y)
+            }
+        } else if clip.positionTrack?.isActive == true {
             guard clip.contains(timelineFrame: frame) else { return }
             clip.upsertKeyframe(in: \.positionTrack, frame: frame, value: AnimPair(a: newX, b: newY))
         } else {
@@ -394,12 +399,15 @@ extension EditorViewModel {
 
     private func writeTransform(into clip: inout Clip, newTransform: Transform) {
         let frame = activeFrame
-        if clip.positionTrack?.isActive == true {
+        let following = clip.subjectFollow != nil && clip.positionTrack?.isActive == true
+        let currentTopLeft = clip.topLeftAt(frame: frame)
+        let currentSize = clip.sizeAt(frame: frame)
+        if !following, clip.positionTrack?.isActive == true {
             if clip.contains(timelineFrame: frame) {
                 let tl = newTransform.topLeft
                 clip.upsertKeyframe(in: \.positionTrack, frame: frame, value: AnimPair(a: tl.x, b: tl.y))
             }
-        } else {
+        } else if !following {
             clip.transform.centerX = newTransform.centerX
             clip.transform.centerY = newTransform.centerY
         }
@@ -417,6 +425,14 @@ extension EditorViewModel {
             }
         } else {
             clip.transform.rotation = newTransform.rotation
+        }
+        if following, let track = clip.positionTrack {
+            let center = CGPoint(x: newTransform.centerX, y: newTransform.centerY)
+            if !refollow(&clip, centeredAt: center, frame: frame) {
+                let dx = newTransform.centerX - (currentTopLeft.x + currentSize.width / 2)
+                let dy = newTransform.centerY - (currentTopLeft.y + currentSize.height / 2)
+                clip.positionTrack = track.translated(dx: dx, dy: dy)
+            }
         }
     }
 

@@ -46,6 +46,7 @@ struct TextTab: View {
                 actions: styleActions,
                 afterAlignment: {
                     positionSection
+                    if !isBatch { SubjectFollowRow(clip: clip) }
                     tiltSection
                     rotationSection
                     fillModeRow
@@ -128,6 +129,7 @@ struct TextTab: View {
                     $0.transform.centerX = Transform().centerX
                     $0.transform.centerY = Transform().centerY
                     $0.positionTrack = nil
+                    $0.subjectFollow = nil
                 }
             }
         ) {
