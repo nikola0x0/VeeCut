@@ -192,6 +192,29 @@ final class AppState {
         return doc
     }
 
+    /// A new project named for today, with the footage imported; the coach starts reading it once indexed.
+    func createProject(fromFootage urls: [URL]) {
+        guard !urls.isEmpty else { return }
+        Task {
+            let base = Date().formatted(.dateTime.month(.abbreviated).day())
+            var taken = Set(ProjectRegistry.shared.entries.map(\.name))
+            do {
+                var project: VideoProject?
+                while project == nil {
+                    let name = Project.uniqueName(base: base, existing: taken)
+                    do {
+                        project = try await createProject(named: name)
+                    } catch ProjectError.nameTaken {
+                        taken.insert(name)
+                    }
+                }
+                try await project?.editorViewModel.importFinderItems(urls, into: nil)
+            } catch {
+                NSAlert(error: error).runModal()
+            }
+        }
+    }
+
     func createProjectInteractively() {
         Telemetry.beginOperation("save_panel", data: ["flow": "project_create"])
         let panel = NSSavePanel()

@@ -1,17 +1,28 @@
+import AppKit
 import SwiftUI
+import UniformTypeIdentifiers
 
+/// Home: start a project from today's footage, or pick up a recent one.
 struct HomeView: View {
     @Bindable private var onboarding = OnboardingStore.shared
     @Bindable private var changelog = ChangelogStore.shared
 
     var body: some View {
-        HStack(spacing: 0) {
-            HomeSidebar()
-                .frame(width: AppTheme.Settings.sidebarWidth)
-
-            content
-                .frame(maxWidth: .infinity, maxHeight: .infinity)
-                .background(AppTheme.Background.baseColor.opacity(AppTheme.Opacity.medium))
+        VStack(spacing: 0) {
+            HomeHeader()
+            if ProjectRegistry.shared.entries.isEmpty {
+                FirstLaunchView()
+            } else {
+                HStack(alignment: .top, spacing: AppTheme.Home.columnGap) {
+                    StartFromFootage()
+                        .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)
+                    MyProjectsSection()
+                        .frame(minWidth: AppTheme.Home.projectsMinWidth, idealWidth: AppTheme.Home.projectsWidth, maxWidth: AppTheme.Home.projectsWidth)
+                }
+                .padding(.horizontal, AppTheme.Home.contentPadding)
+                .padding(.top, AppTheme.Spacing.xlXxl)
+                .padding(.bottom, AppTheme.Home.columnGap)
+            }
         }
         .frame(
             minWidth: AppTheme.Window.homeMin.width,
@@ -19,7 +30,8 @@ struct HomeView: View {
             minHeight: AppTheme.Window.homeMin.height,
             maxHeight: .infinity
         )
-        .background(.ultraThinMaterial)
+        .background(AppTheme.Background.baseColor)
+        .foregroundStyle(AppTheme.Text.primaryColor)
         .focusEffectDisabled()
         .task { await VisualModelLoader.shared.prepare() }
         .onAppear { changelog.checkForWhatsNew() }
@@ -41,71 +53,168 @@ struct HomeView: View {
     private var isModalOverlayPresented: Bool {
         !onboarding.isComplete || changelog.pending != nil
     }
+}
 
-    private var content: some View {
-        VStack(alignment: .leading, spacing: 0) {
-            header
-            MyProjectsSection()
-        }
-        .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)
-    }
-
-    private var header: some View {
+private struct HomeHeader: View {
+    var body: some View {
         HStack(spacing: AppTheme.Spacing.md) {
-            WelcomeTitle()
-
-            Spacer()
-        }
-        .padding(.horizontal, AppTheme.Spacing.xlXxl)
-        .padding(.top, AppTheme.Spacing.lg)
-        .padding(.bottom, AppTheme.Spacing.xxl)
-    }
-
-}
-
-private struct WelcomeTitle: View {
-    var body: some View {
-        Text(L10n.string("Welcome to VeeCut"))
-            .font(.system(size: AppTheme.FontSize.title2, weight: .light))
-            .tracking(AppTheme.Tracking.tight)
-            .foregroundStyle(AppTheme.Text.primaryColor)
-    }
-}
-
-private struct HomeSidebar: View {
-    var body: some View {
-        VStack(alignment: .leading, spacing: 0) {
-            VeeCutWordmark(markSize: AppTheme.IconSize.mdLg, fontSize: AppTheme.FontSize.xl)
-                .padding(.horizontal, AppTheme.Spacing.lgXl)
-                .padding(.top, AppTheme.Spacing.xs)
-                .padding(.bottom, AppTheme.Spacing.smMd)
-
-            VStack(alignment: .leading, spacing: 2) {
-                SidebarRowButton(
-                    label: L10n.string("New Project"),
-                    systemImage: "plus",
-                    action: { AppState.shared.createProjectInteractively() }
-                )
-                SidebarRowButton(
-                    label: L10n.string("Open Project"),
-                    systemImage: "folder",
-                    action: { AppState.shared.openProjectFromPanel() }
-                )
-            }
-            .padding(.horizontal, AppTheme.Spacing.smMd)
-            .padding(.vertical, AppTheme.Spacing.md)
-
+            VeeCutWordmark()
             Spacer(minLength: 0)
-
-            SidebarRowButton(
-                label: L10n.string("Settings"),
-                systemImage: "gearshape",
-                action: { SettingsWindowController.shared.show() }
-            )
-            .padding(.horizontal, AppTheme.Spacing.smMd)
-            .padding(.bottom, AppTheme.Spacing.md)
+            Button {
+                AppState.shared.openProjectFromPanel()
+            } label: {
+                Label(L10n.string("Open Project…"), systemImage: "folder")
+            }
+            .controlSize(.regular)
+            Button {
+                SettingsWindowController.shared.show()
+            } label: {
+                Image(systemName: "gearshape")
+            }
+            .help(L10n.string("Settings"))
+            .accessibilityLabel(L10n.string("Settings"))
         }
-        .frame(maxHeight: .infinity, alignment: .top)
+        .padding(.leading, AppTheme.Home.trafficLightInset)
+        .padding(.trailing, AppTheme.Spacing.xl)
+        .frame(height: AppTheme.Home.headerHeight)
+    }
+}
+
+/// The coach's question and the place to drop today's footage.
+private struct StartFromFootage: View {
+    var body: some View {
+        VStack(alignment: .leading, spacing: AppTheme.Spacing.xl) {
+            Text(L10n.string("What are we making today?"))
+                .font(.custom(AppTheme.Brand.wordmarkFontName, size: AppTheme.Home.questionSize).weight(.semibold))
+                .fixedSize(horizontal: false, vertical: true)
+            Text(L10n.string("Drop the clips you shot. VeeCut watches them, suggests a few videos you could make, and lays out the plan. You place the shots."))
+                .font(.system(size: AppTheme.FontSize.lg))
+                .foregroundStyle(AppTheme.Text.secondaryColor)
+                .frame(maxWidth: AppTheme.Home.subtitleWidth, alignment: .leading)
+                .fixedSize(horizontal: false, vertical: true)
+            FootageDropZone()
+        }
+    }
+}
+
+private struct FootageDropZone: View {
+    @State private var isTargeted = false
+
+    var body: some View {
+        VStack(spacing: AppTheme.Spacing.lg) {
+            FootageTiles(size: AppTheme.Home.tile)
+            VStack(spacing: AppTheme.Spacing.xs) {
+                Text(L10n.string("Drop today's footage here"))
+                    .font(.custom(AppTheme.Brand.wordmarkFontName, size: AppTheme.FontSize.xl).weight(.semibold))
+                Text(L10n.string("Videos, photos or a whole folder from your camera"))
+                    .font(.system(size: AppTheme.FontSize.md))
+                    .foregroundStyle(AppTheme.Text.secondaryColor)
+            }
+            StartButtons()
+        }
+        .padding(AppTheme.Spacing.xlXxl)
+        .frame(maxWidth: .infinity, minHeight: AppTheme.Home.dropMinHeight, maxHeight: .infinity)
+        .background(AppTheme.Tint.lilacColor.opacity(isTargeted ? AppTheme.Opacity.prominent : AppTheme.Opacity.medium),
+                    in: RoundedRectangle(cornerRadius: AppTheme.Radius.xl, style: .continuous))
+        .overlay(
+            RoundedRectangle(cornerRadius: AppTheme.Radius.xl, style: .continuous)
+                .strokeBorder(AppTheme.Accent.primary.opacity(isTargeted ? AppTheme.Opacity.opaque : AppTheme.Opacity.medium),
+                              style: StrokeStyle(lineWidth: AppTheme.BorderWidth.thick, dash: [AppTheme.Spacing.sm, AppTheme.Spacing.xs]))
+        )
+        .animation(.easeOut(duration: AppTheme.Anim.hover), value: isTargeted)
+        .onDrop(of: [.fileURL], isTargeted: $isTargeted, perform: FootageDrop.accept)
+    }
+}
+
+/// Three fanned frames standing for a camera roll.
+private struct FootageTiles: View {
+    let size: CGSize
+
+    var body: some View {
+        HStack(spacing: AppTheme.Spacing.sm) {
+            tile(AppTheme.Tint.peachColor).rotationEffect(.degrees(-AppTheme.Home.tileTilt)).offset(y: size.height / 8)
+            tile(AppTheme.Accent.primary)
+            tile(AppTheme.Tint.blushColor).rotationEffect(.degrees(AppTheme.Home.tileTilt * 0.85)).offset(y: size.height / 12)
+        }
+        .accessibilityHidden(true)
+    }
+
+    private func tile(_ color: Color) -> some View {
+        RoundedRectangle(cornerRadius: AppTheme.Radius.md, style: .continuous)
+            .fill(color)
+            .overlay(RoundedRectangle(cornerRadius: AppTheme.Radius.md, style: .continuous).strokeBorder(AppTheme.Border.subtleColor, lineWidth: AppTheme.BorderWidth.hairline))
+            .frame(width: size.width, height: size.height)
+    }
+}
+
+private struct StartButtons: View {
+    var body: some View {
+        HStack(spacing: AppTheme.Spacing.sm) {
+            Button(L10n.string("Choose Footage…")) { FootageDrop.choose() }
+                .buttonStyle(.borderedProminent)
+                .controlSize(.large)
+            Button(L10n.string("Empty Project")) { AppState.shared.createProjectInteractively() }
+                .controlSize(.large)
+        }
+    }
+}
+
+/// No projects yet: just the question and a way in; footage can be dropped anywhere.
+private struct FirstLaunchView: View {
+    @State private var isTargeted = false
+
+    var body: some View {
+        VStack(spacing: AppTheme.Spacing.xlXxl) {
+            FootageTiles(size: AppTheme.Home.firstLaunchTile)
+            Text(L10n.string("What are we making today?"))
+                .font(.custom(AppTheme.Brand.wordmarkFontName, size: AppTheme.Home.firstLaunchQuestionSize).weight(.semibold))
+                .multilineTextAlignment(.center)
+            Text(L10n.string("Drop the clips you shot anywhere in this window. VeeCut watches them, suggests a few videos you could make, and lays out the plan. You place the shots."))
+                .font(.system(size: AppTheme.FontSize.lg))
+                .foregroundStyle(AppTheme.Text.secondaryColor)
+                .multilineTextAlignment(.center)
+                .frame(maxWidth: AppTheme.Home.subtitleWidth)
+            StartButtons()
+        }
+        .padding(AppTheme.Home.contentPadding)
+        .frame(maxWidth: .infinity, maxHeight: .infinity)
+        .background(AppTheme.Tint.lilacColor.opacity(isTargeted ? AppTheme.Opacity.medium : 0))
+        .onDrop(of: [.fileURL], isTargeted: $isTargeted, perform: FootageDrop.accept)
+    }
+}
+
+/// Footage into a new project, from a drop or the open panel.
+@MainActor
+enum FootageDrop {
+    static func accept(_ providers: [NSItemProvider]) -> Bool {
+        let fileProviders = providers.filter { $0.canLoadObject(ofClass: URL.self) }
+        guard !fileProviders.isEmpty else { return false }
+        Task {
+            var urls: [URL] = []
+            for provider in fileProviders {
+                if let url = await fileURL(from: provider) { urls.append(url) }
+            }
+            AppState.shared.createProject(fromFootage: urls)
+        }
+        return true
+    }
+
+    private static func fileURL(from provider: NSItemProvider) async -> URL? {
+        await withCheckedContinuation { continuation in
+            _ = provider.loadObject(ofClass: URL.self) { url, _ in continuation.resume(returning: url) }
+        }
+    }
+
+    static func choose() {
+        let panel = NSOpenPanel()
+        panel.allowsMultipleSelection = true
+        panel.canChooseDirectories = true
+        panel.allowedContentTypes = [.movie, .image, .audio, .folder]
+        panel.prompt = L10n.string("Start Project")
+        panel.begin { response in
+            guard response == .OK else { return }
+            AppState.shared.createProject(fromFootage: panel.urls)
+        }
     }
 }
 
@@ -122,8 +231,7 @@ final class HomeWindowController: NSWindowController {
         window.setContentSize(AppTheme.Window.homeDefault)
         window.minSize = AppTheme.Window.homeMin
         window.title = AppIdentity.name
-        window.backgroundColor = AppTheme.Background.base.withAlphaComponent(0.4)
-        window.isOpaque = false
+        window.backgroundColor = AppTheme.Background.base
         window.titleVisibility = .hidden
         window.titlebarAppearsTransparent = true
         window.isMovableByWindowBackground = true

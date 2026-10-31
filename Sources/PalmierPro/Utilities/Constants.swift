@@ -96,6 +96,14 @@ enum Project {
             .appendingPathComponent("Documents/VeeCut", isDirectory: true)
     }
 
+    /// `base`, or `base 2`, `base 3`… when that name is taken.
+    nonisolated static func uniqueName(base: String, existing: Set<String>) -> String {
+        guard existing.contains(base) else { return base }
+        var number = 2
+        while existing.contains("\(base) \(number)") { number += 1 }
+        return "\(base) \(number)"
+    }
+
     nonisolated static func ensureStorageDirectory() {
         let url = storageDirectory
         try? FileManager.default.createDirectory(at: url, withIntermediateDirectories: true)

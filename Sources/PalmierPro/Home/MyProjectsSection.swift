@@ -1,17 +1,7 @@
 import SwiftUI
 
+/// The latest project as a card to pick up, then the rest as a list with search, selection and delete.
 struct MyProjectsSection: View {
-    private let columns = [
-        GridItem(
-            .adaptive(
-                minimum: AppTheme.ComponentSize.projectCardWidth,
-                maximum: AppTheme.ComponentSize.projectCardWidth
-            ),
-            spacing: AppTheme.Spacing.md,
-            alignment: .leading
-        )
-    ]
-
     @State private var searchQuery = ""
     @State private var isSearchExpanded = false
     @State private var isSelecting = false
@@ -21,18 +11,36 @@ struct MyProjectsSection: View {
     @FocusState private var isSearchFocused: Bool
 
     var body: some View {
-        VStack(alignment: .leading, spacing: 0) {
-            toolbar
-            projectGrid
+        ScrollView {
+            VStack(alignment: .leading, spacing: AppTheme.Spacing.md) {
+                if let latest = latestEntry {
+                    sectionTitle(L10n.string("Pick up where you left off"))
+                    LatestProjectCard(entry: latest, onDelete: { requestDeletion([latest]) })
+                        .padding(.bottom, AppTheme.Spacing.md)
+                }
+                toolbar
+                projectList
+            }
         }
+        .scrollIndicators(.never)
         .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)
+    }
+
+    /// The newest project gets the card unless the list is being searched or edited.
+    private var latestEntry: ProjectEntry? {
+        guard !isSelecting, searchQuery.isEmpty else { return nil }
+        return ProjectRegistry.shared.sortedEntries.first
+    }
+
+    private func sectionTitle(_ text: String) -> some View {
+        Text(text)
+            .font(.system(size: AppTheme.FontSize.md, weight: AppTheme.FontWeight.semibold))
+            .foregroundStyle(AppTheme.Text.secondaryColor)
     }
 
     private var toolbar: some View {
         HStack(spacing: AppTheme.Spacing.md) {
-            Text(L10n.string("My Projects"))
-                .font(.system(size: AppTheme.FontSize.md, weight: AppTheme.FontWeight.regular))
-                .foregroundStyle(AppTheme.Text.primaryColor)
+            sectionTitle(latestEntry == nil ? L10n.string("Projects") : L10n.string("Other projects"))
 
             Spacer()
 
@@ -68,8 +76,6 @@ struct MyProjectsSection: View {
                     .buttonStyle(.capsule)
             }
         }
-        .padding(.horizontal, AppTheme.Spacing.xlXxl)
-        .padding(.bottom, AppTheme.Spacing.sm)
         .animation(.easeInOut(duration: AppTheme.Anim.transition), value: isSearchExpanded)
         .alert(deletionTitle, isPresented: Binding(
             get: { !projectsPendingDeletion.isEmpty },
@@ -134,36 +140,26 @@ struct MyProjectsSection: View {
         }
     }
 
-    private var projectGrid: some View {
-        let entries = filteredEntries
-        return ScrollView {
-            LazyVGrid(columns: columns, alignment: .leading, spacing: AppTheme.Spacing.xl) {
-                if ProjectRegistry.shared.entries.isEmpty {
-                    NewProjectCard(action: { AppState.shared.createProjectInteractively() })
-                } else if entries.isEmpty {
-                    Text(L10n.string("No projects found"))
-                        .font(.system(size: AppTheme.FontSize.sm))
-                        .foregroundStyle(AppTheme.Text.mutedColor)
-                        .padding(.vertical, AppTheme.Spacing.xl)
-                } else {
-                    ForEach(entries) { entry in
-                        ProjectCard(
-                            entry: entry,
-                            isSelecting: isSelecting,
-                            isSelected: selectedProjectIDs.contains(entry.id),
-                            onOpen: { AppState.shared.openProject(at: $0) },
-                            onRemove: { ProjectRegistry.shared.remove($0) },
-                            onSelect: { toggleSelection(entry.id) },
-                            onDelete: { requestDeletion([entry]) }
-                        )
-                    }
+    private var projectList: some View {
+        let entries = filteredEntries.filter { $0.id != latestEntry?.id }
+        return LazyVStack(alignment: .leading, spacing: AppTheme.Spacing.xxs) {
+            if entries.isEmpty, !searchQuery.isEmpty {
+                Text(L10n.string("No projects found"))
+                    .font(.system(size: AppTheme.FontSize.sm))
+                    .foregroundStyle(AppTheme.Text.mutedColor)
+                    .padding(.vertical, AppTheme.Spacing.xl)
+            } else {
+                ForEach(entries) { entry in
+                    ProjectRow(
+                        entry: entry,
+                        isSelecting: isSelecting,
+                        isSelected: selectedProjectIDs.contains(entry.id),
+                        onSelect: { toggleSelection(entry.id) },
+                        onDelete: { requestDeletion([entry]) }
+                    )
                 }
             }
-            .padding(.horizontal, AppTheme.Spacing.xlXxl)
-            .padding(.bottom, AppTheme.Spacing.xlXxl)
         }
-        .scrollEdgeEffectStyle(.soft, for: .top)
-        .frame(maxWidth: .infinity, maxHeight: .infinity)
     }
 
     private var filteredEntries: [ProjectEntry] {
@@ -238,54 +234,5 @@ struct MyProjectsSection: View {
     private func openProjects(in entries: [ProjectEntry]) -> [ProjectEntry] {
         let paths = Set(AppState.shared.openProjects.compactMap { $0.fileURL?.standardizedFileURL.path })
         return entries.filter { paths.contains($0.url.standardizedFileURL.path) }
-    }
-}
-
-private struct NewProjectCard: View {
-    let action: () -> Void
-
-    @State private var isHovered = false
-
-    var body: some View {
-        ZStack(alignment: .bottomLeading) {
-            AppTheme.Background.placeholderColor
-                .aspectRatio(5.0/4.0, contentMode: .fit)
-                .overlay {
-                    Image(systemName: "plus")
-                        .font(.system(size: AppTheme.FontSize.title2, weight: .light))
-                        .foregroundStyle(AppTheme.Text.mutedColor)
-                }
-                .clipped()
-
-            LinearGradient(
-                colors: [.clear, AppTheme.MediaOverlay.backgroundColor.opacity(AppTheme.Opacity.high)],
-                startPoint: .top,
-                endPoint: .bottom
-            )
-            .frame(height: AppTheme.ComponentSize.projectCardHeight / 2)
-            .allowsHitTesting(false)
-
-            Text(L10n.string("Untitled"))
-                .font(.system(size: AppTheme.FontSize.smMd, weight: .regular))
-                .foregroundStyle(AppTheme.MediaOverlay.primaryColor)
-                .lineLimit(1)
-                .padding(.horizontal, AppTheme.Spacing.md)
-                .padding(.bottom, AppTheme.Spacing.smMd)
-        }
-        .contentShape(Rectangle())
-        .onTapGesture { action() }
-        .clipShape(RoundedRectangle(cornerRadius: AppTheme.Radius.mdLg, style: .continuous))
-        .overlay(
-            RoundedRectangle(cornerRadius: AppTheme.Radius.mdLg, style: .continuous)
-                .strokeBorder(
-                    AppTheme.Interaction.fill(isHovered ? AppTheme.Opacity.muted : AppTheme.Opacity.hint),
-                    lineWidth: AppTheme.BorderWidth.hairline
-                )
-        )
-        .shadow(color: AppTheme.MediaOverlay.backgroundColor.opacity(isHovered ? 0.4 : 0.2), radius: isHovered ? 12 : 4, y: isHovered ? 4 : 2)
-        .scaleEffect(isHovered ? 1.03 : 1.0)
-        .padding(AppTheme.Spacing.xs)
-        .animation(.spring(response: 0.3, dampingFraction: 0.7), value: isHovered)
-        .onHover { isHovered = $0 }
     }
 }

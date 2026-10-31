@@ -45,6 +45,45 @@ enum AppTheme {
         static let neutralPillText = Color.white
     }
 
+    enum Coach {
+        static let barHeight: CGFloat = 30
+        /// An empty section between filled ones still gets room for its label.
+        static let minimumBandWidth: CGFloat = 72
+        static let cardWidth: CGFloat = 640
+        /// Spotlight-like: the card's top sits this far down the window.
+        static let cardTopFraction: CGFloat = 0.16
+        static let popoverWidth: CGFloat = 340
+        static let nudgeWidth: CGFloat = 320
+        static let thumbnailSize = CGSize(width: 64, height: 36)
+        static let lengthFieldWidth: CGFloat = 56
+        static let maxSuggestionsHeight: CGFloat = 260
+        static var bandColors: [Color] {
+            [Tint.lilacColor, Tint.peachColor, Tint.blushColor, Color(Palette.periwinkleLight)]
+        }
+    }
+
+    enum Home {
+        /// Clears the window's traffic lights in the transparent title bar.
+        static let trafficLightInset: CGFloat = 80
+        static let headerHeight: CGFloat = 52
+        static let contentPadding: CGFloat = 56
+        static let columnGap: CGFloat = 40
+        static let projectsWidth: CGFloat = 480
+        static let projectsMinWidth: CGFloat = 340
+        static let questionSize: CGFloat = 46
+        static let firstLaunchQuestionSize: CGFloat = 52
+        static let projectTitleSize: CGFloat = 22
+        static let dropMinHeight: CGFloat = 260
+        static let tile = CGSize(width: 74, height: 48)
+        static let firstLaunchTile = CGSize(width: 120, height: 78)
+        static let tileTilt: Double = 7
+        static let rowThumb = CGSize(width: 64, height: 40)
+        static let latestThumbAspect: CGFloat = 2
+        static let planStripHeight: CGFloat = 30
+        static let miniPlanSize = CGSize(width: 140, height: 8)
+        static let subtitleWidth: CGFloat = 470
+    }
+
     enum History {
         static let listWidth: CGFloat = 300
         static let listHeight: CGFloat = 380
@@ -458,8 +497,6 @@ enum AppTheme {
     enum ComponentSize {
         static let captionPreviewMaxTextWidthRatio: CGFloat = 0.9
         static let toolImagePreviewMaxHeight: CGFloat = 50
-        static let projectCardWidth: CGFloat = 150
-        static let projectCardHeight: CGFloat = 120
         static let projectSearchWidth: CGFloat = 260
         static let timelineClipBorderMinWidth: CGFloat = 8
         static let timelineClipDetailMinWidth: CGFloat = 32
@@ -537,7 +574,7 @@ enum AppTheme {
 
     enum Window {
         static let homeDefault = NSSize(width: 1200, height: 800)
-        static let homeMin = NSSize(width: 760, height: 480)
+        static let homeMin = NSSize(width: 960, height: 600)
         static let projectMin = NSSize(
             width: 960,
             height: 600
