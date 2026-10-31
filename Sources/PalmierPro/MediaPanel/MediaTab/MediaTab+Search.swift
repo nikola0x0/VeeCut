@@ -292,7 +292,7 @@ extension MediaTab {
 }
 
 /// Async frame thumbnail for a search hit.
-private struct MomentThumbnail: View {
+struct MomentThumbnail: View {
     let url: URL?
     let time: Double
     @State private var image: CGImage?

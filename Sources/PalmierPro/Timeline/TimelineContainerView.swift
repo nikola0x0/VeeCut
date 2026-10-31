@@ -60,6 +60,8 @@ struct TimelineContainerView: NSViewRepresentable {
             height: 0
         )
         resizeHandle.autoresizingMask = [.height]
+        resizeHandle.onHeaderWidthChange = { [weak editor] in editor?.timelineViewport.headerWidth = $0 }
+        editor.timelineViewport.headerWidth = headerWidth
         container.addSubview(resizeHandle)
 
         context.coordinator.headerView = headerView
@@ -242,6 +244,7 @@ private final class TimelineHeaderResizeHandleView: NSView {
     private weak var timelineView: TimelineView?
     private weak var keyframeLaneState: TimelineKeyframeLaneState?
     private var headerWidth: CGFloat
+    var onHeaderWidthChange: ((CGFloat) -> Void)?
     private var dragStart: (x: CGFloat, width: CGFloat)?
 
     init(
@@ -320,6 +323,7 @@ private final class TimelineHeaderResizeHandleView: NSView {
         )
         guard width != headerWidth else { return }
         headerWidth = width
+        onHeaderWidthChange?(width)
         headerView.frame.size.width = width
         scrollView.frame = NSRect(
             x: width,

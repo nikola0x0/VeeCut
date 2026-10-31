@@ -38,6 +38,11 @@ struct ToolbarView: View {
                 markerButton
             }
 
+            toolbarDivider
+
+            toolbarButton("sparkles", help: L10n.string("Plan the Edit"), action: editor.askForPlan)
+                .disabled(!editor.hasCoachFootage)
+
             Spacer()
 
             // Zoom

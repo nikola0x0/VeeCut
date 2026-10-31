@@ -485,6 +485,7 @@ class VideoProject: NSDocument {
     // MARK: - Close
 
     override func close() {
+        editorViewModel.tearDownCoach()
         editorViewModel.releaseTrackedMasks()
         super.close()
         DispatchQueue.main.async {
@@ -525,6 +526,7 @@ class VideoProject: NSDocument {
         editorViewModel.enhancePendingDenoises()
 
         let editorView = EditorView()
+            .padding([.horizontal, .bottom], Layout.panelGap / 2)
             .environment(editorViewModel)
             .focusEffectDisabled()
             .background(.ultraThinMaterial)
@@ -538,6 +540,10 @@ class VideoProject: NSDocument {
             }
             .overlay {
                 TourOverlay()
+                    .environment(editorViewModel)
+            }
+            .overlay {
+                CoachOverlay()
                     .environment(editorViewModel)
             }
             .ignoresSafeArea(.container, edges: .top)
@@ -569,6 +575,8 @@ class VideoProject: NSDocument {
         window.standardWindowButton(.documentIconButton)?.isHidden = true
 
         editorViewModel.searchIndex.projectOpened()
+        editorViewModel.scanFootage()
+        editorViewModel.showCoachIfNeeded()
         editorViewModel.updateTelemetryContext()
         Telemetry.breadcrumb(
             "Project opened",
