@@ -63,6 +63,12 @@ enum ToolName: String, CaseIterable, Sendable {
     case followObject = "follow_object"
     case addSticker = "add_sticker"
     case smoothSkin = "smooth_skin"
+
+    // Plan
+    case getPlan = "get_plan"
+    case makePlan = "make_plan"
+    case editPlan = "edit_plan"
+    case addToSection = "add_to_section"
     case inspectColor = "inspect_color"
     case denoiseAudio = "denoise_audio"
 
@@ -1104,6 +1110,88 @@ enum ToolDefinitions {
                     "blemishes": ["type": "number", "description": "0–1 pimple and red-spot removal. Default 1."],
                 ],
                 required: ["clipId"]
+            )
+        ),
+        AgentTool(
+            name: .getPlan,
+            description: """
+            Read the active timeline's edit plan: the user's brief and style, and each section in order with its \
+            sectionId, title, targetSeconds, actualSeconds (length of the clips placed in it on the plan track), \
+            filled, hint, and up to 6 suggested moments {mediaRef, startSeconds, endSeconds, note} from the \
+            user's footage. Returns {"plan": null} when there is no plan. Once Muse Spark has read the footage it also \
+            returns footageSummary and up to 3 ideas {title, style, targetSeconds, pitch} — offer them when the user \
+            hasn't said what to make, and pass the chosen one to make_plan. With a plan it lists the coach's current \
+            tips {tipId, kind: sectionOver | offBeatCuts | emptySection | hookCandidate | fitToMusic, sectionId, …}; \
+            fix one with the regular editing tools when the user asks. Use it for "what's missing?" or before \
+            changing the plan or placing clips into sections.
+            """,
+            inputSchema: objectSchema()
+        ),
+        AgentTool(
+            name: .makePlan,
+            description: """
+            Plan the edit from the user's brief: Meta Muse Spark reads the project's video (small contact sheets, \
+            each clip only once) and lays out 3–7 timed sections with suggested moments. Replaces any existing \
+            plan; placed clips stay where they are and are re-assigned to the new sections by position. It never \
+            places clips — the user does, or add_to_section when they ask. Takes about 20–60 seconds once the footage \
+            is read; footage Muse Spark hasn't read yet is read first, which can take a few minutes on a large new \
+            project. Uses API credits. The user can cancel it from the coach card. Without a Meta API key it applies the style's starter sections without suggestions \
+            (source: "template"). One undo step.
+            """,
+            inputSchema: objectSchema(
+                properties: [
+                    "brief": ["type": "string", "description": "What the user is making: idea, vibe and length, in their words. Up to 1000 characters."],
+                    "style": ["type": "string", "enum": PlanStyle.allCases.map(\.rawValue), "description": "Optional. The output style."],
+                ],
+                required: ["brief"]
+            )
+        ),
+        AgentTool(
+            name: .editPlan,
+            description: """
+            Change the plan's sections: rename, set a target length, move, add or delete. All operations are \
+            validated first and applied together as one undo step; if any is invalid nothing changes. Deleting a \
+            section keeps its clips on the timeline (they leave the plan). Moving a section changes the plan's \
+            order, not the clips. Use get_plan for sectionIds.
+            """,
+            inputSchema: objectSchema(
+                properties: [
+                    "operations": [
+                        "type": "array",
+                        "description": "Applied in order.",
+                        "items": [
+                            "type": "object",
+                            "properties": [
+                                "op": ["type": "string", "enum": ["rename", "setTarget", "move", "add", "delete"]],
+                                "sectionId": ["type": "string", "description": "The section to change (all ops except add)."],
+                                "title": ["type": "string", "description": "rename, add: the title, up to 80 characters."],
+                                "seconds": ["type": "number", "description": "setTarget, add: target length, 1–600 seconds (add defaults to 10)."],
+                                "hint": ["type": "string", "description": "add: optional one-line hint of what goes there."],
+                                "offset": ["type": "integer", "description": "move: positions to move; negative moves earlier."],
+                                "afterSectionId": ["type": "string", "description": "add: insert after this section; omit to add at the end."],
+                            ],
+                            "required": ["op"],
+                        ],
+                    ],
+                ],
+                required: ["operations"]
+            )
+        ),
+        AgentTool(
+            name: .addToSection,
+            description: """
+            Place a moment of a media clip into a plan section: it is inserted already trimmed at the end of the \
+            section on the plan track, and later clips ripple right. Omit startSeconds and endSeconds for the \
+            whole clip. Use a suggestion from get_plan, or footage the user names. One undo step.
+            """,
+            inputSchema: objectSchema(
+                properties: [
+                    "sectionId": ["type": "string", "description": "Section from get_plan."],
+                    "mediaRef": ["type": "string", "description": "Video or image media id from get_media or a get_plan suggestion."],
+                    "startSeconds": ["type": "number", "description": "Optional. Source start in seconds (default 0)."],
+                    "endSeconds": ["type": "number", "description": "Optional. Source end in seconds (default the clip's end)."],
+                ],
+                required: ["sectionId", "mediaRef"]
             )
         ),
         AgentTool(

@@ -98,6 +98,9 @@ enum AgentInstructions {
           Color: apply_color (knobs merge; pass a clip's `color` object to \
           copy a whole grade); video/image FX: apply_effect; iterate grades against inspect_color. \
           Touch-ups ("touch up", "smooth skin", "remove pimples"): smooth_skin, which retouches only the face.
+        - Edit plan: the timeline's sections and suggested moments live in get_plan; make_plan drafts one, \
+          edit_plan changes sections, add_to_section places a moment. Never place clips on your own initiative, \
+          but act at once when the user asks for an edit.
         - Transcription language: omit unless the user names the spoken language. \
           Transcription is language-specific — pass BCP-47 (language='es') for \
           non-English speech, and if the output looks wrong, ask for the language and retry. \

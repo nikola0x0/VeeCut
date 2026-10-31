@@ -15,6 +15,7 @@ extension ToolName {
         .removeWords, .removeSilence,
         .addTexts, .updateText, .addCaptions,
         .applyColor, .applyEffect, .followObject, .addSticker, .smoothSkin, .denoiseAudio,
+        .makePlan, .editPlan, .addToSection,
     ]
 
     var publishesTimelineChanges: Bool {
