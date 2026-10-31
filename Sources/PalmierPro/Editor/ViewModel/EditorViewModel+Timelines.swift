@@ -23,6 +23,9 @@ extension EditorViewModel {
         openTimelineIds = (file.openTimelineIds ?? []).filter { ids.contains($0) }
         multicamGroups = file.multicamGroups ?? []
         trackedMasks = file.trackedMasks ?? []
+        dismissedCoachTimelineIds = Set(file.dismissedCoachTimelineIds ?? [])
+        footageRecommendation = file.footageRecommendation
+        footageNotes = Dictionary((file.footageNotes ?? []).map { ($0.assetId, $0) }) { _, last in last }
         if !openTimelineIds.contains(activeTimelineId) {
             openTimelineIds.append(activeTimelineId)
         }
@@ -40,7 +43,10 @@ extension EditorViewModel {
             openTimelineIds: openTimelineIds,
             viewStates: liveViewStates.filter { ids.contains($0.key) },
             multicamGroups: savedMulticamGroups(),
-            trackedMasks: savedTrackedMasks()
+            trackedMasks: savedTrackedMasks(),
+            footageNotes: savedFootageNotes(),
+            dismissedCoachTimelineIds: dismissedCoachTimelineIds.isEmpty ? nil : dismissedCoachTimelineIds.filter(ids.contains).sorted(),
+            footageRecommendation: footageRecommendation
         )
     }
 
@@ -86,6 +92,7 @@ extension EditorViewModel {
         // refreshVisuals would apply the new timeline to the old track mappings — rebuild alone is correct.
         notifyTimelineChanged(refreshVisuals: false)
         seekToFrame(currentFrame)
+        showCoachIfNeeded()
     }
 
     /// A switch mid-gesture would orphan live mutations with no undo — put the clips back first.

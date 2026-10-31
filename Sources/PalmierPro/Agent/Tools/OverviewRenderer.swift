@@ -19,13 +19,12 @@ enum OverviewRenderer {
     private static let tileWidth = 160
     private static let tileHeight = 90
     private static let columns = 6
-    private static let maxTiles = 36
-    private static let candidateTarget = 120.0
+    static let candidateTarget = 120.0
     private static let promoteDiff: Float = 12
     private static let labelHeight = 14
     private static let jpegQuality: CGFloat = 0.7
 
-    static func make(url: URL, start: Double, end: Double) async throws -> Sheet {
+    static func make(url: URL, start: Double, end: Double, maxTiles: Int = 36, candidates: Double = candidateTarget) async throws -> Sheet {
         let asset = AVURLAsset(url: url)
         guard (try? await asset.loadTracks(withMediaType: .video).first) != nil else {
             throw RenderError(message: "No video track available")
@@ -34,7 +33,7 @@ enum OverviewRenderer {
         generator.appliesPreferredTrackTransform = true
         generator.maximumSize = CGSize(width: tileWidth * 2, height: tileHeight * 2)
         let span = max(end - start, 0.001)
-        let interval = max(1.0, span / candidateTarget)
+        let interval = max(1.0, span / max(candidates, 1))
         let tolerance = CMTime(seconds: interval / 2, preferredTimescale: 600)
         generator.requestedTimeToleranceBefore = tolerance
         generator.requestedTimeToleranceAfter = tolerance
@@ -58,6 +57,7 @@ enum OverviewRenderer {
         }
         guard !tiles.isEmpty else { throw RenderError(message: "Could not decode frames for overview") }
 
+        let maxTiles = max(maxTiles, 1)
         if tiles.count > maxTiles {
             let step = Double(tiles.count) / Double(maxTiles)
             tiles = (0..<maxTiles).map { tiles[Int(Double($0) * step)] }

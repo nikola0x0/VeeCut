@@ -82,6 +82,42 @@ final class EditorViewModel {
         }
     }
     var trackedMasks: [TrackedMask] = []
+    /// What the coach has read about each video asset, keyed by asset id.
+    var footageNotes: [String: FootageNote] = [:]
+    @ObservationIgnored var footageScanTask: Task<Void, Never>?
+    @ObservationIgnored var footageScanPending = false
+    var footageRecommendation: FootageRecommendation?
+    var footageReadProgress: FootageReadProgress?
+    @ObservationIgnored var footageReadTask: Task<Void, Never>?
+    @ObservationIgnored var footageReadPending = false
+    @ObservationIgnored var footageRecommendTask: Task<Void, Never>?
+    /// Timed lines of what is said in a clip; replaced in tests.
+    @ObservationIgnored var footageTranscriptSource: @Sendable (URL) async throws -> [(start: Double, text: String)] = { url in
+        try await TranscriptCache.shared.transcript(for: url, isVideo: true, range: nil).segments.map { ($0.start, $0.text) }
+    }
+    var coach: CoachState = .hidden
+    var dismissedCoachTimelineIds: Set<String> = []
+    @ObservationIgnored var coachRequestedTimelineId: String?
+    var coachNudges: [CoachNudge] = []
+    /// Muse Spark's thinking summary while it plans, streamed in.
+    var coachThinking = ""
+    var coachMode: CoachMode = CoachMode.saved {
+        didSet { if coachMode == .passive, oldValue == .active { coachVoice.stop() } }
+    }
+    @ObservationIgnored lazy var coachVoice: any CoachSpeaking = CoachVoice()
+    @ObservationIgnored var spokenCoachLines: Set<String> = []
+    var coachListening = false
+    @ObservationIgnored let voiceCapture = VoiceCapture()
+    @ObservationIgnored var coachListenTask: Task<Void, Never>?
+    @ObservationIgnored var coachAwaitingReply = false
+    @ObservationIgnored var coachNudgeTask: Task<Void, Never>?
+    @ObservationIgnored var coachTask: Task<Result<MadePlan, CoachFailure>, Never>?
+    @ObservationIgnored var footageReadWaiters: [UUID: CheckedContinuation<Void, Never>] = [:]
+    @ObservationIgnored var coachGeneration = 0
+    /// The Muse Spark client the coach plans with; replaced in tests.
+    @ObservationIgnored var coachModelProvider: @Sendable () async throws(MetaModelError) -> any CoachModel = {
+        try await MetaModelClient.configured()
+    }
     /// Progress (0…1) of in-flight SAM tracking jobs, keyed by clip id.
     var objectTrackingProgress: [String: Double] = [:]
     /// The canvas drawing tool in use; nil when the preview behaves normally.
@@ -179,7 +215,12 @@ final class EditorViewModel {
     @ObservationIgnored var keyframeNavigationCacheTimelineId: String?
     @ObservationIgnored var keyframeNavigationCacheRevision = -1
     /// Live horizontal scroll of the timeline panel, mirrored from AppKit for view-state stash.
-    @ObservationIgnored var timelineScrollOffsetX: Double = 0
+    /// Scroll and header width of the timeline pane; its own observable so scrolling redraws only what reads it.
+    let timelineViewport = TimelineViewport()
+    var timelineScrollOffsetX: Double {
+        get { timelineViewport.scrollX }
+        set { timelineViewport.scrollX = newValue }
+    }
     var timelineScrollRestoreX: Double?
     var isScrubbing: Bool = false
     var toolMode: ToolMode = .pointer
@@ -334,7 +375,9 @@ final class EditorViewModel {
             projectURL: { [weak self] in self?.projectURL }
         )
         agentService.editor = self
+        agentService.onReplyFinished = { [weak self] reply in self?.coachReplyFinished(reply) }
         searchIndex.assetsProvider = { [weak self] in self?.mediaAssets ?? [] }
+        searchIndex.onBatchFinished = { [weak self] in self?.scanFootage() }
         mediaVisualCache.speech.onAnalyzingCountChange = { [weak self] count in
             self?.speechAnalyzingCount = count
         }
@@ -529,6 +572,7 @@ final class EditorViewModel {
             videoEngine?.refreshVisuals()
         }
         videoEngine?.rebuild(visualsCurrent: refreshVisuals)
+        scheduleCoachNudges()
     }
 
     /// Coalesce rapid rebuilds. An immediate `notifyTimelineChanged` cancels any pending debounced one.
@@ -772,4 +816,10 @@ final class EditorViewModel {
         }
     }
 
+}
+
+@MainActor @Observable
+final class TimelineViewport {
+    var scrollX: Double = 0
+    var headerWidth: Double = Layout.trackHeaderDefaultWidth
 }

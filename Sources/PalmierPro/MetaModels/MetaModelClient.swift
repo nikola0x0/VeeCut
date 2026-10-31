@@ -10,6 +10,18 @@ enum MetaModelError: Error, Equatable {
     case contentPolicy
 }
 
+enum MetaInputPart: Sendable {
+    case text(String)
+    case jpeg(Data)
+
+    var content: [String: String] {
+        switch self {
+        case .text(let text): ["type": "input_text", "text": text]
+        case .jpeg(let data): ["type": "input_image", "image_url": "data:image/jpeg;base64,\(data.base64EncodedString())"]
+        }
+    }
+}
+
 struct MetaModelClient: Sendable {
     static let baseURL = URL(string: "https://api.meta.ai/v1")!
 
@@ -98,6 +110,18 @@ struct MetaModelClient: Sendable {
         schemaName: String,
         schemaJSON: Data
     ) async throws -> String {
+        try await structuredResponse(model: model, instructions: instructions, parts: [.text(prompt)], schemaName: schemaName, schemaJSON: schemaJSON)
+    }
+
+    /// The same call with interleaved text and JPEG parts in the user message.
+    @concurrent
+    func structuredResponse(
+        model: String,
+        instructions: String,
+        parts: [MetaInputPart],
+        schemaName: String,
+        schemaJSON: Data
+    ) async throws -> String {
         let schema = try JSONSerialization.jsonObject(with: schemaJSON)
         var request = request("responses")
         request.setValue("application/json", forHTTPHeaderField: "Content-Type")
@@ -105,7 +129,7 @@ struct MetaModelClient: Sendable {
             "model": model,
             "stream": false,
             "instructions": instructions,
-            "input": [["type": "message", "role": "user", "content": [["type": "input_text", "text": prompt]]]],
+            "input": [["type": "message", "role": "user", "content": parts.map(\.content)]],
             "text": ["format": ["type": "json_schema", "name": schemaName, "schema": schema]],
         ]
         request.httpBody = try JSONSerialization.data(withJSONObject: body)
@@ -118,6 +142,44 @@ struct MetaModelClient: Sendable {
             .flatMap { $0["content"] as? [[String: Any]] ?? [] }
             .compactMap { $0["type"] as? String == "output_text" ? $0["text"] as? String : nil }
             .joined()
+        guard !text.isEmpty else { throw MetaModelError.invalidResponse }
+        return text
+    }
+
+    /// The structured call streamed, handing over the model's thinking summary as it arrives.
+    @concurrent
+    func structuredResponse(
+        model: String,
+        instructions: String,
+        parts: [MetaInputPart],
+        schemaName: String,
+        schemaJSON: Data,
+        onThinking: @escaping @Sendable (String) async -> Void
+    ) async throws -> String {
+        let schema = try JSONSerialization.jsonObject(with: schemaJSON)
+        var request = request("responses")
+        request.setValue("application/json", forHTTPHeaderField: "Content-Type")
+        request.setValue("text/event-stream", forHTTPHeaderField: "Accept")
+        let body: [String: Any] = [
+            "model": model,
+            "stream": true,
+            "reasoning": ["summary": "auto"],
+            "instructions": instructions,
+            "input": [["type": "message", "role": "user", "content": parts.map(\.content)]],
+            "text": ["format": ["type": "json_schema", "name": schemaName, "schema": schema]],
+        ]
+        request.httpBody = try JSONSerialization.data(withJSONObject: body)
+        let bytes = try await AgentHTTP.bytes(for: request) { status, body in MetaModelError.http(status: status, body: body) }
+        var text = ""
+        for try await line in bytes.lines {
+            try Task.checkCancellation()
+            switch MetaResponseStream.event(fromLine: line) {
+            case .thinking(let delta): await onThinking(delta)
+            case .text(let delta): text += delta
+            case .failed(let message): throw MetaModelError.streamFailed(message)
+            case nil: break
+            }
+        }
         guard !text.isEmpty else { throw MetaModelError.invalidResponse }
         return text
     }

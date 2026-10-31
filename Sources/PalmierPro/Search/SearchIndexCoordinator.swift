@@ -43,6 +43,7 @@ final class SearchIndexCoordinator {
     }
 
     var assetsProvider: () -> [MediaAsset] = { [] }
+    var onBatchFinished: (() -> Void)?
 
     private var queue: [IndexWork] = []
     private var scheduledIds: Set<String> = []
@@ -183,7 +184,9 @@ final class SearchIndexCoordinator {
 
     private func dequeue() -> IndexWork? {
         guard !queue.isEmpty else {
+            let finished = batchTotal > 0
             resetBatch()
+            if finished { onBatchFinished?() }
             return nil
         }
         return queue.removeFirst()
