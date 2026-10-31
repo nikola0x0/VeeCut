@@ -93,6 +93,8 @@ final class AgentService {
     var isStreaming: Bool = false
     var streamError: AgentServiceError?
     var onSessionsChanged: (@MainActor () -> Void)?
+    /// Called when a reply finishes streaming, with its text.
+    var onReplyFinished: (@MainActor (String?) -> Void)?
 
     var draft: String = ""
     var mentions: [AgentMention] = []
@@ -370,6 +372,12 @@ final class AgentService {
         )
     }
 
+    private var lastAssistantText: String? {
+        messages.last { $0.role == .assistant }?.blocks.compactMap { block -> String? in
+            if case .text(let text) = block { text } else { nil }
+        }.joined(separator: " ")
+    }
+
     func postSystemNotice(_ text: String) {
         messages.append(AgentMessage(role: .system, blocks: [.text(text)]))
         syncMessagesIntoCurrentSession()
@@ -393,6 +401,7 @@ final class AgentService {
                 self?.isStreaming = false
                 self?.syncMessagesIntoCurrentSession()
                 self?.onSessionsChanged?()
+                self?.onReplyFinished?(self?.lastAssistantText)
             }
             await self?.runLoop(
                 conversationID: conversationID,

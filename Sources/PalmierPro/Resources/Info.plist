@@ -41,6 +41,8 @@
 	<string>26.0</string>
 	<key>NSHighResolutionCapable</key>
 	<true/>
+	<key>NSMicrophoneUsageDescription</key>
+	<string>VeeCut listens while you hold Option-Space so you can talk to the coach.</string>
 	<key>UTExportedTypeDeclarations</key>
 	<array>
 		<dict>

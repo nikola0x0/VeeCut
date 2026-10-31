@@ -2,3 +2,4 @@
 
 "CFBundleTypeName" = "VeeCut Project";
 "UTTypeDescription" = "VeeCut Project";
+"NSMicrophoneUsageDescription" = "VeeCut listens while you hold Option-Space so you can talk to the coach.";

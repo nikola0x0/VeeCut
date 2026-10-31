@@ -154,8 +154,18 @@ extension AppDelegate: NSMenuItemValidation {
         }
     }
 
+    @objc func toggleActiveCoach(_ sender: Any?) {
+        let mode: CoachMode = CoachMode.saved == .active ? .passive : .active
+        CoachMode.save(mode)
+        for case let project as VideoProject in NSDocumentController.shared.documents {
+            project.editorViewModel.coachMode = mode
+        }
+    }
+
     func validateMenuItem(_ menuItem: NSMenuItem) -> Bool {
         switch menuItem.action {
+        case #selector(toggleActiveCoach(_:)):
+            menuItem.state = CoachMode.saved == .active ? .on : .off
         case #selector(toggleScrubAudio(_:)):
             menuItem.state = ScrubAudioPreference.isEnabled ? .on : .off
         case #selector(toggleMagneticTimeline(_:)):

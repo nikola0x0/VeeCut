@@ -143,6 +143,9 @@ enum MainMenuBuilder {
         menu.addItem(.separator())
         menu.addItem(NSMenuItem(title: L10n.string("Magnetic Timeline"), action: #selector(AppDelegate.toggleMagneticTimeline(_:)), keyEquivalent: ""))
         menu.addItem(NSMenuItem(title: L10n.string("Play Audio While Scrubbing"), action: #selector(AppDelegate.toggleScrubAudio(_:)), keyEquivalent: ""))
+        let coachItem = NSMenuItem(title: L10n.string("Active Coach"), action: #selector(AppDelegate.toggleActiveCoach(_:)), keyEquivalent: "j")
+        coachItem.keyEquivalentModifierMask = [.command, .option]
+        menu.addItem(coachItem)
 
         menu.addItem(.separator())
         menu.addItem(layoutSubmenuItem())

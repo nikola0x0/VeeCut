@@ -21,6 +21,16 @@ final class EditorWindowController: NSWindowController, NSWindowDelegate {
         onBecameKey?()
     }
 
+    func windowDidResignKey(_ notification: Notification) {
+        editorViewModel.finishCoachListening()
+    }
+
+    private func handleKeyUp(_ event: NSEvent) -> Bool {
+        guard event.keyCode == 49, editorViewModel.coachListening else { return false }
+        editorViewModel.finishCoachListening()
+        return true
+    }
+
     deinit {
         if let keyMonitor { NSEvent.removeMonitor(keyMonitor) }
         if let mouseMonitor { NSEvent.removeMonitor(mouseMonitor) }
@@ -28,8 +38,9 @@ final class EditorWindowController: NSWindowController, NSWindowDelegate {
     }
 
     func installKeyMonitor() {
-        keyMonitor = NSEvent.addLocalMonitorForEvents(matching: .keyDown) { [weak self] event in
+        keyMonitor = NSEvent.addLocalMonitorForEvents(matching: [.keyDown, .keyUp]) { [weak self] event in
             guard let self, self.window?.isKeyWindow == true else { return event }
+            if event.type == .keyUp { return self.handleKeyUp(event) ? nil : event }
             return self.handleKeyDown(event) ? nil : event
         }
 
@@ -101,7 +112,11 @@ final class EditorWindowController: NSWindowController, NSWindowDelegate {
             }
             return false
 
-        case 49: // Space
+        case 49: // Space; Option-Space is hold-to-talk in Active Coach
+            if mods.contains(.option), editorViewModel.coachMode == .active {
+                if !event.isARepeat { editorViewModel.startCoachListening() }
+                return true
+            }
             editorViewModel.togglePlayback()
             return true
 
@@ -213,6 +228,12 @@ final class EditorWindowController: NSWindowController, NSWindowDelegate {
             return false
 
         case 53: // Escape
+            switch editorViewModel.coach {
+            case .planning:
+                editorViewModel.cancelCoach()
+                return true
+            default: break
+            }
             if editorViewModel.cancelSubjectInteraction() {
                 return true
             }
