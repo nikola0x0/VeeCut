@@ -23,6 +23,7 @@ struct Timeline: Codable, Sendable, Equatable, Identifiable {
     var folderId: String?
     var tracks: [Track] = []
     var markers: [TimelineMarker] = []
+    var plan: EditPlan?
 
     var totalFrames: Int {
         var maxFrame = 0
@@ -67,7 +68,7 @@ struct Timeline: Codable, Sendable, Equatable, Identifiable {
     }
 
     private enum CodingKeys: String, CodingKey {
-        case id, name, fps, width, height, settingsConfigured, folderId, tracks, markers
+        case id, name, fps, width, height, settingsConfigured, folderId, tracks, markers, plan
     }
 }
 
@@ -83,7 +84,8 @@ extension Timeline {
             settingsConfigured: (try? c.decode(Bool.self, forKey: .settingsConfigured)) ?? false,
             folderId: try? c.decode(String.self, forKey: .folderId),
             tracks: try c.decode([Track].self, forKey: .tracks),
-            markers: (try? c.decode([TimelineMarker].self, forKey: .markers)) ?? []
+            markers: (try? c.decode([TimelineMarker].self, forKey: .markers)) ?? [],
+            plan: try c.decodeIfPresent(EditPlan.self, forKey: .plan)
         )
     }
 }
@@ -209,6 +211,8 @@ struct Clip: Codable, Sendable, Equatable, Identifiable {
     /// The tracked object this clip's position keyframes were made from; moving the clip shifts the whole path.
     var subjectFollow: SubjectFollowLink?
 
+    var planSectionId: String?
+
     private enum CodingKeys: String, CodingKey {
         case id, mediaRef, mediaType, sourceClipType, startFrame, durationFrames
         case trimStartFrame, trimEndFrame, speed, volume
@@ -217,7 +221,7 @@ struct Clip: Codable, Sendable, Equatable, Identifiable {
         case linkGroupId, captionGroupId, multicamGroupId, textContent, textStyle, textAnimation, wordTimings
         case textFillMode
         case opacityTrack, positionTrack, scaleTrack, rotationTrack, cropTrack, volumeTrack
-        case effects, effectRegions, blendMode, subjectFollow
+        case effects, effectRegions, blendMode, subjectFollow, planSectionId
     }
 
     /// Frame where this clip ends on the timeline
@@ -550,7 +554,8 @@ extension Clip {
             effects: try? c.decode([Effect].self, forKey: .effects),
             effectRegions: try? c.decode([EffectRegion].self, forKey: .effectRegions),
             blendMode: try? c.decode(BlendMode.self, forKey: .blendMode),
-            subjectFollow: try? c.decode(SubjectFollowLink.self, forKey: .subjectFollow)
+            subjectFollow: try? c.decode(SubjectFollowLink.self, forKey: .subjectFollow),
+            planSectionId: try c.decodeIfPresent(String.self, forKey: .planSectionId)
         )
     }
 }
