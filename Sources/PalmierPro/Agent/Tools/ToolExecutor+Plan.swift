@@ -106,13 +106,20 @@ extension ToolExecutor {
                         "actualSeconds": (progress.actualSeconds * 100).rounded() / 100,
                         "filled": progress.isFilled,
                         "hint": section.hint,
-                        "suggestions": section.suggestions.prefix(CoachPlanner.maximumSuggestions).map {
+                        "pace": section.pace.map { $0.rawValue as Any } ?? NSNull(),
+                        "suggestions": section.suggestions.prefix(CoachPlanner.maximumPacedSuggestions).map {
                             ["mediaRef": $0.assetId, "startSeconds": $0.start, "endSeconds": $0.end, "note": $0.note] as [String: Any]
                         },
                     ] as [String: Any]
                 },
             ]
             if let style = plan.style { planJSON["style"] = style.rawValue }
+            if let music = plan.music {
+                planJSON["music"] = ["mediaRef": music.assetId, "beatSeconds": music.beatSeconds, "dropSeconds": music.drop.map { $0 as Any } ?? NSNull()] as [String: Any]
+            }
+            out["suggestedTimeline"] = editor.suggestedGhosts.map {
+                ["sectionId": $0.sectionId, "mediaRef": $0.moment.assetId, "startSeconds": $0.moment.start, "endSeconds": $0.moment.end, "startFrame": $0.startFrame] as [String: Any]
+            }
             out["plan"] = planJSON
             out["tips"] = CoachRules.nudges(plan: plan, timeline: editor.timeline, beatFrames: editor.coachBeatFrames, musicSeconds: editor.musicSeconds)
                 .map(Self.tipJSON)

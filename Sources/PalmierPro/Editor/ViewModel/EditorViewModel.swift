@@ -99,8 +99,14 @@ final class EditorViewModel {
     var dismissedCoachTimelineIds: Set<String> = []
     @ObservationIgnored var coachRequestedTimelineId: String?
     var coachNudges: [CoachNudge] = []
+    /// The timeline whose suggested timeline is shown; suggestions belong to one plan.
+    var suggestedTimelineId: String?
+    var showsSuggestedTimeline: Bool {
+        get { suggestedTimelineId != nil && suggestedTimelineId == activeTimelineId }
+        set { suggestedTimelineId = newValue ? activeTimelineId : nil }
+    }
+    var editorMode: EditorMode = .saved()
     /// Muse Spark's thinking summary while it plans, streamed in.
-    var coachThinking = ""
     var coachMode: CoachMode = CoachMode.saved {
         didSet { if coachMode == .passive, oldValue == .active { coachVoice.stop() } }
     }
@@ -111,6 +117,8 @@ final class EditorViewModel {
     @ObservationIgnored var coachListenTask: Task<Void, Never>?
     @ObservationIgnored var coachAwaitingReply = false
     @ObservationIgnored var coachNudgeTask: Task<Void, Never>?
+    @ObservationIgnored var veeCaptionTask: Task<Void, Never>?
+    @ObservationIgnored var musicMaps: [String: MusicMap] = [:]
     @ObservationIgnored var coachTask: Task<Result<MadePlan, CoachFailure>, Never>?
     @ObservationIgnored var footageReadWaiters: [UUID: CheckedContinuation<Void, Never>] = [:]
     @ObservationIgnored var coachGeneration = 0

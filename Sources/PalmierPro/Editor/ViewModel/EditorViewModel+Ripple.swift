@@ -384,9 +384,9 @@ extension EditorViewModel {
     }
 
     /// Ripple insert: add clips at `atFrame` and push everything past it right by the
-    /// insertion's duration on the target track and every sync-locked track.
+    /// insertion's duration on the target track and every sync-locked track, except the `pinned` clips.
     @discardableResult
-    func rippleInsertClips(assets: [MediaAsset], trackIndex: Int, atFrame: Int, segments: [String: ClosedRange<Double>] = [:]) -> [String] {
+    func rippleInsertClips(assets: [MediaAsset], trackIndex: Int, atFrame: Int, segments: [String: ClosedRange<Double>] = [:], pinned: Set<String> = []) -> [String] {
         guard timeline.tracks.indices.contains(trackIndex) else { return [] }
         if let reason = multicamManualRippleViolation(shiftingTrackIds: rippleInsertShiftingTrackIds(trackIndex: trackIndex), atFrame: atFrame) {
             refuseRipple(reason: reason)
@@ -398,7 +398,7 @@ extension EditorViewModel {
 
             for ti in timeline.tracks.indices where ti == trackIndex || timeline.tracks[ti].syncLocked {
                 applyShifts(RippleEngine.computeRipplePush(
-                    clips: timeline.tracks[ti].clips,
+                    clips: timeline.tracks[ti].clips.filter { !pinned.contains($0.id) },
                     insertFrame: atFrame,
                     pushAmount: totalPush
                 ))

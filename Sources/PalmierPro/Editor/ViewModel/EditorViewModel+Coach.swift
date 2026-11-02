@@ -125,12 +125,15 @@ extension EditorViewModel {
         guard !notes.isEmpty else { return fail(.noFootage) }
         guard !Task.isCancelled else { return .failure(.cancelled) }
 
+        var song: CoachPlanner.Song?
+        if let asset = planningSong, let map = await musicMap(for: asset) {
+            song = CoachPlanner.Song(map: targetSeconds.map { map.cut(nearest: $0) } ?? map, assetId: asset.id)
+        }
+        guard !Task.isCancelled else { return .failure(.cancelled) }
+
         let raw: RawPlan
         do {
-            coachThinking = ""
-            raw = try await CoachPlanner.plan(brief: brief, style: style, notes: notes, placed: placedMoments(), client: model) { [weak self] delta in
-                await MainActor.run { self?.coachThinking += delta }
-            }
+            raw = try await CoachPlanner.plan(brief: brief, style: style, notes: notes, placed: placedMoments(), music: song?.map, client: model)
         } catch {
             return Task.isCancelled || error is CancellationError ? .failure(.cancelled) : fail(.service(error.localizedDescription))
         }
@@ -138,13 +141,14 @@ extension EditorViewModel {
         guard activeTimelineId == timelineId, timeline.plan == startPlan else { return stale() }
         let plan: EditPlan
         do {
-            plan = try CoachPlanner.validated(raw, notes: notes, trackId: startPlan?.trackId ?? mainTrackId ?? "", brief: brief, style: style)
+            plan = try CoachPlanner.validated(raw, notes: notes, trackId: startPlan?.trackId ?? mainTrackId ?? "", brief: brief, style: style, music: song)
         } catch {
             return fail(error)
         }
         setPlan(plan, actionName: "Make Plan")
         coachRequestedTimelineId = nil
         coach = .hidden
+        showsSuggestedTimeline = true
         return .success(MadePlan(plan: timeline.plan ?? plan, fromTemplate: false))
     }
 
@@ -169,7 +173,7 @@ extension EditorViewModel {
     /// Stops all coach work when the project closes; nothing commits afterwards.
     func tearDownCoach() {
         cancelCoachTask()
-        for task in [footageScanTask, footageReadTask, footageRecommendTask, coachNudgeTask, coachListenTask] { task?.cancel() }
+        for task in [footageScanTask, footageReadTask, footageRecommendTask, coachNudgeTask, coachListenTask, veeCaptionTask] { task?.cancel() }
         footageScanTask = nil
         footageReadTask = nil
         footageRecommendTask = nil

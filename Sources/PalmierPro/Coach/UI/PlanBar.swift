@@ -6,12 +6,18 @@ struct PlanBarHost: View {
 
     var body: some View {
         if let plan = editor.timeline.plan {
-            PlanBar(plan: plan)
-                .overlay(alignment: .bottom) {
-                    Rectangle()
-                        .fill(AppTheme.Border.primaryColor)
-                        .frame(height: AppTheme.BorderWidth.thin)
+            VStack(spacing: 0) {
+                PlanBar(plan: plan)
+                if editor.showsSuggestedTimeline {
+                    let ghosts = editor.suggestedGhosts
+                    if !ghosts.isEmpty { SuggestionLane(plan: plan, ghosts: ghosts) }
                 }
+            }
+            .overlay(alignment: .bottom) {
+                Rectangle()
+                    .fill(AppTheme.Border.primaryColor)
+                    .frame(height: AppTheme.BorderWidth.thin)
+            }
         }
     }
 }
@@ -29,7 +35,7 @@ struct PlanBar: View {
         HStack(spacing: 0) {
             HStack(spacing: AppTheme.Spacing.xs) {
                 menu
-                PlanTipsButton()
+                PlanTipsLabel()
                 Spacer(minLength: 0)
                 MusicSlot()
             }
@@ -45,7 +51,7 @@ struct PlanBar: View {
                             section: section, progress: progress[index], index: index, count: plan.sections.count,
                             placedFraction: band.slot.isEmpty ? 0 : Double(band.placed?.count ?? 0) / Double(band.slot.count)
                         )
-                        .frame(width: max(slotWidth, AppTheme.Coach.minimumBandWidth))
+                        .frame(width: slotWidth)
                         .offset(x: Double(band.slot.lowerBound) * zoom)
                     }
                 }
@@ -61,8 +67,12 @@ struct PlanBar: View {
         Menu {
             Button(L10n.string("Re-plan…")) { editor.askForPlan() }
             Button(L10n.string("Add Section")) { editor.addPlanSection(after: plan.sections.last?.id) }
+            Toggle(L10n.string("Show Suggestions"), isOn: Binding(
+                get: { editor.showsSuggestedTimeline },
+                set: { editor.showsSuggestedTimeline = $0 }
+            ))
             Divider()
-            Toggle(L10n.string("Active Coach"), isOn: Binding(
+            Toggle(L10n.string("Vee Speaks Aloud"), isOn: Binding(
                 get: { editor.coachMode == .active },
                 set: { editor.setCoachMode($0 ? .active : .passive) }
             ))
@@ -116,7 +126,7 @@ private struct PlanBand: View {
             }
         }
         .contentShape(Rectangle())
-        .help(section.hint)
+        .help(section.hint.isEmpty ? section.title : "\(section.title): \(section.hint)")
         .onTapGesture { showsDetails = true }
         .popover(isPresented: $showsDetails, arrowEdge: .bottom) {
             PlanSectionPopover(sectionId: section.id)
@@ -156,36 +166,15 @@ private struct PlanBand: View {
     }
 }
 
-/// "2 tips" in Passive mode opens the current tip; in Active mode the tip shows on its own.
-private struct PlanTipsButton: View {
+/// How many tips are waiting; Vee says the first one over the preview.
+private struct PlanTipsLabel: View {
     @Environment(EditorViewModel.self) private var editor
-    @State private var isPresented = false
-    @State private var shownNudgeId: String?
 
     var body: some View {
         let count = editor.coachNudges.count
-        Button {
-            isPresented = true
-        } label: {
-            Text(count == 0 ? L10n.string("Plan") : L10n.string("\(count) tips"))
-                .font(.system(size: AppTheme.FontSize.xs, weight: AppTheme.FontWeight.semibold))
-                .foregroundStyle(count == 0 ? AppTheme.Text.secondaryColor : AppTheme.Accent.primary)
-        }
-        .buttonStyle(.plain)
-        .disabled(count == 0)
-        .popover(isPresented: $isPresented, arrowEdge: .bottom) {
-            NudgeCard().environment(editor)
-        }
-        .onChange(of: editor.coachNudges.first?.id) { _, id in
-            guard let id else {
-                isPresented = false
-                return
-            }
-            if editor.coachMode == .active, id != shownNudgeId {
-                shownNudgeId = id
-                isPresented = true
-            }
-        }
+        Text(count == 0 ? L10n.string("Plan") : L10n.string("\(count) tips"))
+            .font(.system(size: AppTheme.FontSize.xs, weight: AppTheme.FontWeight.semibold))
+            .foregroundStyle(count == 0 ? AppTheme.Text.secondaryColor : AppTheme.Accent.primary)
     }
 }
 
@@ -212,25 +201,19 @@ private struct MusicSlot: View {
         )
         .help(L10n.string("Drop a song here. It starts at the beginning and its beats guide the cuts."))
         .dropDestination(for: String.self) { items, _ in
-            guard let id = items.first.flatMap(MediaTab.assetId(fromDragString:)),
-                  let asset = editor.mediaAssets.first(where: { $0.id == id }) else { return false }
-            if case .failure = editor.addMusic(asset) {
-                editor.mediaPanelToast = MediaPanelToast(message: L10n.string("Drop a song or other audio here."))
-                return false
-            }
-            return true
+            editor.addMusic(fromDragStrings: items)
         } isTargeted: { isTargeted = $0 }
     }
 }
 
 /// Follows the timeline's horizontal scroll; only this view observes the scroll position.
-private struct ScrolledWithTimeline<Content: View>: View {
+struct ScrolledWithTimeline<Content: View>: View {
     let viewport: TimelineViewport
     @ViewBuilder let content: Content
 
     var body: some View {
         content
-            .frame(maxWidth: .infinity, alignment: .leading)
+            .frame(minWidth: 0, maxWidth: .infinity, alignment: .leading)
             .offset(x: -viewport.scrollX)
     }
 }

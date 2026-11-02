@@ -38,7 +38,7 @@ struct CoachPlannerTests {
         try JSONDecoder().decode(RawPlan.self, from: Data(json.utf8))
     }
 
-    @Test func validationDropsUnknownAssetsAndOutOfRangeMoments() throws {
+    @MainActor @Test func validationDropsUnknownAssetsAndOutOfRangeMoments() throws {
         let raw = try Self.raw("""
         {"sections":[
           {"title":"Hook","targetSeconds":8,"hint":"Best shot","suggestions":[
@@ -57,7 +57,7 @@ struct CoachPlannerTests {
         #expect(plan.style == .reel)
     }
 
-    @Test func anEmptyPlanIsAFailure() throws {
+    @MainActor @Test func anEmptyPlanIsAFailure() throws {
         let raw = try Self.raw(#"{"sections":[{"title":"X","targetSeconds":-1,"hint":"","suggestions":[]}]}"#)
         #expect(throws: CoachFailure.emptyPlan) {
             try CoachPlanner.validated(raw, notes: [Self.note("a")], trackId: "v1", brief: "", style: nil)
@@ -98,6 +98,20 @@ struct CoachPlannerTests {
         #expect(b.moments == Self.note("b").moments)
     }
 
+    @Test func aClipTheReaderSeesTalkingToCameraIsMarkedTalking() async throws {
+        let url = try await FixtureVideo.write(scenes: [.init(rgb: (200, 0, 0), seconds: 2)])
+        defer { try? FileManager.default.removeItem(at: url) }
+        let model = RecordingCoachModel(replies: [#"""
+        {"clips":[{"assetId":"a","summary":"Me in a café","talksToCamera":true,"moments":[]},
+                  {"assetId":"b","summary":"A street","talksToCamera":false,"moments":[]}]}
+        """#])
+
+        let read = try await FootageReader.read([Self.note("a", duration: 2), Self.note("b", duration: 2)], urls: ["a": url, "b": url], client: model)
+
+        #expect(read.first { $0.assetId == "a" }?.wantsTranscript == true)
+        #expect(read.first { $0.assetId == "b" }?.wantsTranscript == false)
+    }
+
     @Test func readerBatchesEightClipsPerRequest() async throws {
         let url = try await FixtureVideo.write(scenes: [.init(rgb: (0, 200, 0), seconds: 2)])
         defer { try? FileManager.default.removeItem(at: url) }
@@ -115,7 +129,7 @@ struct CoachPlannerTests {
 /// Opt in with VEECUT_LIVE_MUSE=1 and MODEL_API_KEY. Plans from two notes with Muse Spark.
 @Suite("Live — Muse Spark planning", .enabled(if: ProcessInfo.processInfo.environment["VEECUT_LIVE_MUSE"] == "1"))
 struct LiveCoachPlannerTests {
-    @Test func liveMuseSparkPlansFromNotes() async throws {
+    @MainActor @Test func liveMuseSparkPlansFromNotes() async throws {
         let key = try #require(ProcessInfo.processInfo.environment["MODEL_API_KEY"])
         let notes = [
             FootageNote(assetId: "cafe", fileKey: "k", durationSeconds: 40, hasSpeech: false, labels: ["coffee or café"], summary: "Latte art in a wooden café",

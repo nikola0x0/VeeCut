@@ -62,6 +62,34 @@ struct CoachSessionTests {
         FootageNote(assetId: id, fileKey: EmbeddingStore.key(for: url) ?? "", durationSeconds: 4, hasSpeech: false, labels: ["animal"], summary: "a cat", moments: [])
     }
 
+    @Test func importingVideoIntoAnOpenProjectStartsTheCoach() async throws {
+        let editor = editor(assets: [])
+        let url = try await CompositorFixtures.patternVideoURL()
+        let asset = MediaAsset(id: "imported", url: url, type: .video, name: "Imported")
+        editor.importMediaAsset(asset)
+
+        #expect(await editor.finalizeImportedAsset(asset))
+        await editor.footageScanTask?.value
+
+        #expect(editor.footageNotes["imported"] != nil)
+        guard case .asking = editor.coach else { Issue.record("expected the coach to ask"); return }
+    }
+
+    @Test func footageStillLoadingIsNotScannedYet() async throws {
+        let editor = editor(assets: [])
+        let url = try await CompositorFixtures.patternVideoURL()
+        let loaded = MediaAsset(id: "loaded", url: url, type: .video, name: "Loaded")
+        let loading = MediaAsset(id: "loading", url: url, type: .video, name: "Loading")
+        editor.importMediaAsset(loaded)
+        editor.importMediaAsset(loading)
+
+        #expect(await editor.finalizeImportedAsset(loaded))
+        await editor.footageScanTask?.value
+
+        #expect(editor.footageNotes["loaded"] != nil)
+        #expect(editor.footageNotes["loading"] == nil)
+    }
+
     @Test func coachAsksOnlyWhenThereIsVideoAndNoPlan() {
         let empty = editor(assets: [])
         empty.showCoachIfNeeded()

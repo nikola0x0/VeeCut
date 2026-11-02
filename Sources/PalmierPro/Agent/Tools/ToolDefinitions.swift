@@ -1117,8 +1117,9 @@ enum ToolDefinitions {
             description: """
             Read the active timeline's edit plan: the user's brief and style, and each section in order with its \
             sectionId, title, targetSeconds, actualSeconds (length of the clips placed in it on the plan track), \
-            filled, hint, and up to 6 suggested moments {mediaRef, startSeconds, endSeconds, note} from the \
-            user's footage. Returns {"plan": null} when there is no plan. Once Muse Spark has read the footage it also \
+            filled, hint, pace (calm, rising, peak or fading when the plan follows a song, else null) and up to 8 \
+            suggested moments {mediaRef, startSeconds, endSeconds, note} from the user's footage. A plan cut to a \
+            song also has music {mediaRef, beatSeconds, dropSeconds}. Returns {"plan": null} when there is no plan. Once Muse Spark has read the footage it also \
             returns footageSummary and up to 3 ideas {title, style, targetSeconds, pitch} — offer them when the user \
             hasn't said what to make, and pass the chosen one to make_plan. With a plan it lists the coach's current \
             tips {tipId, kind: sectionOver | offBeatCuts | emptySection | hookCandidate | fitToMusic, sectionId, …}; \

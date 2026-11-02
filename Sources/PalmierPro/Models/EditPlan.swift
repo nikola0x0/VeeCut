@@ -14,6 +14,15 @@ struct PlanSection: Codable, Sendable, Equatable, Identifiable {
     var targetSeconds: Double
     var hint: String
     var suggestions: [PlanMoment] = []
+    /// How fast the cuts come, from the song part this section sits on; nil without a song.
+    var pace: MusicEnergy? = nil
+}
+
+/// The song a plan was cut to: its tempo and where the drop lands, in song seconds from the start.
+struct PlanMusic: Codable, Sendable, Equatable {
+    var assetId: String
+    var beatSeconds: Double
+    var drop: Double?
 }
 
 enum PlanStyle: String, Codable, CaseIterable, Sendable {
@@ -26,6 +35,7 @@ struct EditPlan: Codable, Sendable, Equatable {
     var trackId: String
     var sections: [PlanSection]
     var dismissedNudges: Set<String> = []
+    var music: PlanMusic? = nil
 }
 
 extension PlanMoment {

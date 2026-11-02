@@ -11,6 +11,7 @@ enum FootageReader {
             struct Moment: Decodable { let start: Double; let end: Double; let note: String }
             let assetId: String
             let summary: String
+            let talksToCamera: Bool?
             let moments: [Moment]
         }
         let clips: [Clip]
@@ -69,6 +70,9 @@ enum FootageReader {
                 .filter { $0.isUsable(withinDuration: note.durationSeconds) }
                 .prefix(FootageScanner.maximumMoments)
             if !moments.isEmpty { note.moments = Array(moments) }
+            if clip?.talksToCamera == true, !note.labels.contains(FootageScanner.talkingLabel) {
+                note.labels.append(FootageScanner.talkingLabel)
+            }
             return note
         }
     }
@@ -78,7 +82,8 @@ enum FootageReader {
     one-sentence summary (at most 100 characters) of what it shows, and list up to 6 of its best moments. A moment is \
     1–8 seconds long; take start and end from the tile timestamps and keep them inside the clip's duration. Give each \
     moment a short note (at most 40 characters) naming what happens. When a clip has a "said:" transcript with \
-    [seconds] marks, mention what is said in the summary and prefer spoken lines worth keeping as moments. Use the \
+    [seconds] marks, mention what is said in the summary and prefer spoken lines worth keeping as moments. Set \
+    talksToCamera when someone faces the camera and speaks to it, as in a vlog or a piece to camera. Use the \
     assetId given before each sheet.
     """
 
@@ -86,10 +91,11 @@ enum FootageReader {
         [
         "type": "object", "additionalProperties": false, "required": ["clips"],
         "properties": ["clips": ["type": "array", "items": [
-            "type": "object", "additionalProperties": false, "required": ["assetId", "summary", "moments"],
+            "type": "object", "additionalProperties": false, "required": ["assetId", "summary", "talksToCamera", "moments"],
             "properties": [
                 "assetId": ["type": "string"],
                 "summary": ["type": "string"],
+                "talksToCamera": ["type": "boolean"],
                 "moments": ["type": "array", "items": [
                     "type": "object", "additionalProperties": false, "required": ["start", "end", "note"],
                     "properties": ["start": ["type": "number"], "end": ["type": "number"], "note": ["type": "string"]],

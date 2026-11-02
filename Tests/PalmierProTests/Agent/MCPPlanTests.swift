@@ -44,6 +44,24 @@ struct MCPPlanTests {
         await client.disconnect()
     }
 
+    @Test func getPlanShowsPaceAndMusic() async throws {
+        try await withClient { harness, client in
+            var plan = harness.editor.timeline.plan!
+            plan.sections[0].pace = .peak
+            plan.music = PlanMusic(assetId: "song", beatSeconds: 0.5, drop: 16)
+            harness.editor.timeline.plan = plan
+
+            let read = try json(try await client.callTool(name: "get_plan").content)
+            let readPlan = try #require(read["plan"] as? [String: Any])
+            let sections = try #require(readPlan["sections"] as? [[String: Any]])
+            #expect(sections[0]["pace"] as? String == "peak")
+            #expect(sections[1]["pace"] is NSNull)
+            let music = try #require(readPlan["music"] as? [String: Any])
+            #expect(music["beatSeconds"] as? Double == 0.5)
+            #expect(music["dropSeconds"] as? Double == 16)
+        }
+    }
+
     @Test func planToolsAreDiscoverable() async throws {
         try await withClient { _, client in
             let names = Set(try await client.listTools().tools.map(\.name))
@@ -57,6 +75,10 @@ struct MCPPlanTests {
             let sections = try #require((before["plan"] as? [String: Any])?["sections"] as? [[String: Any]])
             #expect(sections.map { $0["sectionId"] as? String } == ["s0", "s1"])
             #expect((sections[0]["suggestions"] as? [[String: Any]])?.first?["mediaRef"] as? String == "cat")
+            let ghost = (before["suggestedTimeline"] as? [[String: Any]])?.first
+            #expect(ghost?["sectionId"] as? String == "s0")
+            #expect(ghost?["mediaRef"] as? String == "cat")
+            #expect(ghost?["startFrame"] as? Int == 0)
             let hookTip = (before["tips"] as? [[String: Any]])?.first { $0["tipId"] as? String == "hook:s0" }
             #expect(hookTip?["kind"] as? String == "hookCandidate")
             #expect(hookTip?["mediaRef"] as? String == "cat")

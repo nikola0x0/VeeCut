@@ -25,6 +25,27 @@ extension EditorViewModel {
             timeline.plan = plan
             let membership = PlanLayout.membership(byPosition: plan, timeline: timeline)
             retagPlanMembership { membership[$0.id] }
+            if let music = plan.music { fitSong(music.assetId, toSeconds: plan.sections.reduce(0) { $0 + $1.targetSeconds }) }
+        }
+    }
+
+    /// Ends the plan's song clips with the plan, within what their source has left. Call inside a timeline swap.
+    private func fitSong(_ assetId: String, toSeconds seconds: Double) {
+        guard seconds.isFinite, seconds > 0, let asset = mediaAssetsById[assetId] else { return }
+        let fps = timeline.fps
+        let end = secondsToFrame(seconds: seconds, fps: fps)
+        let sourceFrames = secondsToFrame(seconds: asset.duration, fps: fps)
+        for ti in timeline.tracks.indices where timeline.tracks[ti].type == .audio {
+            for ci in timeline.tracks[ti].clips.indices {
+                var clip = timeline.tracks[ti].clips[ci]
+                guard clip.mediaRef == assetId, clip.linkGroupId == nil, clip.startFrame < end, clip.speed > 0 else { continue }
+                let available = Int((Double(max(0, sourceFrames - clip.trimStartFrame)) / clip.speed).rounded(.down))
+                let duration = min(end - clip.startFrame, available)
+                guard duration > 0, duration != clip.durationFrames else { continue }
+                clip.durationFrames = duration
+                clip.trimEndFrame = max(0, sourceFrames - clip.trimStartFrame - Int((Double(duration) * clip.speed).rounded()))
+                timeline.tracks[ti].clips[ci] = clip
+            }
         }
     }
 
@@ -70,6 +91,9 @@ extension EditorViewModel {
         editPlan([.delete(id)], actionName: "Delete Section")
     }
 
+    /// Where a kept clip's own sound sits under the song in a music plan.
+    static let musicEditClipSoundDb = -18.0
+
     /// Ripple-inserts the moment, already trimmed, at the end of its section on the plan track.
     @discardableResult
     func placeMoment(_ moment: PlanMoment, in sectionId: String) -> Result<[String], PlanPlacementFailure> {
@@ -83,20 +107,21 @@ extension EditorViewModel {
         guard plan.sections.contains(where: { $0.id == sectionId }) else { return .failure(.unknownSection) }
         var placements: [(asset: MediaAsset, range: ClosedRange<Double>)] = []
         for moment in moments {
-            guard let asset = mediaAssets.first(where: { $0.id == moment.assetId }),
-                  asset.type == .video || asset.type == .image else { return .failure(.unknownAsset) }
-            guard moment.start.isFinite, moment.end.isFinite, moment.start >= 0,
-                  moment.end > moment.start, moment.end <= asset.duration else { return .failure(.invalidRange) }
-            placements.append((asset, moment.start...moment.end))
+            switch placeableAsset(for: moment) {
+            case .success(let asset): placements.append((asset, moment.start...moment.end))
+            case .failure(let failure): return .failure(failure)
+            }
         }
         guard !placements.isEmpty else { return .success([]) }
         var created: [String] = []
+        // The song is the plan's clock, so placing shots never moves it.
+        let song = Set(plan.music.map { music in musicClips.filter { $0.mediaRef == music.assetId }.map(\.id) } ?? [])
         withTimelineSwap(actionName: "Add to Section") {
             let before = timeline
             let trackIndex = resolvePlanTrack()
             for placement in placements {
                 guard let frame = timeline.plan.flatMap({ PlanLayout.insertionFrame(for: sectionId, plan: $0, timeline: timeline) }) else { break }
-                let ids = rippleInsertClips(assets: [placement.asset], trackIndex: trackIndex, atFrame: frame, segments: [placement.asset.id: placement.range])
+                let ids = rippleInsertClips(assets: [placement.asset], trackIndex: trackIndex, atFrame: frame, segments: [placement.asset.id: placement.range], pinned: song)
                 guard !ids.isEmpty else {
                     timeline = before
                     created = []
@@ -105,11 +130,23 @@ extension EditorViewModel {
                 for id in ids {
                     guard let loc = findClip(id: id) else { continue }
                     timeline.tracks[loc.trackIndex].clips[loc.clipIndex].planSectionId = sectionId
+                    if plan.music != nil, timeline.tracks[loc.trackIndex].clips[loc.clipIndex].mediaType == .audio {
+                        timeline.tracks[loc.trackIndex].clips[loc.clipIndex].volume = VolumeScale.linearFromDb(Self.musicEditClipSoundDb)
+                    }
                 }
                 created += ids
             }
         }
         return created.isEmpty ? .failure(.rippleBlocked) : .success(created)
+    }
+
+    /// The asset a moment places from, or why it can't be placed.
+    func placeableAsset(for moment: PlanMoment) -> Result<MediaAsset, PlanPlacementFailure> {
+        guard let asset = mediaAssetsById[moment.assetId],
+              asset.type == .video || asset.type == .image else { return .failure(.unknownAsset) }
+        guard moment.start.isFinite, moment.end.isFinite, moment.start >= 0,
+              moment.end > moment.start, moment.end <= asset.duration else { return .failure(.invalidRange) }
+        return .success(asset)
     }
 
     /// The plan's track, adopting the main video track or inserting one when it was removed (empty tracks are pruned). Call inside a timeline swap.
@@ -141,5 +178,43 @@ extension EditorViewModel {
                 timeline.tracks[ti].clips[ci].planSectionId = timeline.tracks[ti].clips[ci].linkGroupId.flatMap { byLinkGroup[$0] }
             }
         }
+    }
+}
+
+/// Keeping the suggested timeline's ghost clips; each keep is one undo step.
+extension EditorViewModel {
+    var suggestedGhosts: [GhostClip] {
+        guard let plan = timeline.plan else { return [] }
+        let songOnTimeline = plan.music.flatMap { music in musicClips.contains { $0.mediaRef == music.assetId } ? music : nil }
+        return SuggestedTimeline.ghosts(plan: plan, timeline: timeline, beatSeconds: songOnTimeline?.beatSeconds,
+                                        beatFrames: songOnTimeline == nil ? [] : coachBeatFrames) { moment in
+            guard case .success(let asset) = placeableAsset(for: moment) else { return nil }
+            return clipDurationFrames(for: asset, segment: moment.start...moment.end)
+        }
+    }
+
+    func keepSuggestion(_ ghost: GhostClip) {
+        placeMomentsReportingFailure([ghost.moment], in: ghost.sectionId)
+        hideSuggestionsWhenKept()
+    }
+
+    /// Places every ghost section by section in one undo step; a section that can't be placed is skipped and reported.
+    func keepAllSuggestions() {
+        let ghosts = suggestedGhosts
+        guard let plan = timeline.plan, !ghosts.isEmpty else { return }
+        var failure: PlanPlacementFailure?
+        withTimelineSwap(actionName: "Keep Suggestions") {
+            for section in plan.sections {
+                let moments = ghosts.filter { $0.sectionId == section.id }.map(\.moment)
+                guard !moments.isEmpty else { continue }
+                if case .failure(let reason) = placeMoments(moments, in: section.id), failure == nil { failure = reason }
+            }
+        }
+        if let failure { reportPlacementFailure(failure) }
+        hideSuggestionsWhenKept()
+    }
+
+    private func hideSuggestionsWhenKept() {
+        if showsSuggestedTimeline, suggestedGhosts.isEmpty { showsSuggestedTimeline = false }
     }
 }
