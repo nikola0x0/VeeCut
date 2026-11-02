@@ -58,7 +58,7 @@ struct HomeView: View {
 private struct HomeHeader: View {
     var body: some View {
         HStack(spacing: AppTheme.Spacing.md) {
-            VeeCutWordmark()
+            VeeCutWordmark(markSize: AppTheme.IconSize.lgXl, fontSize: AppTheme.FontSize.title1)
             Spacer(minLength: 0)
             Button {
                 AppState.shared.openProjectFromPanel()
@@ -87,7 +87,7 @@ private struct StartFromFootage: View {
             Text(L10n.string("What are we making today?"))
                 .font(.custom(AppTheme.Brand.wordmarkFontName, size: AppTheme.Home.questionSize).weight(.semibold))
                 .fixedSize(horizontal: false, vertical: true)
-            Text(L10n.string("Drop the clips you shot. VeeCut watches them, suggests a few videos you could make, and lays out the plan. You place the shots."))
+            Text(L10n.string("Drop the clips you shot. Vee watches them, suggests a few videos you could make, and cuts a first edit to your song. You keep what you like."))
                 .font(.system(size: AppTheme.FontSize.lg))
                 .foregroundStyle(AppTheme.Text.secondaryColor)
                 .frame(maxWidth: AppTheme.Home.subtitleWidth, alignment: .leading)
@@ -102,7 +102,7 @@ private struct FootageDropZone: View {
 
     var body: some View {
         VStack(spacing: AppTheme.Spacing.lg) {
-            FootageTiles(size: AppTheme.Home.tile)
+            VeeIllustration(name: .footageBox, height: AppTheme.Home.footageIllustrationHeight)
             VStack(spacing: AppTheme.Spacing.xs) {
                 Text(L10n.string("Drop today's footage here"))
                     .font(.custom(AppTheme.Brand.wordmarkFontName, size: AppTheme.FontSize.xl).weight(.semibold))
@@ -126,27 +126,6 @@ private struct FootageDropZone: View {
     }
 }
 
-/// Three fanned frames standing for a camera roll.
-private struct FootageTiles: View {
-    let size: CGSize
-
-    var body: some View {
-        HStack(spacing: AppTheme.Spacing.sm) {
-            tile(AppTheme.Tint.peachColor).rotationEffect(.degrees(-AppTheme.Home.tileTilt)).offset(y: size.height / 8)
-            tile(AppTheme.Accent.primary)
-            tile(AppTheme.Tint.blushColor).rotationEffect(.degrees(AppTheme.Home.tileTilt * 0.85)).offset(y: size.height / 12)
-        }
-        .accessibilityHidden(true)
-    }
-
-    private func tile(_ color: Color) -> some View {
-        RoundedRectangle(cornerRadius: AppTheme.Radius.md, style: .continuous)
-            .fill(color)
-            .overlay(RoundedRectangle(cornerRadius: AppTheme.Radius.md, style: .continuous).strokeBorder(AppTheme.Border.subtleColor, lineWidth: AppTheme.BorderWidth.hairline))
-            .frame(width: size.width, height: size.height)
-    }
-}
-
 private struct StartButtons: View {
     var body: some View {
         HStack(spacing: AppTheme.Spacing.sm) {
@@ -165,11 +144,11 @@ private struct FirstLaunchView: View {
 
     var body: some View {
         VStack(spacing: AppTheme.Spacing.xlXxl) {
-            FootageTiles(size: AppTheme.Home.firstLaunchTile)
+            VeeIllustration(name: .footageBox, height: AppTheme.Home.firstLaunchIllustrationHeight)
             Text(L10n.string("What are we making today?"))
                 .font(.custom(AppTheme.Brand.wordmarkFontName, size: AppTheme.Home.firstLaunchQuestionSize).weight(.semibold))
                 .multilineTextAlignment(.center)
-            Text(L10n.string("Drop the clips you shot anywhere in this window. VeeCut watches them, suggests a few videos you could make, and lays out the plan. You place the shots."))
+            Text(L10n.string("Drop the clips you shot anywhere in this window. Vee watches them, suggests a few videos you could make, and cuts a first edit to your song. You keep what you like."))
                 .font(.system(size: AppTheme.FontSize.lg))
                 .foregroundStyle(AppTheme.Text.secondaryColor)
                 .multilineTextAlignment(.center)

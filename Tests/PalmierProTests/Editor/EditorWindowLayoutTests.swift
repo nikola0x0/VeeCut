@@ -6,9 +6,11 @@ import Testing
 @Suite("Editor window layout")
 @MainActor
 struct EditorWindowLayoutTests {
-    @Test(arguments: [false, true])
-    func theEditorWindowLaysOutWithoutAConstraintLoop(withPlan: Bool) {
+    @Test(arguments: EditorMode.allCases, [(false, NSSize(width: 1400, height: 900)), (true, NSSize(width: 1400, height: 900)), (true, AppTheme.Window.projectMin)])
+    func theEditorWindowLaysOutWithoutAConstraintLoop(mode: EditorMode, layout: (withPlan: Bool, size: NSSize)) {
+        let (withPlan, size) = layout
         let editor = EditorViewModel()
+        editor.editorMode = mode
         editor.timeline = Fixtures.timeline(tracks: [Fixtures.videoTrack(id: "v1", clips: [Fixtures.clip(start: 0, duration: 90)])])
         if withPlan {
             editor.timeline.plan = EditPlan(brief: "", style: nil, trackId: "v1", sections: [PlanSection(title: "Hook", targetSeconds: 5, hint: "")])
@@ -22,7 +24,7 @@ struct EditorWindowLayoutTests {
         host.safeAreaRegions = []
         let window = NSWindow(contentViewController: host)
         window.styleMask.insert(.fullSizeContentView)
-        window.setContentSize(NSSize(width: 1400, height: 900))
+        window.setContentSize(size)
         window.layoutIfNeeded()
         window.contentView?.layoutSubtreeIfNeeded()
         #expect(window.contentView != nil)

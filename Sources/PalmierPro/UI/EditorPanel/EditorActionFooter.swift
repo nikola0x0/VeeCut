@@ -29,7 +29,7 @@ struct EditorAgentMenu<MenuContent: View>: View {
             menuContent()
         } label: {
             HStack(spacing: AppTheme.Spacing.xs) {
-                Text(L10n.string("Agent Mode"))
+                Text(L10n.string("Ask Vee"))
                 Image(systemName: "chevron.down")
                     .font(.system(size: AppTheme.FontSize.xs))
             }
@@ -42,6 +42,6 @@ struct EditorAgentMenu<MenuContent: View>: View {
         .menuIndicator(.hidden)
         .focusable(false)
         .help(L10n.string(key: help))
-        .accessibilityLabel(L10n.string("Agent Mode"))
+        .accessibilityLabel(L10n.string("Ask Vee"))
     }
 }

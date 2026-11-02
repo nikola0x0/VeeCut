@@ -420,7 +420,7 @@ struct CaptionTab: View {
 
     private var agentMenu: some View {
         EditorAgentMenu(
-            help: L10n.string("Let Agent create captions for you. Choose a predefined task, or ask Agent in the chat.")
+            help: L10n.string("Let Vee create captions for you. Choose a predefined task, or ask Vee in the chat.")
         ) {
             Button {
                 captionTask("remove filler words (um, uh, er, like, you know) from the captions, keeping each caption's timing unchanged.")
@@ -503,7 +503,7 @@ struct CaptionTab: View {
                     if transcript.rows.isEmpty {
                         note = L10n.string("No speech detected.")
                     } else {
-                        note = failureNote(transcript.failures)
+                        note = editor.captionFailureNote(transcript.failures)
                         onGeneratedTranscript(transcript)
                     }
                 case .captions(let onGeneratedCaptions):
@@ -516,12 +516,12 @@ struct CaptionTab: View {
                             editor.clipFor(id: $0)?.captionGroupId
                         }.first
                         editor.captionPreviewEnabled = false
-                        note = failureNote(generation.failures)
+                        note = editor.captionFailureNote(generation.failures)
                         onGeneratedCaptions(groupId)
                     }
                 }
             } catch {
-                note = localizedCaptionError(error)
+                note = editor.localizedCaptionError(error)
             }
         }
     }
@@ -540,39 +540,5 @@ struct CaptionTab: View {
     private func updateMaxWords(_ value: Double) {
         let count = Int(value.rounded())
         maxWords = count > 0 ? count : nil
-    }
-
-    private func localizedCaptionError(_ error: Error) -> String {
-        guard let error = error as? TranscriptionError else { return error.localizedDescription }
-        return localizedTranscriptionError(error)
-    }
-
-    private func localizedTranscriptionError(_ error: TranscriptionError) -> String {
-        switch error {
-        case .unsupportedLocale(let identifier):
-            L10n.string("Transcription is not available for \(identifier).")
-        case .modelInstallFailed(let reason):
-            L10n.string("Could not install the on-device speech model: \(reason)")
-        case .decodeFailed:
-            L10n.string("Could not parse transcription result.")
-        case .audioExtractionFailed(let reason):
-            L10n.string("Audio extraction failed: \(reason)")
-        case .analysisFailed(let reason):
-            L10n.string("Transcription failed: \(reason)")
-        }
-    }
-
-    /// Names the sources that got no captions, so a partial result isn't mistaken for silence.
-    private func failureNote(_ failures: [EditorViewModel.CaptionSourceFailure]) -> String? {
-        guard let first = failures.first else { return nil }
-        let name = editor.mediaAssets.first { $0.id == first.mediaRef }?.name ?? first.mediaRef
-        let reason = switch first.cause {
-        case .offline: L10n.string("The media is offline.")
-        case .transcription(let error): localizedTranscriptionError(error)
-        case .other(let description): description
-        }
-        return failures.count == 1
-            ? L10n.string("No captions for \u{201C}\(name)\u{201D}. \(reason)")
-            : L10n.string("No captions for \(failures.count) clips, including \u{201C}\(name)\u{201D}. \(reason)")
     }
 }

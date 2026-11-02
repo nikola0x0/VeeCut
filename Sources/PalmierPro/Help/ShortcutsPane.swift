@@ -56,8 +56,8 @@ struct ShortcutsPane: View {
             ("`", L10n.string("Maximize Focused Panel")),
             ("Cmd + Scroll", L10n.string("Zoom Preview to Cursor")),
             ("Esc", L10n.string("Deselect & Reset Tool")),
-            ("Opt + Cmd + J", L10n.string("Active Coach")),
-            ("Hold Opt + Space", L10n.string("Talk to the Coach (Active Coach)")),
+            ("Opt + Cmd + J", L10n.string("Vee Speaks Aloud")),
+            ("Hold Opt + Space", L10n.string("Talk to Vee (Vee Speaks Aloud)")),
         ]),
     ]
 

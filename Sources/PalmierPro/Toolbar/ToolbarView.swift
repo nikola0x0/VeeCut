@@ -11,22 +11,22 @@ struct ToolbarView: View {
             toolbarDivider
 
             HStack(spacing: AppTheme.Spacing.md) {
-                toolbarButton("arrow.uturn.backward", help: L10n.string("Undo (⌘Z)"), action: undo)
-                toolbarButton("arrow.uturn.forward", help: L10n.string("Redo (⇧⌘Z)"), action: redo)
+                toolbarButton(.undo, help: L10n.string("Undo (⌘Z)"), action: undo)
+                toolbarButton(.redo, help: L10n.string("Redo (⇧⌘Z)"), action: redo)
             }
 
             toolbarDivider
 
             HStack(spacing: AppTheme.Spacing.md) {
-                toolModeButton("cursorarrow", mode: .pointer, help: L10n.string("Pointer (V)"))
-                toolModeButton("scissors", mode: .razor, help: L10n.string("Razor (C)"))
-                toolModeButton("arrow.left.and.right", mode: .trim, help: L10n.string("Trim (T)"))
+                toolModeButton(.pointer, mode: .pointer, help: L10n.string("Pointer (V)"))
+                toolModeButton(.razor, mode: .razor, help: L10n.string("Razor (C)"))
+                toolModeButton(.trim, mode: .trim, help: L10n.string("Trim (T)"))
             }
 
             toolbarDivider
 
             HStack(spacing: AppTheme.Spacing.md) {
-                toolbarButton("square.split.2x1", help: L10n.string("Split at Playhead (⌘K)"), action: editor.splitAtPlayhead)
+                toolbarButton(.split, help: L10n.string("Split at Playhead (⌘K)"), action: editor.splitAtPlayhead)
                 bracketButton("[", help: L10n.string("Trim Start to Playhead (Q)"), action: editor.trimStartToPlayhead)
                 bracketButton("]", help: L10n.string("Trim End to Playhead (W)"), action: editor.trimEndToPlayhead)
             }
@@ -40,36 +40,12 @@ struct ToolbarView: View {
 
             toolbarDivider
 
-            toolbarButton("sparkles", help: L10n.string("Plan the Edit"), action: editor.askForPlan)
+            toolbarButton(.sparkle, help: L10n.string("Plan the Edit"), action: editor.askForPlan)
                 .disabled(!editor.hasCoachFootage)
 
             Spacer()
 
-            // Zoom
-            HStack(spacing: AppTheme.Spacing.xs) {
-                zoomButton(
-                    "minus.magnifyingglass",
-                    help: L10n.string("Zoom Out"),
-                    isDisabled: editor.zoomScale <= editor.minZoomScale,
-                    action: zoomOut
-                )
-                // Log-mapped so slider travel is uniform per zoom factor
-                let zoomBinding = Binding(
-                    get: { log(editor.zoomScale) },
-                    set: { editor.zoomScale = exp($0) }
-                )
-                Slider(value: zoomBinding, in: log(editor.minZoomScale)...log(Zoom.max))
-                    .controlSize(.mini)
-                    .tint(AppTheme.Accent.primary)
-                    .frame(width: 100)
-                zoomButton(
-                    "plus.magnifyingglass",
-                    help: L10n.string("Zoom In"),
-                    isDisabled: editor.zoomScale >= Zoom.max,
-                    tooltipAlignment: .bottomTrailing,
-                    action: zoomIn
-                )
-            }
+            TimelineZoomControl()
         }
         .padding(.horizontal, AppTheme.Spacing.md)
         .padding(.vertical, AppTheme.Spacing.sm)
@@ -81,8 +57,8 @@ struct ToolbarView: View {
         return Button {
             editor.toggleTimelineTabBarExpanded()
         } label: {
-            Image(systemName: expanded ? "film.stack.fill" : "film.stack")
-                .font(.system(size: AppTheme.FontSize.md))
+            PhosphorImage(.timelines)
+                .frame(width: AppTheme.IconSize.sm, height: AppTheme.IconSize.sm)
                 .foregroundStyle(expanded ? AppTheme.Text.primaryColor : AppTheme.Text.tertiaryColor)
                 .frame(width: AppTheme.IconSize.mdLg, height: AppTheme.IconSize.mdLg)
                 .hoverHighlight(isActive: expanded)
@@ -137,47 +113,16 @@ struct ToolbarView: View {
         .hoverTooltip(L10n.string("Add Marker (M)"))
     }
 
-    private func toolbarButton(_ systemName: String, help: String, action: @escaping () -> Void) -> some View {
+    private func toolbarButton(_ icon: PhosphorIcon, help: String, action: @escaping () -> Void) -> some View {
         Button(action: action) {
-            Image(systemName: systemName)
-                .font(.system(size: AppTheme.FontSize.md))
+            PhosphorImage(icon)
+                .frame(width: AppTheme.IconSize.sm, height: AppTheme.IconSize.sm)
                 .foregroundStyle(AppTheme.Text.secondaryColor)
-                .frame(width: 24, height: 24)
-                .hoverHighlight()
-        }
-        .buttonStyle(.plain)
-        .hoverTooltip(help)
-    }
-
-    private func zoomButton(
-        _ systemName: String,
-        help: String,
-        isDisabled: Bool,
-        tooltipAlignment: Alignment = .bottom,
-        action: @escaping () -> Void
-    ) -> some View {
-        Button(action: action) {
-            Image(systemName: systemName)
-                .font(.system(size: AppTheme.FontSize.sm))
-                .foregroundStyle(isDisabled ? AppTheme.Text.mutedColor : AppTheme.Text.tertiaryColor)
                 .frame(width: AppTheme.IconSize.mdLg, height: AppTheme.IconSize.mdLg)
                 .hoverHighlight()
         }
         .buttonStyle(.plain)
-        .disabled(isDisabled)
-        .hoverTooltip(help, alignment: tooltipAlignment)
-    }
-
-    private func zoomOut() {
-        setZoomScale(editor.zoomScale / Zoom.toolbarStepFactor)
-    }
-
-    private func zoomIn() {
-        setZoomScale(editor.zoomScale * Zoom.toolbarStepFactor)
-    }
-
-    private func setZoomScale(_ zoomScale: Double) {
-        editor.zoomScale = min(Zoom.max, max(editor.minZoomScale, zoomScale))
+        .hoverTooltip(help)
     }
 
     private func undo() {
@@ -188,13 +133,13 @@ struct ToolbarView: View {
         NSApp.sendAction(Selector(("redo:")), to: nil, from: nil)
     }
 
-    private func toolModeButton(_ systemName: String, mode: ToolMode, help: String) -> some View {
+    private func toolModeButton(_ icon: PhosphorIcon, mode: ToolMode, help: String) -> some View {
         let isActive = editor.toolMode == mode
         return Button { editor.toolMode = mode } label: {
-            Image(systemName: systemName)
-                .font(.system(size: AppTheme.FontSize.md))
+            PhosphorImage(icon)
+                .frame(width: AppTheme.IconSize.sm, height: AppTheme.IconSize.sm)
                 .foregroundStyle(isActive ? AppTheme.Text.primaryColor : AppTheme.Text.tertiaryColor)
-                .frame(width: 24, height: 24)
+                .frame(width: AppTheme.IconSize.mdLg, height: AppTheme.IconSize.mdLg)
                 .hoverHighlight(isActive: isActive)
         }
         .buttonStyle(.plain)

@@ -181,6 +181,16 @@ final class EditorSplitViewController: PaddedDividerSplitViewController {
     func applyAgentVisibility(_ visible: Bool) {
         guard currentMaximized == nil else { return }
         applyCollapsed(item: agentSplitItem, collapsed: !visible)
+        if visible { widenAgentPanelIfNarrow() }
+    }
+
+    /// A first open restores the collapsed minimum width; open at the default instead.
+    private func widenAgentPanelIfNarrow() {
+        DispatchQueue.main.async { [weak self] in
+            guard let self, let item = agentSplitItem, !item.isCollapsed,
+                  item.viewController.view.frame.width < Layout.agentPanelDefault else { return }
+            splitView.setPosition(Layout.agentPanelDefault, ofDividerAt: 0)
+        }
     }
 
     func applyMediaVisibility(_ visible: Bool) {
@@ -378,13 +388,8 @@ final class EditorSplitViewController: PaddedDividerSplitViewController {
                 .frame(minWidth: 0, maxWidth: .infinity, minHeight: 0, maxHeight: .infinity)
                 .background(AppTheme.Background.surfaceColor, in: RoundedRectangle(cornerRadius: AppTheme.Radius.md))
                 .clipShape(RoundedRectangle(cornerRadius: AppTheme.Radius.md))
-                .overlay {
-                    RoundedRectangle(cornerRadius: AppTheme.Radius.md)
-                        .strokeBorder(AppTheme.Border.subtleColor, lineWidth: AppTheme.BorderWidth.thin)
-                        .allowsHitTesting(false)
-                }
-                .overlay {
-                    PanelFocusRing(panel: panel)
+                .background {
+                    PanelOutline(panel: panel)
                         .allowsHitTesting(false)
                 }
                 .padding(Layout.panelGap / 2)
@@ -432,16 +437,17 @@ final class EditorSplitViewController: PaddedDividerSplitViewController {
     }
 }
 
-private struct PanelFocusRing: View {
+/// The card's one outline, a rim just outside its content so nothing inside can cover it; accent when the panel has focus.
+private struct PanelOutline: View {
     @Environment(EditorViewModel.self) var editor
     let panel: EditorViewModel.FocusedPanel
 
     private var isFocused: Bool { editor.focusedPanel == panel }
 
     var body: some View {
-        RoundedRectangle(cornerRadius: AppTheme.Radius.md)
-            .strokeBorder(AppTheme.Accent.primary, lineWidth: AppTheme.BorderWidth.medium)
-            .opacity(isFocused ? AppTheme.Opacity.strong : 0)
+        RoundedRectangle(cornerRadius: AppTheme.Radius.md + AppTheme.BorderWidth.thin)
+            .fill(isFocused ? AppTheme.Accent.primary : AppTheme.Border.subtleColor)
+            .padding(-AppTheme.BorderWidth.thin)
             .animation(.easeOut(duration: AppTheme.Anim.transition), value: isFocused)
     }
 }

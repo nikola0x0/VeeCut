@@ -290,13 +290,11 @@ struct MediaTab: View {
                     .layoutPriority(1)
             } else {
                 toolbarButton(title: L10n.string("Import"), action: importMedia)
-                    .tourAnchor(.importButton)
                 overflowMenu
                 Spacer(minLength: AppTheme.Spacing.zero)
             }
 
             MediaSearchIndexStatus(search: editor.searchIndex, mediaAssets: editor.mediaAssets)
-                .tourAnchor(.smartSearch)
 
             if !editor.isMediaPanelSearchExpanded {
                 ExpandablePanelSearch(
@@ -561,7 +559,7 @@ struct MediaTab: View {
             }
             if canOrganize {
                 Button(action: organizeWithAgent) {
-                    Label(L10n.string("Organize with Agent"), systemImage: "wand.and.stars")
+                    Label(L10n.string("Organize with Vee"), systemImage: "wand.and.stars")
                 }
             }
         }

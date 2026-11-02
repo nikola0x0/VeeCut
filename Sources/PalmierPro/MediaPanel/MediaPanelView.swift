@@ -15,12 +15,12 @@ enum MediaPanelSection: String, CaseIterable {
         }
     }
 
-    var icon: String {
+    var icon: PhosphorIcon {
         switch self {
-        case .media: "folder"
-        case .index: "list.bullet.rectangle"
-        case .captions: "captions.bubble"
-        case .audio: "waveform"
+        case .media: .folder
+        case .index: .list
+        case .captions: .subtitles
+        case .audio: .waveform
         }
     }
 }
@@ -36,7 +36,7 @@ struct MediaPanelView: View {
         VStack(spacing: AppTheme.Spacing.zero) {
             TitleTabBar(
                 items: MediaPanelSection.allCases.map {
-                    TitleTabBar.Item(titleKey: $0.title, systemImage: $0.icon)
+                    TitleTabBar.Item(titleKey: $0.title, icon: $0.icon)
                 },
                 selected: section.title
             ) { key in

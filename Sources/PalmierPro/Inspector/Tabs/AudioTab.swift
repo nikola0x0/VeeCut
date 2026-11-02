@@ -29,7 +29,7 @@ extension InspectorView {
     }
 
     @ViewBuilder
-    private func volumeRow(audios: [Clip]) -> some View {
+    func volumeRow(audios: [Clip]) -> some View {
         animatableRow(
             label: L10n.string("Volume"),
             clips: audios,

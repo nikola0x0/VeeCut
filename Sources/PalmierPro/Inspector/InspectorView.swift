@@ -68,15 +68,15 @@ struct InspectorView: View {
             }
         }
 
-        var systemImage: String {
+        var icon: PhosphorIcon {
             switch self {
-            case .text: "text.alignleft"
-            case .textAnimate: "diamond"
-            case .video: "video"
-            case .effects: "slider.horizontal.3"
-            case .subject: "person.crop.rectangle"
-            case .audio: "waveform"
-            case .multicam: "square.grid.2x2"
+            case .text: .textAlignLeft
+            case .textAnimate: .diamond
+            case .video: .filmSlate
+            case .effects: .sliders
+            case .subject: .userFocus
+            case .audio: .waveform
+            case .multicam: .grid
             }
         }
     }
@@ -128,7 +128,9 @@ struct InspectorView: View {
             timeline: editor.timeline,
             selectedIds: editor.selectedClipIds
         )
-        if selection.clipCount > 0 {
+        if editor.editorMode == .simple, let clip = selection.singleVideoClip(linkedPartnerIds: { editor.linkedPartnerIds(of: $0) }) {
+            simpleClipInspector(clip: clip, audioClips: selection.audioClips)
+        } else if selection.clipCount > 0 {
             clipInspectorContent(selection: selection)
         } else if let asset = selectedMediaAsset {
             mediaAssetInspectorContent(asset)
@@ -408,7 +410,7 @@ struct InspectorView: View {
     private func tabBar(_ tabs: [ClipTab], selectedTab: ClipTab?) -> some View {
         TitleTabBar(
             items: tabs.map {
-                TitleTabBar.Item(titleKey: $0.titleKey, systemImage: $0.systemImage)
+                TitleTabBar.Item(titleKey: $0.titleKey, icon: $0.icon)
             },
             selected: selectedTab?.titleKey
         ) { title in

@@ -17,10 +17,10 @@ struct LatestProjectCard: View {
                         if let summary, summary.durationSeconds > 0 {
                             Text(verbatim: lengthLabel(summary))
                                 .font(.system(size: AppTheme.FontSize.xs, weight: AppTheme.FontWeight.semibold))
-                                .foregroundStyle(AppTheme.Tint.inkColor)
+                                .foregroundStyle(AppTheme.MediaOverlay.primaryColor)
                                 .padding(.horizontal, AppTheme.Spacing.sm)
                                 .padding(.vertical, AppTheme.Spacing.xxs)
-                                .background(Color.white, in: Capsule())
+                                .background(AppTheme.MediaOverlay.backgroundColor.opacity(AppTheme.Opacity.strong), in: Capsule())
                                 .padding(AppTheme.Spacing.mdLg)
                         }
                     }
@@ -69,9 +69,11 @@ struct LatestProjectCard: View {
         .task(id: entry.lastOpenedDate) { await ProjectPlanSummaries.shared.load(entry) }
     }
 
+    /// With a plan: what's placed in its sections against its target; without one: the timeline's length.
     private func lengthLabel(_ summary: ProjectPlanSummary) -> String {
-        let length = ProjectDates.clock(summary.durationSeconds)
-        return summary.plannedSeconds > 0 ? L10n.string("\(length) of \(ProjectDates.clock(summary.plannedSeconds))") : length
+        guard summary.plannedSeconds > 0 else { return ProjectDates.clock(summary.durationSeconds) }
+        let placed = summary.sections.reduce(0) { $0 + $1.actualSeconds }
+        return L10n.string("\(ProjectDates.clock(placed)) of \(ProjectDates.clock(summary.plannedSeconds))")
     }
 }
 

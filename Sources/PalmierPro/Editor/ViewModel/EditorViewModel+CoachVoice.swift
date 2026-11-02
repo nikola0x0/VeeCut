@@ -1,9 +1,19 @@
 import AppKit
 
-/// Hold-to-talk in Active mode: record, transcribe with Muse Voice, then answer the tip or act on the request.
+/// Hold-to-talk in Active mode, or the card's Say It button: record, transcribe with Muse Voice, then answer the tip or act on the request.
 extension EditorViewModel {
     func startCoachListening() {
-        guard coachMode == .active, !coachListening else { return }
+        guard coachMode == .active else { return }
+        beginCoachListening()
+    }
+
+    /// The card's Say It button: tap to start, tap again to stop, in either mode.
+    func toggleCoachListening() {
+        if coachListening { finishCoachListening() } else { beginCoachListening() }
+    }
+
+    private func beginCoachListening() {
+        guard !coachListening else { return }
         coachListening = true
         coachVoice.stop()
         let capture = voiceCapture

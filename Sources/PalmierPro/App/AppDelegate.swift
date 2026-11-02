@@ -16,6 +16,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         NSApp.setActivationPolicy(.regular)
         NSApp.activate(ignoringOtherApps: true)
         showDockIconWhenUnbundled()
+        Task { await IconLibrary.shared.load() }
 
         HomeWindowController.shared.showWindow(nil)
         SkillStore.shared.startSkillSync()

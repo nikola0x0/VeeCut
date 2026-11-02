@@ -22,7 +22,7 @@ extension EditorViewModel {
         musicClips.first.map { Double($0.durationFrames) / Double(max(timeline.fps, 1)) }
     }
 
-    private var musicClips: [Clip] {
+    var musicClips: [Clip] {
         timeline.tracks.filter { $0.type == .audio }.flatMap(\.clips)
             .filter { $0.linkGroupId == nil && $0.sourceClipType == .audio }
             .sorted { $0.startFrame < $1.startFrame }
@@ -59,6 +59,12 @@ extension EditorViewModel {
     func setCoachMode(_ mode: CoachMode) {
         coachMode = mode
         CoachMode.save(mode)
+    }
+
+    func setEditorMode(_ mode: EditorMode) {
+        guard mode != editorMode else { return }
+        editorMode = mode
+        mode.save()
     }
 
     func apply(_ nudge: CoachNudge) {

@@ -7,8 +7,8 @@ struct UndoHistoryButton: View {
 
     var body: some View {
         Button { isPresented.toggle() } label: {
-            Image(systemName: "clock.arrow.circlepath")
-                .font(.system(size: AppTheme.FontSize.md, weight: AppTheme.FontWeight.medium))
+            PhosphorImage(.history)
+                .frame(width: AppTheme.IconSize.sm, height: AppTheme.IconSize.sm)
                 .foregroundStyle(isPresented ? AppTheme.Text.primaryColor : AppTheme.Text.secondaryColor)
                 .frame(width: AppTheme.IconSize.lg, height: AppTheme.IconSize.lg)
                 .hoverHighlight(isActive: isPresented)

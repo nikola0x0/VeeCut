@@ -295,17 +295,20 @@ extension MediaTab {
 struct MomentThumbnail: View {
     let url: URL?
     let time: Double
+    var contentMode: ContentMode = .fit
     @State private var image: CGImage?
 
     var body: some View {
-        ZStack {
-            Rectangle().fill(AppTheme.MediaOverlay.backgroundColor)
-            if let image {
-                Image(decorative: image, scale: 1)
-                    .resizable()
-                    .aspectRatio(contentMode: .fit)
+        Rectangle()
+            .fill(AppTheme.MediaOverlay.backgroundColor)
+            .overlay {
+                if let image {
+                    Image(decorative: image, scale: 1)
+                        .resizable()
+                        .aspectRatio(contentMode: contentMode)
+                }
             }
-        }
+            .clipped()
         .task(id: "\(url?.path ?? "")@\(time)") {
             guard let url else { return }
             image = await Self.thumbnail(url: url, time: time)

@@ -22,9 +22,6 @@ struct PreviewContainerView: View {
             } else {
                 canvas
             }
-            if isTimeline {
-                ObjectDock()
-            }
             if isImage {
                 imageSettingsBar
             } else if !isSubtitle {
@@ -124,8 +121,11 @@ struct PreviewContainerView: View {
         .overlay(alignment: .top) {
             if isTimeline { UndoStepToast(undo: editor.undo) }
         }
+        .overlay(alignment: .topLeading) {
+            if isTimeline { ObjectDock() }
+        }
         .overlay(alignment: .bottom) {
-            if isTimeline { SubjectActionBar() }
+            if isTimeline { VeeLineView() }
         }
     }
 
@@ -251,7 +251,6 @@ struct PreviewContainerView: View {
                 .help(L10n.string("Capture Frame to Media"))
         }
         .buttonStyle(.plain)
-        .tourAnchor(.screenshotButton)
     }
 
     // MARK: - Preview settings
