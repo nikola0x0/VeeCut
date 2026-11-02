@@ -5,7 +5,7 @@ import Testing
     "Vignette.metallib",
     "Fonts",
     "Images/LabLogos",
-    "Images/tour-hero.jpg",
+    "Images/Vee/hello.png",
     "Changelog/changelog.json",
     "Models/BeatThis.mlmodelc",
     "veecut.mcpb",

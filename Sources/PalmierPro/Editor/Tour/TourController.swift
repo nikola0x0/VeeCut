@@ -15,6 +15,7 @@ struct TourStep: Equatable {
         case revealInspectorOverview
     }
     let kind: Kind
+    let pose: VeeIllustration.Name
     let title: String
     let instruction: String
     var prepare: Prepare = .none
@@ -24,8 +25,8 @@ enum TourTarget: Equatable {
     case panel(EditorViewModel.FocusedPanel)
     case element(TourAnchorID)
 
-    /// The panel that must be visible for this target to have a frame.
-    var hostPanel: EditorViewModel.FocusedPanel {
+    /// The panel that must be visible for this target to have a frame; nil for title-bar controls.
+    var hostPanel: EditorViewModel.FocusedPanel? {
         switch self {
         case .panel(let p): return p
         case .element(let id): return id.hostPanel
@@ -35,16 +36,12 @@ enum TourTarget: Equatable {
 
 /// Pinpointable controls. Add a case + its `hostPanel`, then tag the view with `.tourAnchor(_:)`.
 enum TourAnchorID: Hashable {
-    case importButton
-    case smartSearch
-    case screenshotButton
-    case skillsButton
+    case veeButton
+    case editorModeSwitch
 
-    var hostPanel: EditorViewModel.FocusedPanel {
+    var hostPanel: EditorViewModel.FocusedPanel? {
         switch self {
-        case .importButton, .smartSearch: return .media
-        case .screenshotButton: return .preview
-        case .skillsButton: return .agent
+        case .veeButton, .editorModeSwitch: nil
         }
     }
 }
@@ -84,6 +81,15 @@ final class TourController {
         return steps[i]
     }
 
+    private static let seenKey = "tourSeen"
+
+    /// Runs the tour the first time any project opens on this Mac.
+    func startIfFirstRun(in editor: EditorViewModel, defaults: UserDefaults = .standard) {
+        guard !defaults.bool(forKey: Self.seenKey) else { return }
+        defaults.set(true, forKey: Self.seenKey)
+        start(in: editor)
+    }
+
     func start(in editor: EditorViewModel) {
         self.editor = editor
         steps = Self.makeSteps(editor: editor)
@@ -116,7 +122,7 @@ final class TourController {
             case .media: editor.mediaPanelVisible = true
             case .agent: editor.agentPanelVisible = true
             case .inspector: editor.inspectorPanelVisible = true
-            case .timeline, .preview: break
+            case .timeline, .preview, nil: break
             }
         }
         applyPrepare(step.prepare, to: editor)
@@ -150,53 +156,34 @@ final class TourController {
 
     private static func makeSteps(editor: EditorViewModel) -> [TourStep] {
         let hasVisualClip = firstVisualClipId(in: editor) != nil
-
-        var steps: [TourStep] = [
-            TourStep(kind: .intro, title: L10n.string("Tutorial"),
-                     instruction: L10n.string("Let's take a quick tour of the workspace and what you can do.")),
-            TourStep(kind: .spotlight(.panel(.media)), title: L10n.string("Media panel"),
-                     instruction: L10n.string("This is where all your footage and assets live.")),
-            TourStep(kind: .spotlight(.element(.importButton)), title: L10n.string("Import footage"),
-                     instruction: L10n.string("Import your footage here, or drag and drop, or copy-paste, into the media panel.")),
-        ]
-        if smartSearchAvailable(editor: editor) {
-            steps.append(TourStep(kind: .spotlight(.element(.smartSearch)), title: L10n.string("Smart search"),
-                                  instruction: L10n.string("Download a local model to index your media, so you or your agent can search any clips by describing them. The model runs on-device and nothing leaves your Mac.")))
-        }
-        steps += [
-            TourStep(kind: .spotlight(.panel(.preview)), title: L10n.string("Preview"),
-                     instruction: L10n.string("This is your preview panel to play a selected media or the whole timeline.")),
-            TourStep(kind: .spotlight(.element(.screenshotButton)), title: L10n.string("Screenshot a frame"),
-                     instruction: L10n.string("Capture the preview frame as a still image in the media panel.")),
+        return [
+            TourStep(kind: .intro, pose: .tourWelcome, title: L10n.string("Hi, I'm Vee!"),
+                     instruction: L10n.string("I'm your editing buddy. Let me show you around. It only takes a minute.")),
+            TourStep(kind: .spotlight(.element(.veeButton)), pose: .tourPointUp, title: L10n.string("Here's where I live"),
+                     instruction: L10n.string("Click me, or press ⌥⌘A, whenever you want to chat. I can cut your clips, track people and things, and add stickers and captions.")),
+            TourStep(kind: .spotlight(.panel(.agent)), pose: .tourChat, title: L10n.string("Just tell me what you want"),
+                     instruction: L10n.string("Say it in plain words, like \"make a 30 second trailer\". Type @ to point me at a clip or an object.")),
+            TourStep(kind: .spotlight(.element(.editorModeSwitch)), pose: .tourSwitch, title: L10n.string("Simple or Pro"),
+                     instruction: L10n.string("Simple keeps the tools most edits need. Switch to Pro when you want every knob.")),
+            TourStep(kind: .spotlight(.panel(.media)), pose: .tourFootage, title: L10n.string("Your footage goes here"),
+                     instruction: L10n.string("Import clips or drop them in. I'll watch them and suggest what to make.")),
+            TourStep(kind: .spotlight(.panel(.preview)), pose: .tourCamera, title: L10n.string("Watch and pick"),
+                     instruction: L10n.string("Play your edit here. Click a person or thing in the frame and I'll follow it through the shot.")),
             TourStep(
-                kind: .spotlight(.panel(.timeline)),
-                title: L10n.string("Timeline"),
+                kind: .spotlight(.panel(.timeline)), pose: .tourTimeline, title: L10n.string("Your timeline"),
                 instruction: hasVisualClip
-                    ? L10n.string("Your timeline: the top half is video, the bottom half is audio. Click a clip to inspect it — we've selected one for you.")
-                    : L10n.string("Your timeline: the top half is video, the bottom half is audio. This is where you edit."),
+                    ? L10n.string("Video on top, sound below. When we make a plan, the colored bar shows each part and how full it is. I picked a clip for you.")
+                    : L10n.string("Video on top, sound below. When we make a plan, the colored bar shows each part and how full it is."),
                 prepare: hasVisualClip ? .selectClip : .none
             ),
             TourStep(
-                kind: .spotlight(.panel(.inspector)),
-                title: L10n.string("Inspector"),
-                instruction: L10n.string("Your inspector for the selected clip — transform, adjust, audio, and more."),
+                kind: .spotlight(.panel(.inspector)), pose: .tourTune, title: L10n.string("Fine-tune it"),
+                instruction: L10n.string("Pick a clip to change its look, speed, sound and more."),
                 prepare: hasVisualClip ? .revealInspectorOverview : .none
             ),
-            TourStep(kind: .spotlight(.panel(.agent)), title: L10n.string("AI agent"),
-                     instruction: L10n.string("Chat with your agent. It can edit clips, organize your assets, and much more. Add an API key in Settings to start.")),
-            TourStep(kind: .spotlight(.element(.skillsButton)), title: L10n.string("Skills"),
-                     instruction: L10n.string("Open Skills to browse community playbooks, create your own, or add them to other agents.")),
-            TourStep(kind: .outro, title: L10n.string("You're all set"),
-                     instruction: L10n.string("Start creating, or explore these to get the most out of VeeCut.")),
+            TourStep(kind: .outro, pose: .tourDone, title: L10n.string("You're all set!"),
+                     instruction: L10n.string("Bring in some footage and say hi. I'll take it from there.")),
         ]
-        return steps
-    }
-
-    /// True when the "Smart search" enable button is showing (model downloadable, not yet installed).
-    private static func smartSearchAvailable(editor: EditorViewModel) -> Bool {
-        let model = VisualModelLoader.shared
-        guard case .notInstalled = model.state, model.enabled else { return false }
-        return editor.mediaAssets.contains { $0.type == .video || $0.type == .image }
     }
 
     private static func firstVisualClipId(in editor: EditorViewModel) -> String? {

@@ -539,11 +539,11 @@ class VideoProject: NSDocument {
                     .environment(editorViewModel)
             }
             .overlay {
-                TourOverlay()
+                CoachOverlay()
                     .environment(editorViewModel)
             }
             .overlay {
-                CoachOverlay()
+                TourOverlay()
                     .environment(editorViewModel)
             }
             .ignoresSafeArea(.container, edges: .top)
@@ -577,6 +577,7 @@ class VideoProject: NSDocument {
         editorViewModel.searchIndex.projectOpened()
         editorViewModel.scanFootage()
         editorViewModel.showCoachIfNeeded()
+        editorViewModel.tour.startIfFirstRun(in: editorViewModel)
         editorViewModel.updateTelemetryContext()
         Telemetry.breadcrumb(
             "Project opened",

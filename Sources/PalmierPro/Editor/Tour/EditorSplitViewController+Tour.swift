@@ -19,8 +19,8 @@ extension EditorSplitViewController {
 
     private func tourFrame(for target: TourTarget) -> CGRect? {
         switch target {
-        case .panel:
-            return excludingTitlebar(flippedFrame(of: leafItem(for: target.hostPanel)?.viewController.view))
+        case .panel(let panel):
+            return excludingTitlebar(flippedFrame(of: leafItem(for: panel)?.viewController.view))
         case .element(let id):
             return flippedFrame(of: editor.tour.anchorViews[id]?.value)
         }
