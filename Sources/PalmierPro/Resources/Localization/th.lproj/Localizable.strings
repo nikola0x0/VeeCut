@@ -111,7 +111,7 @@
 "Appearance" = "ลักษณะ";
 "Apply" = "ปรับใช้";
 "Ask anything, or start with:" = "ถามอะไรก็ได้ หรือเริ่มจาก:";
-"Ask, or type @ to reference media" = "ถาม หรือพิมพ์ @ เพื่ออ้างอิงมีเดีย";
+"Ask Vee, or type @ to reference media" = "ถาม หรือพิมพ์ @ เพื่ออ้างอิงมีเดีย";
 "Aspect" = "สัดส่วน";
 "Aspect Ratio" = "อัตราส่วนภาพ";
 "Aspect ratio: %@" = "อัตราส่วนภาพ: %@";

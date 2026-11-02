@@ -111,7 +111,7 @@
 "Appearance" = "Оформление";
 "Apply" = "Применить";
 "Ask anything, or start with:" = "Спросите что угодно или начните с:";
-"Ask, or type @ to reference media" = "Задайте вопрос или введите @, чтобы сослаться на медиафайл";
+"Ask Vee, or type @ to reference media" = "Задайте вопрос или введите @, чтобы сослаться на медиафайл";
 "Aspect" = "Пропорции";
 "Aspect Ratio" = "Соотношение сторон";
 "Aspect ratio: %@" = "Соотношение сторон: %@";

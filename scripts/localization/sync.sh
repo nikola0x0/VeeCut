@@ -8,15 +8,15 @@ temporary_directory="$(mktemp -d /private/tmp/palmier-localization.XXXXXX)"
 trap 'rm -rf "$temporary_directory"' EXIT
 
 cd "$repo_root"
-swift build \
-  -Xswiftc -emit-localized-strings \
-  -Xswiftc -emit-localized-strings-path \
-  -Xswiftc "$temporary_directory"
+# Swift Build writes each compiled file's .stringsdata next to its object files and keeps them across incremental builds.
+swift build
+binary_directory="$(swift build --show-bin-path)"
+intermediates_directory="${binary_directory:h:h}/Intermediates.noindex"
 
 stringsdata_arguments=()
 app_stringsdata_list="$temporary_directory/app-stringsdata"
 node scripts/localization/sync.mjs \
-  --list-app-stringsdata "$temporary_directory" > "$app_stringsdata_list"
+  --list-app-stringsdata "$intermediates_directory" > "$app_stringsdata_list"
 while IFS= read -r data; do
   stringsdata_arguments+=(--stringsdata "$data")
 done < "$app_stringsdata_list"

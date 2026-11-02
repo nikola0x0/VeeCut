@@ -45,18 +45,21 @@ function appStringsDataPaths(directory) {
     sourceNames.add(name);
   }
 
+  // A source compiles into several products (app, library, tests); the newest output is the current one.
   const expectedSources = new Set(sourceFiles);
-  const foundSources = new Set();
-  const dataPaths = [];
-  for (const entry of fs.readdirSync(directory)) {
-    if (!entry.endsWith(".stringsdata")) continue;
-    const dataPath = path.join(directory, entry);
+  const newest = new Map();
+  for (const dataPath of filesUnder(directory, ".stringsdata")) {
     const data = JSON.parse(fs.readFileSync(dataPath, "utf8"));
     const source = path.resolve(data.source);
     if (!expectedSources.has(source)) continue;
-    foundSources.add(source);
-    if ((data.tables?.Localizable ?? []).length > 0) dataPaths.push(dataPath);
+    const modified = fs.statSync(dataPath).mtimeMs;
+    const current = newest.get(source);
+    if (!current || modified > current.modified) newest.set(source, { dataPath, modified, data });
   }
+  const foundSources = new Set(newest.keys());
+  const dataPaths = [...newest.values()]
+    .filter(({ data }) => (data.tables?.Localizable ?? []).length > 0)
+    .map(({ dataPath }) => dataPath);
 
   const missingSources = sourceFiles.filter((file) => !foundSources.has(file));
   if (missingSources.length > 0) {

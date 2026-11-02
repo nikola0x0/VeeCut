@@ -111,7 +111,7 @@
 "Appearance" = "外観";
 "Apply" = "適用";
 "Ask anything, or start with:" = "自由に質問するか、次から始めてください：";
-"Ask, or type @ to reference media" = "質問するか、@を入力してメディアを参照";
+"Ask Vee, or type @ to reference media" = "質問するか、@を入力してメディアを参照";
 "Aspect" = "アスペクト";
 "Aspect Ratio" = "アスペクト比";
 "Aspect ratio: %@" = "アスペクト比：%@";

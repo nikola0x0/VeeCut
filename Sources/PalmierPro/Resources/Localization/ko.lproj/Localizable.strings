@@ -111,7 +111,7 @@
 "Appearance" = "화면 모드";
 "Apply" = "적용";
 "Ask anything, or start with:" = "무엇이든 질문하거나 다음으로 시작하세요:";
-"Ask, or type @ to reference media" = "질문하거나 @을 입력하여 미디어 참조";
+"Ask Vee, or type @ to reference media" = "질문하거나 @을 입력하여 미디어 참조";
 "Aspect" = "화면비";
 "Aspect Ratio" = "화면비";
 "Aspect ratio: %@" = "화면비: %@";

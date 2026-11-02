@@ -111,7 +111,7 @@
 "Appearance" = "Wygląd";
 "Apply" = "Zastosuj";
 "Ask anything, or start with:" = "Zadaj pytanie albo zacznij od:";
-"Ask, or type @ to reference media" = "Zapytaj albo wpisz @, aby wskazać multimedia";
+"Ask Vee, or type @ to reference media" = "Zapytaj albo wpisz @, aby wskazać multimedia";
 "Aspect" = "Proporcje";
 "Aspect Ratio" = "Proporcje obrazu";
 "Aspect ratio: %@" = "Proporcje obrazu: %@";

@@ -111,7 +111,7 @@
 "Appearance" = "المظهر";
 "Apply" = "تطبيق";
 "Ask anything, or start with:" = "اسأل عن أي شيء، أو ابدأ بـ:";
-"Ask, or type @ to reference media" = "اسأل، أو اكتب ⁨@⁩ للإشارة إلى وسائط";
+"Ask Vee, or type @ to reference media" = "اسأل، أو اكتب ⁨@⁩ للإشارة إلى وسائط";
 "Aspect" = "الأبعاد";
 "Aspect Ratio" = "نسبة العرض إلى الارتفاع";
 "Aspect ratio: %@" = "نسبة العرض إلى الارتفاع: ⁨%@⁩";

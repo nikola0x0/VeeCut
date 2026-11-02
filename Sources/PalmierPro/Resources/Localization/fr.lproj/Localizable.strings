@@ -111,7 +111,7 @@
 "Appearance" = "Apparence";
 "Apply" = "Appliquer";
 "Ask anything, or start with:" = "Posez une question ou commencez par :";
-"Ask, or type @ to reference media" = "Posez une question ou saisissez @ pour référencer un média";
+"Ask Vee, or type @ to reference media" = "Posez une question ou saisissez @ pour référencer un média";
 "Aspect" = "Format";
 "Aspect Ratio" = "Format d’image";
 "Aspect ratio: %@" = "Format d’image : %@";
