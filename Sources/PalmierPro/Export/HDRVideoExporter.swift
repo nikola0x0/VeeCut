@@ -1,4 +1,5 @@
 import AVFoundation
+import Synchronization
 import CoreImage
 import VideoToolbox
 
@@ -210,7 +211,7 @@ enum HDRVideoExporter {
     private static func pump(_ box: PumpBox, failure: FailureBox, onSeconds: (@Sendable (Double) -> Void)? = nil) async {
         let queue = DispatchQueue(label: "hdr.pump.\(box.input.mediaType.rawValue)")
         await withCheckedContinuation { (cont: CheckedContinuation<Void, Never>) in
-            var lastReported = -1.0
+            let lastReported = Mutex(-1.0)
             box.input.requestMediaDataWhenReady(on: queue) {
                 while box.input.isReadyForMoreMediaData {
                     guard let sample = box.output.copyNextSampleBuffer() else {
@@ -228,7 +229,12 @@ enum HDRVideoExporter {
                     }
                     if let onSeconds {
                         let secs = CMSampleBufferGetPresentationTimeStamp(sample).seconds
-                        if secs.isFinite, secs - lastReported >= 0.25 { lastReported = secs; onSeconds(secs) }
+                        let due = secs.isFinite && lastReported.withLock { last in
+                            guard secs - last >= 0.25 else { return false }
+                            last = secs
+                            return true
+                        }
+                        if due { onSeconds(secs) }
                     }
                 }
             }
@@ -254,7 +260,7 @@ enum HDRVideoExporter {
         let queue = DispatchQueue(label: "hdr.pump.video.processed")
         let bounds = CGRect(origin: .zero, size: c.renderSize)
         await withCheckedContinuation { (cont: CheckedContinuation<Void, Never>) in
-            var lastReported = -1.0
+            let lastReported = Mutex(-1.0)
             c.input.requestMediaDataWhenReady(on: queue) {
                 while c.input.isReadyForMoreMediaData {
                     guard let sample = c.output.copyNextSampleBuffer(),
@@ -282,7 +288,12 @@ enum HDRVideoExporter {
                     }
                     if let onSeconds {
                         let secs = pts.seconds
-                        if secs.isFinite, secs - lastReported >= 0.25 { lastReported = secs; onSeconds(secs) }
+                        let due = secs.isFinite && lastReported.withLock { last in
+                            guard secs - last >= 0.25 else { return false }
+                            last = secs
+                            return true
+                        }
+                        if due { onSeconds(secs) }
                     }
                 }
             }

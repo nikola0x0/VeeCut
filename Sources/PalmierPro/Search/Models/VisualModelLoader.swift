@@ -51,7 +51,8 @@ final class VisualModelLoader: VisualSearchModelLoading {
         default: break
         }
         state = .downloading(0)
-        Task {
+        Task { [weak self] in
+            guard let self else { return }
             do {
                 let installed = try await downloader.install(
                     manifest: SearchIndexConfig.manifest, baseURL: SearchIndexConfig.baseURL
