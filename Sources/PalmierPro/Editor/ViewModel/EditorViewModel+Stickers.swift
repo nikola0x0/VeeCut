@@ -20,7 +20,7 @@ extension EditorViewModel {
     /// A sticker without a subject fills this fraction of the canvas height.
     static let stickerHeight = 0.3
     /// A sticker on a subject spans this fraction of the subject's width, within the bounds below.
-    static let stickerSubjectWidth = 0.8
+    static let stickerSubjectWidth = 0.5
     static let stickerWidthRange = 0.06...0.5
 
     var isMakingSticker: Bool { stickerTask != nil }
@@ -38,8 +38,10 @@ extension EditorViewModel {
             } catch is CancellationError {
                 return
             } catch let failure as StickerFailure {
+                Log.editor.error("sticker failed subject=\(subject.flatMap(\.maskId) ?? "none") failure=\(String(describing: failure))")
                 stickerFailure = failure
             } catch {
+                Log.editor.error("sticker failed subject=\(subject.flatMap(\.maskId) ?? "none") error=\(String(describing: error))")
                 stickerFailure = .failed(error.localizedDescription)
             }
         }
@@ -145,7 +147,7 @@ extension EditorViewModel {
         return (first...last, box)
     }
 
-    /// The sticker's box: centered on the canvas, or sized to the subject and centered on its box's top edge.
+    /// The sticker's box: centered on the canvas, or sized to the subject and sitting on its box's top edge, at most half above the frame.
     func stickerLayout(imageWidth: Int, imageHeight: Int, on box: CGRect?) -> Transform {
         let canvasAspect = Double(timeline.width) / Double(max(timeline.height, 1))
         let imageAspect = Double(imageWidth) / Double(max(imageHeight, 1))
@@ -153,7 +155,7 @@ extension EditorViewModel {
         if let box {
             width = min(max(box.width * Self.stickerSubjectWidth, Self.stickerWidthRange.lowerBound), Self.stickerWidthRange.upperBound)
             height = width / imageAspect * canvasAspect
-            center = CGPoint(x: box.midX, y: max(box.minY, height / 2))
+            center = CGPoint(x: box.midX, y: max(box.minY - height / 2, 0))
         } else {
             height = Self.stickerHeight
             width = height * imageAspect / canvasAspect

@@ -85,6 +85,51 @@ struct FootageRecommendationTests {
         #expect(editor.footageRecommendation?.summary == "A cozy café day with a cat")
     }
 
+    private static let bothReadReply = #"{"clips":[{"assetId":"cat","summary":"A cat","talksToCamera":false,"moments":[]},{"assetId":"dog","summary":"A dog","talksToCamera":false,"moments":[]}]}"#
+
+    @Test func footageQueuedDuringAReadIsRecommendedOnceWithEveryClip() async throws {
+        let url = try await FixtureVideo.write(scenes: [.init(rgb: (60, 160, 60), seconds: 4)])
+        defer { try? FileManager.default.removeItem(at: url) }
+        let model = HeldCoachModel(holding: "footage", bySchema: ["footage": Self.bothReadReply, "ideas": Self.ideasReply])
+        let editor = editor(url: url, model: model)
+        editor.footageNotes["cat"] = unreadNote(url: url)
+        editor.readFootageInBackground()
+        await model.waitUntilGated()
+
+        editor.mediaAssets.append(MediaAsset(id: "dog", url: url, type: .video, name: "dog", duration: 4))
+        var dog = unreadNote(url: url)
+        dog.assetId = "dog"
+        editor.footageNotes["dog"] = dog
+        editor.readFootageInBackground()
+        await model.open()
+        while let task = editor.footageReadTask ?? editor.footageRecommendTask { await task.value }
+
+        #expect(await model.count("ideas") == 1)
+        #expect(editor.footageRecommendation?.assetIds == ["cat", "dog"])
+    }
+
+    @Test func aRecommendationOutdatedWhileItRanIsRedone() async throws {
+        let url = try await FixtureVideo.write(scenes: [.init(rgb: (160, 60, 60), seconds: 4)])
+        defer { try? FileManager.default.removeItem(at: url) }
+        let model = HeldCoachModel(holding: "ideas", bySchema: ["ideas": Self.ideasReply])
+        let editor = editor(url: url, model: model)
+        var cat = unreadNote(url: url)
+        cat.summary = "A cat"
+        editor.footageNotes["cat"] = cat
+        editor.readFootageInBackground()
+        await model.waitUntilGated()
+
+        editor.mediaAssets.append(MediaAsset(id: "dog", url: url, type: .video, name: "dog", duration: 4))
+        var dog = cat
+        dog.assetId = "dog"
+        editor.footageNotes["dog"] = dog
+        editor.readFootageInBackground()
+        await model.open()
+        while let task = editor.footageReadTask ?? editor.footageRecommendTask { await task.value }
+
+        #expect(editor.footageRecommendation?.assetIds == ["cat", "dog"])
+    }
+
     @Test func pickingAnIdeaPlansWithItsStyleAndBrief() async throws {
         let url = try await FixtureVideo.write(scenes: [.init(rgb: (0, 200, 120), seconds: 4)])
         defer { try? FileManager.default.removeItem(at: url) }
@@ -132,6 +177,45 @@ struct FootageRecommendationTests {
         }
         #expect(texts.contains { $0.contains("This is the best coffee in Dalat") })
     }
+}
+
+/// Holds the first request of one schema until opened, so a test can change state while it is in flight.
+actor HeldCoachModel: CoachModel {
+    private let gating: String
+    private let bySchema: [String: String]
+    private var counts: [String: Int] = [:]
+    private var gated = false
+    private var opened = false
+    private var gatedWaiter: CheckedContinuation<Void, Never>?
+    private var openWaiter: CheckedContinuation<Void, Never>?
+
+    init(holding gating: String, bySchema: [String: String]) {
+        self.gating = gating
+        self.bySchema = bySchema
+    }
+
+    func structuredResponse(model: String, instructions: String, parts: [MetaInputPart], schemaName: String, schemaJSON: Data) async throws -> String {
+        counts[schemaName, default: 0] += 1
+        if schemaName == gating, counts[schemaName] == 1 {
+            gated = true
+            gatedWaiter?.resume()
+            gatedWaiter = nil
+            if !opened { await withCheckedContinuation { openWaiter = $0 } }
+        }
+        return bySchema[schemaName] ?? #"{"clips":[]}"#
+    }
+
+    func waitUntilGated() async {
+        if !gated { await withCheckedContinuation { gatedWaiter = $0 } }
+    }
+
+    func open() {
+        opened = true
+        openWaiter?.resume()
+        openWaiter = nil
+    }
+
+    func count(_ schemaName: String) -> Int { counts[schemaName, default: 0] }
 }
 
 actor TranscriptRequests {

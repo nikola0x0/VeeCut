@@ -19,6 +19,12 @@ struct TranscriptionLocaleTests {
         #expect(result?.language.languageCode?.identifier == "en")
     }
 
+    @Test func anUnsupportedRegionFallsBackToTheLanguagesDefaultRegion() {
+        let supported = ["en_ZA", "en_GB", "en_US"].map(Locale.init(identifier:))
+        let result = Transcription.matchLocale(candidates: [Locale(identifier: "en_VN")], supported: supported)
+        #expect(result?.identifier == "en_US")
+    }
+
     @Test func exactRegionIsPreferredOverSameLanguage() {
         let result = Transcription.matchLocale(candidates: [Locale(identifier: "fr_CA")], supported: supported)
         #expect(result?.identifier == "fr_CA")

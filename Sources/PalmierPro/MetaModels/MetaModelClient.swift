@@ -6,6 +6,8 @@ enum MetaModelError: Error, Equatable {
     case invalidResponse
     case segmentation(SAMOutputError)
     case streamFailed(String)
+    /// Meta's server failed mid-response; the same request may succeed when retried.
+    case serverFailed(String)
     /// Muse Image refused the prompt under Meta's content policy.
     case contentPolicy
 }
@@ -265,7 +267,10 @@ enum SAMStreamEvents {
             }
             return frames
         case "error", "response.failed":
-            throw .streamFailed(String(decoding: data, as: UTF8.self))
+            let body = String(decoding: data, as: UTF8.self)
+            let code = event["code"] as? String
+                ?? ((event["response"] as? [String: Any])?["error"] as? [String: Any])?["code"] as? String
+            throw code == "server_error" ? .serverFailed(body) : .streamFailed(body)
         default:
             return []
         }

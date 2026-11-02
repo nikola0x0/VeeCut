@@ -91,16 +91,10 @@ enum ObjectTracker {
         let fileID = try await client.uploadFile(at: excerptURL, mimeType: "video/mp4")
         try Task.checkCancellation()
 
-        var framesByObject: [Int: [Int: MaskFrame]] = [:]
-        var seenFrames = Set<Int>()
-        for try await record in client.segmentVideo(fileID: fileID, prompt: promptText) {
-            try Task.checkCancellation()
-            for object in record.objects {
-                framesByObject[object.objectID, default: [:]][record.frameIndex] = MaskFrame(object)
-            }
-            seenFrames.insert(record.frameIndex)
-            progress(min(1, Double(seenFrames.count) / Double(expectedFrames)))
-        }
+        let framesByObject = try await segmentedObjects(
+            progress: { seen in progress(min(1, Double(seen) / Double(expectedFrames))) },
+            segment: { client.segmentVideo(fileID: fileID, prompt: promptText) }
+        )
 
         let chosen: [Int: MaskFrame]? = switch request.prompt {
         case .target: framesByObject[1]
@@ -118,6 +112,36 @@ enum ObjectTracker {
             sourceHeight: height
         )
         return TrackingResult(mask: mask, frames: frames, file: TrackedMaskFile.encode(frames))
+    }
+
+    static let segmentAttempts = 3
+
+    /// Each object's frames from one SAM stream; a server failure restarts the stream so no partial result is kept.
+    static func segmentedObjects(
+        retryDelay: Duration = .seconds(1),
+        progress: (Int) -> Void = { _ in },
+        segment: () -> AsyncThrowingStream<SAMFrameRecord, Error>
+    ) async throws -> [Int: [Int: MaskFrame]] {
+        var attempt = 1
+        while true {
+            var framesByObject: [Int: [Int: MaskFrame]] = [:]
+            var seenFrames = Set<Int>()
+            do {
+                for try await record in segment() {
+                    try Task.checkCancellation()
+                    for object in record.objects {
+                        framesByObject[object.objectID, default: [:]][record.frameIndex] = MaskFrame(object)
+                    }
+                    seenFrames.insert(record.frameIndex)
+                    progress(seenFrames.count)
+                }
+                return framesByObject
+            } catch MetaModelError.serverFailed(let detail) where attempt < segmentAttempts {
+                Log.editor.notice("SAM server failure, retrying attempt=\(attempt) detail=\(detail.prefix(200))")
+                try await Task.sleep(for: retryDelay * attempt)
+                attempt += 1
+            }
+        }
     }
 
     /// The match whose boxes lie most inside `within` over the frames, or nil when none touches it.

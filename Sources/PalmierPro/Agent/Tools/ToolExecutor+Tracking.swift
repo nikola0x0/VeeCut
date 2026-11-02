@@ -257,6 +257,7 @@ extension ToolExecutor {
         case .invalidResponse: "Meta Model API returned an unexpected response."
         case .segmentation(let error): "Could not read SAM 3.1 output: \(error)"
         case .streamFailed(let body): "SAM 3.1 request failed: \(body.prefix(300))"
+        case .serverFailed(let body): "Meta's SAM 3.1 server failed after \(ObjectTracker.segmentAttempts) attempts; try again shortly. \(body.prefix(300))"
         case .contentPolicy: "Meta's content policy blocked the request."
         }
     }

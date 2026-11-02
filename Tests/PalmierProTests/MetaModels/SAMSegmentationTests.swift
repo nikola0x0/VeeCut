@@ -106,3 +106,12 @@ private let recordedDiskEvent = #"data: {"content_index":0,"delta":"<0f>1<|box;x
     #expect(Double(agreeing) / Double(mask.bits.count) > 0.95)
     #expect(mask.bits.reduce(0) { $0 + Int($1) } == 4061)
 }
+
+@Test func streamServerErrorsAreRetryableFailures() {
+    let event = #"data: {"code":"server_error","message":"The model failed to generate a response.","type":"error"}"#
+    #expect {
+        try SAMStreamEvents.frames(fromEventLine: event)
+    } throws: { error in
+        if case MetaModelError.serverFailed = error { true } else { false }
+    }
+}

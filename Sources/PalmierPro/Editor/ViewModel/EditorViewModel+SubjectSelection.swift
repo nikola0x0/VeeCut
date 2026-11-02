@@ -118,10 +118,14 @@ extension EditorViewModel {
                 self.subjectTrackingFailure = .missingAPIKey
             } catch TrackingError.objectNotFound {
                 self.subjectTrackingFailure = .notFound
+            } catch MetaModelError.serverFailed(let detail) {
+                guard !Task.isCancelled else { return }
+                Log.editor.error("subject tracking server failure clip=\(clipId) detail=\(detail)")
+                self.subjectTrackingFailure = .serviceFailed
             } catch MetaModelError.streamFailed(let detail) {
                 guard !Task.isCancelled else { return }
                 Log.editor.error("subject tracking model failure clip=\(clipId) detail=\(detail)")
-                self.subjectTrackingFailure = detail.contains(#""code":"server_error""#) ? .serviceFailed : .modelFailed
+                self.subjectTrackingFailure = .modelFailed
             } catch {
                 guard !Task.isCancelled else { return }
                 Log.editor.error("subject tracking failed clip=\(clipId) error=\(String(describing: error))")

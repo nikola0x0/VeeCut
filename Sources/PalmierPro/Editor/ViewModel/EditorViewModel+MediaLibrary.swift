@@ -654,6 +654,7 @@ extension EditorViewModel {
         }
         refreshMissingMediaCache()
         searchIndex.schedule(asset)
+        if asset.type == .video { scanFootage() }
         if !batchManifestUpdate {
             prepareMediaVisuals(for: asset)
         }

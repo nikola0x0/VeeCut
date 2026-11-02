@@ -115,7 +115,7 @@ struct StickerTests {
         await StickerFixtures.remove(root)
     }
 
-    @Test func stickerOnASubjectSpansItsFramesAndRidesOnItsTopEdge() async throws {
+    @Test func stickerOnASubjectSpansItsFramesAndSitsOnItsTopEdge() async throws {
         let (root, package) = try await StickerFixtures.makePackage()
         let editor = editor(package: package)
         let mask = Fixtures.movingTrackedMask(in: editor)
@@ -131,10 +131,19 @@ struct StickerTests {
             let box = try #require(editor.subjectBox(of: mask.id, in: video, at: frame))
             let topLeft = clip.topLeftAt(frame: frame), size = clip.sizeAt(frame: frame)
             #expect(abs(topLeft.x + size.width / 2 - box.midX) < 0.005)
-            #expect(abs(topLeft.y + size.height / 2 - box.minY) < 0.005)
+            #expect(abs(topLeft.y + size.height - box.minY) < 0.005)
+            #expect(abs(size.width - box.width * EditorViewModel.stickerSubjectWidth) < 0.005)
         }
         editor.releaseTrackedMasks()
         await StickerFixtures.remove(root)
+    }
+
+    @Test func aStickerOnASubjectAtTheTopOfTheFrameStaysAtLeastHalfInView() {
+        let editor = EditorViewModel()
+
+        let layout = editor.stickerLayout(imageWidth: 100, imageHeight: 100, on: CGRect(x: 0.3, y: 0.02, width: 0.4, height: 0.5))
+
+        #expect(abs(layout.centerY) < 0.0001)
     }
 
     @Test func fullFrameStickerCanFollowAnObjectInTheVideoUnderIt() async throws {

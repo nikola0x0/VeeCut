@@ -40,7 +40,7 @@ extension EditorViewModel {
 
         objectTrackingProgress[clipId] = 0
         defer { objectTrackingProgress[clipId] = nil }
-        let result = try await ObjectTracker.track(request, client: client) { fraction in
+        let result = try await ObjectTracker.track(request, client: client) { [weak self] fraction in
             Task { @MainActor [weak self] in
                 guard let self, self.objectTrackingProgress[clipId] != nil else { return }
                 self.objectTrackingProgress[clipId] = fraction

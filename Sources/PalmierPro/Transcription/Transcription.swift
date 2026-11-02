@@ -115,7 +115,10 @@ enum Transcription {
             let sameLang = supported.filter { $0.language.languageCode?.identifier == lang }
             guard !sameLang.isEmpty else { continue }
             let region = base.region?.identifier
-            return sameLang.first { $0.region?.identifier == region } ?? sameLang.first
+            let defaultRegion = Locale(identifier: lang).language.maximalIdentifier.split(separator: "-").last.map(String.init)
+            return sameLang.first { $0.region?.identifier == region }
+                ?? sameLang.first { $0.region?.identifier == defaultRegion }
+                ?? sameLang.first
         }
         return nil
     }

@@ -7,7 +7,7 @@ extension EditorViewModel {
             footageScanPending = true
             return
         }
-        let assets = mediaAssets.filter { $0.type == .video && !$0.isGenerating }
+        let assets = mediaAssets.filter { $0.type == .video && !$0.isGenerating && $0.duration > 0 }
             .map { (id: $0.id, url: $0.url, duration: $0.duration, hasAudio: $0.hasAudio) }
         guard !assets.isEmpty else { return }
         let notes = footageNotes
@@ -62,13 +62,14 @@ extension EditorViewModel {
         footageReadTask = Task { [weak self] in
             await self?.readUnreadFootage()
             guard let self, !Task.isCancelled else { return }
-            recommendFromFootage()
             footageReadTask = nil
-            resumeFootageReadWaiters()
             if footageReadPending {
                 footageReadPending = false
                 readFootageInBackground()
+            } else {
+                recommendFromFootage()
             }
+            resumeFootageReadWaiters()
         }
     }
 
@@ -138,12 +139,18 @@ extension EditorViewModel {
         let notes = coachVideoIds.compactMap { footageNotes[$0] }.filter { $0.summary != nil }
         guard !notes.isEmpty, footageRecommendation?.assetIds != notes.map(\.assetId).sorted() else { return }
         footageRecommendTask = Task { [weak self] in
-            defer { self?.footageRecommendTask = nil }
+            var recommended = false
+            defer {
+                self?.footageRecommendTask = nil
+                // Clips read while this ran make it stale; the asset-id guard stops a repeat once it matches.
+                if recommended, self?.footageReadTask == nil { self?.recommendFromFootage() }
+            }
             guard let model = try? await self?.coachModelProvider() else { return }
             do {
                 let recommendation = try await CoachRecommender.recommend(notes, client: model)
                 guard let self, !Task.isCancelled else { return }
                 footageRecommendation = recommendation
+                recommended = true
                 onProjectCheckpointRequired?()
                 showCoachIfNeeded()
             } catch {

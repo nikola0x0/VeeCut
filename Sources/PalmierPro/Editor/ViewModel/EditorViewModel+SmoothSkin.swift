@@ -7,7 +7,7 @@ enum SmoothSkinFailure: Error, Equatable {
 
 /// Smooth Skin retouches faces only: the face of a person, or the clip's most visible face, found once with SAM and reused.
 extension EditorViewModel {
-    static let smoothSkinEffect = "retouch.smoothSkin"
+    nonisolated static let smoothSkinEffect = "retouch.smoothSkin"
     static let smoothSkinDefaults = (smoothing: 0.6, blemishes: 1.0)
 
     /// The face already found for `person` (nil: the clip's most visible face), or `person` itself when it is a face.
