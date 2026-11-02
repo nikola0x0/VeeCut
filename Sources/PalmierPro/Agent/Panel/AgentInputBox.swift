@@ -36,7 +36,6 @@ struct AgentInputBox<LeadingTools: View>: View {
     @State private var mentionTab: MentionTab = .all
     @State private var mentionScrollTick: Int = 0
     @State private var isDropTargeted = false
-    @Namespace private var sendStopNamespace
 
     private var showMentionPicker: Bool { mentionQuery != nil }
 
@@ -46,20 +45,21 @@ struct AgentInputBox<LeadingTools: View>: View {
 
     var body: some View {
         VStack(spacing: 0) {
+            if showMentionPicker {
+                MentionPopover(
+                    query: mentionQuery ?? "",
+                    candidates: mentionCandidates,
+                    highlightedIndex: $highlightedMentionIndex,
+                    tab: $mentionTab,
+                    scrollTick: mentionScrollTick,
+                    onPick: { candidate in pickMention(candidate) }
+                )
+                Rectangle()
+                    .fill(AppTheme.Border.subtleColor)
+                    .frame(height: AppTheme.BorderWidth.hairline)
+                    .transition(.opacity)
+            }
             textField
-                .popover(isPresented: Binding(
-                    get: { showMentionPicker },
-                    set: { if !$0 { mentionQuery = nil } }
-                ), attachmentAnchor: .point(.topLeading), arrowEdge: .top) {
-                    MentionPopover(
-                        query: mentionQuery ?? "",
-                        candidates: mentionCandidates,
-                        highlightedIndex: $highlightedMentionIndex,
-                        tab: $mentionTab,
-                        scrollTick: mentionScrollTick,
-                        onPick: { candidate in pickMention(candidate) }
-                    )
-                }
                 .onChange(of: mentionTab) { _, _ in highlightedMentionIndex = 0 }
                 .onChange(of: editor.agentService.inputFocusRequested, initial: true) { _, requested in
                     guard requested else { return }
@@ -68,19 +68,8 @@ struct AgentInputBox<LeadingTools: View>: View {
                 }
             bottomBar
         }
-        .glassEffect(.regular, in: .rect(cornerRadius: AppTheme.Radius.xl))
-        .overlay {
-            RoundedRectangle(cornerRadius: AppTheme.Radius.xl, style: .continuous)
-                .strokeBorder(
-                    isDropTargeted ? AppTheme.Accent.primary.opacity(AppTheme.Opacity.strong)
-                        : focused ? AppTheme.Accent.primary.opacity(AppTheme.Opacity.medium)
-                        : AppTheme.Interaction.fill(AppTheme.Opacity.hint),
-                    lineWidth: (focused || isDropTargeted) ? AppTheme.BorderWidth.thin : AppTheme.BorderWidth.hairline
-                )
-                .allowsHitTesting(false)
-        }
-        .animation(.easeOut(duration: 0.15), value: focused)
-        .animation(.easeOut(duration: 0.15), value: isDropTargeted)
+        .veeField(focused: focused || isDropTargeted)
+        .animation(.easeOut(duration: AppTheme.Anim.hover), value: showMentionPicker)
         .onDrop(of: [.fileURL], isTargeted: $isDropTargeted, perform: handleDrop)
     }
 
@@ -96,11 +85,11 @@ struct AgentInputBox<LeadingTools: View>: View {
             .padding(.horizontal, AppTheme.Spacing.mdLg)
             .padding(.top, AppTheme.Spacing.smMd)
             .padding(.bottom, AppTheme.Spacing.xs)
-            .frame(minHeight: 32, maxHeight: 64, alignment: .topLeading)
+            .clipped()
             .onChange(of: draft) { _, new in updateMentionQuery(from: new) }
 
             if draft.isEmpty {
-                Text(L10n.string("Ask, or type @ to reference media"))
+                Text(L10n.string("Ask Vee, or type @ to reference media"))
                     .font(.body)
                     .foregroundStyle(AppTheme.Text.mutedColor)
                     .padding(.horizontal, AppTheme.Spacing.mdLg)
@@ -111,47 +100,25 @@ struct AgentInputBox<LeadingTools: View>: View {
     }
 
     private var bottomBar: some View {
-        HStack(spacing: AppTheme.Spacing.md) {
+        HStack(spacing: AppTheme.Spacing.sm) {
             leadingTools
             Spacer(minLength: 0)
-            GlassEffectContainer(spacing: AppTheme.Spacing.xs) {
-                sendStopButton
-            }
+            sendStopButton
         }
         .padding(.horizontal, AppTheme.Spacing.sm)
         .padding(.vertical, AppTheme.Spacing.sm)
     }
 
-    @ViewBuilder
     private var sendStopButton: some View {
-        if isSending {
-            Button(action: onCancel) {
-                Image(systemName: "stop.fill")
-                    .font(.system(size: AppTheme.FontSize.xs, weight: .bold))
-                    .frame(width: AppTheme.IconSize.sm, height: AppTheme.IconSize.sm)
-            }
-            .buttonStyle(.glass)
-            .buttonBorderShape(.circle)
-            .controlSize(.regular)
-            .tint(AppTheme.Text.secondaryColor)
-            .glassEffectID("sendStop", in: sendStopNamespace)
-            .help(L10n.string("Stop"))
-            .transition(.scale.combined(with: .opacity))
-        } else {
-            Button(action: onSend) {
-                Image(systemName: "arrow.up")
-                    .font(.system(size: AppTheme.FontSize.sm, weight: .bold))
-                    .frame(width: AppTheme.IconSize.sm, height: AppTheme.IconSize.sm)
-            }
-            .buttonStyle(.glassProminent)
-            .buttonBorderShape(.circle)
-            .controlSize(.regular)
-            .tint(AppTheme.Accent.primary)
-            .glassEffectID("sendStop", in: sendStopNamespace)
-            .disabled(!canSend)
-            .opacity(canSend ? 1 : AppTheme.Opacity.strong)
-            .transition(.scale.combined(with: .opacity))
+        Button(action: isSending ? onCancel : onSend) {
+            Image(systemName: isSending ? "stop.fill" : "arrow.up")
+                .font(.system(size: AppTheme.FontSize.md, weight: AppTheme.FontWeight.bold))
+                .frame(width: AppTheme.IconSize.sm, height: AppTheme.IconSize.sm)
         }
+        .buttonStyle(.capsule(.prominent, size: .small))
+        .disabled(!isSending && !canSend)
+        .help(isSending ? L10n.string("Stop") : L10n.string("Send"))
+        .contentTransition(.symbolEffect(.replace))
     }
 
     private func cycleMentionTab(reverse: Bool) {

@@ -6,8 +6,7 @@ struct ObjectDock: View {
 
     var body: some View {
         DockContent(clipId: editor.shelfClipId)
-            .padding(.horizontal, AppTheme.Spacing.lgXl)
-            .padding(.vertical, AppTheme.Spacing.sm)
+            .padding(AppTheme.Spacing.mdLg)
     }
 }
 
@@ -16,8 +15,8 @@ private struct DockContent: View {
     @Environment(EditorViewModel.self) private var editor
     let clipId: String?
     @State private var namingObject = false
-    /// The tool whose how-to popover is showing; it closes on the first click into the video.
-    @State private var hintedTool: CanvasSelectionKind?
+    /// The how-to card for the tool just switched on; it goes when the tool does or tracking starts.
+    @State private var hint: ToolHint?
 
     private var looksSubject: CanvasSubject? {
         guard editor.objectCardOpen, let subject = editor.validCanvasSubject, subject.clipId == clipId else { return nil }
@@ -25,102 +24,112 @@ private struct DockContent: View {
     }
 
     var body: some View {
-        VStack(spacing: AppTheme.Spacing.sm) {
-            if let subject = looksSubject {
-                DockLooksRow(subject: subject)
-                    .dockSurface()
-                    .transition(.move(edge: .bottom).combined(with: .opacity))
-            }
-            HStack(spacing: AppTheme.Spacing.sm) {
+        HStack(alignment: .top, spacing: AppTheme.Spacing.sm) {
+            VStack(spacing: AppTheme.Spacing.xs) {
                 tools
-                Rectangle()
-                    .fill(AppTheme.Border.subtleColor)
-                    .frame(width: AppTheme.BorderWidth.hairline, height: AppTheme.IconSize.md)
-                FittingRow { objects }
-                if let trackingClipId = editor.subjectTrackingClipId {
-                    TrackingIndicator(clipId: trackingClipId)
-                        .transition(.asymmetric(
-                            insertion: .scale(scale: 0.4, anchor: .leading).combined(with: .opacity),
-                            removal: .scale(scale: 0.7, anchor: .leading).combined(with: .opacity)
-                        ))
+                if let clipId {
+                    Rectangle()
+                        .fill(AppTheme.Border.subtleColor)
+                        .frame(width: AppTheme.IconSize.md, height: AppTheme.BorderWidth.hairline)
+                        .padding(.vertical, AppTheme.Spacing.xxs)
+                    objects(clipId)
                 }
             }
             .dockSurface()
+            VStack(alignment: .leading, spacing: AppTheme.Spacing.sm) {
+                if let trackingClipId = editor.subjectTrackingClipId {
+                    TrackingIndicator(clipId: trackingClipId)
+                        .dockSurface()
+                        .transition(.scale(scale: 0.7, anchor: .leading).combined(with: .opacity))
+                }
+                if let hint, editor.canvasSelection == hint.kind, !editor.isSubjectTracking {
+                    ToolCard(icon: hint.icon, title: hint.title, text: hint.text) { self.hint = nil }
+                        .dockSurface()
+                        .transition(.move(edge: .leading).combined(with: .opacity))
+                }
+                if namingObject, let clipId, !editor.isSubjectTracking {
+                    ToolCard(icon: .search, title: L10n.string("Find"),
+                             text: L10n.string("Describe what to track, like sky or the red car."),
+                             onClose: { namingObject = false }) {
+                        TrackByNameField(onTrack: { name in
+                            editor.trackSubject(named: name, clipId: clipId)
+                            namingObject = false
+                        }, onCancel: { namingObject = false })
+                    }
+                    .dockSurface()
+                    .transition(.move(edge: .leading).combined(with: .opacity))
+                }
+                if let subject = looksSubject {
+                    DockLooksRow(subject: subject)
+                        .dockSurface()
+                        .transition(.move(edge: .leading).combined(with: .opacity))
+                }
+            }
         }
         .animation(.easeOut(duration: AppTheme.Anim.transition), value: looksSubject)
+        .animation(.easeOut(duration: AppTheme.Anim.transition), value: hint)
+        .animation(.easeOut(duration: AppTheme.Anim.transition), value: namingObject)
         .animation(AppTheme.Anim.fluid, value: editor.subjectTrackingClipId)
     }
 
     private var tools: some View {
-        HStack(spacing: AppTheme.Spacing.xs) {
-            canvasTool(.subject, title: L10n.string("Pick"), systemImage: "scribble",
+        VStack(spacing: AppTheme.Spacing.xs) {
+            canvasTool(.subject, title: L10n.string("Pick"), icon: .scribble,
                        help: L10n.string("Pick on video: scribble over, circle, or click what to track"),
                        hint: L10n.string("Scribble over the subject, circle it, or click it. \u{2325}-click picks the exact spot under the cursor."))
-            canvasTool(.brush, title: L10n.string("Brush"), systemImage: "paintbrush.pointed",
+            canvasTool(.brush, title: L10n.string("Brush"), icon: .brush,
                        help: L10n.string("Brush: paint over a region and SAM snaps it to the edges"),
                        hint: L10n.string("Paint over the area. SAM snaps it to the edges and follows it."))
-            toolButton(L10n.string("Find"), systemImage: "magnifyingglass", active: namingObject,
+            toolButton(L10n.string("Find"), icon: .search, active: namingObject,
                        help: L10n.string("Find something in the clip by describing it, like sky or the red car")) {
-                namingObject = true
-            }
-            .popover(isPresented: $namingObject, arrowEdge: .top) {
-                TrackByNameField { name in
-                    if let clipId { editor.trackSubject(named: name, clipId: clipId) }
-                    namingObject = false
+                namingObject.toggle()
+                if namingObject {
+                    hint = nil
+                    if let active = editor.canvasSelection { editor.toggleCanvasSelection(active) }
                 }
-                .padding(AppTheme.Spacing.mdLg)
-                .frame(width: AppTheme.ComponentSize.projectSearchWidth)
             }
         }
         .disabled(clipId == nil || editor.isSubjectTracking)
+        .help(clipId == nil ? L10n.string("Select a video clip") : "")
     }
 
-    @ViewBuilder
-    private var objects: some View {
-        if let clipId {
-            HStack(spacing: AppTheme.Spacing.xs) {
-                wholeClipChip(clipId)
-                ForEach(editor.canvasObjects(clipId: clipId)) { mask in
-                    ObjectChip(mask: mask, clipId: clipId)
-                }
+    /// The whole frame, then each tracked object as its own round thumbnail.
+    private func objects(_ clipId: String) -> some View {
+        ViewThatFits(in: .vertical) {
+            objectColumn(clipId)
+            ScrollView(.vertical, showsIndicators: false) { objectColumn(clipId) }
+        }
+        .disabled(editor.isSubjectTracking)
+    }
+
+    private func objectColumn(_ clipId: String) -> some View {
+        VStack(spacing: AppTheme.Spacing.xs) {
+            wholeClipChip(clipId)
+            ForEach(editor.canvasObjects(clipId: clipId)) { mask in
+                ObjectChip(mask: mask, clipId: clipId)
             }
-            .disabled(editor.isSubjectTracking)
-        } else {
-            Text(L10n.string("Select a video clip"))
-                .font(.system(size: AppTheme.FontSize.sm))
-                .foregroundStyle(AppTheme.Text.tertiaryColor)
         }
     }
 
-    private func canvasTool(_ kind: CanvasSelectionKind, title: String, systemImage: String, help: String, hint: String) -> some View {
-        toolButton(title, systemImage: systemImage, active: editor.canvasSelection == kind, help: help) {
+    private func canvasTool(_ kind: CanvasSelectionKind, title: String, icon: PhosphorIcon, help: String, hint text: String) -> some View {
+        toolButton(title, icon: icon, active: editor.canvasSelection == kind, help: help) {
             editor.toggleCanvasSelection(kind)
-            hintedTool = editor.canvasSelection == kind ? kind : nil
-        }
-        .popover(isPresented: Binding(
-            get: { hintedTool == kind && editor.canvasSelection == kind && !editor.isSubjectTracking },
-            set: { if !$0 { hintedTool = nil } }
-        ), arrowEdge: .top) {
-            Text(verbatim: hint)
-                .font(.system(size: AppTheme.FontSize.sm))
-                .foregroundStyle(AppTheme.Text.primaryColor)
-                .fixedSize()
-                .padding(AppTheme.Spacing.mdLg)
+            hint = editor.canvasSelection == kind ? ToolHint(kind: kind, icon: icon, title: title, text: text) : nil
+            if hint != nil { namingObject = false }
         }
     }
 
-    private func toolButton(_ title: String, systemImage: String, active: Bool, help: String,
+    private func toolButton(_ title: String, icon: PhosphorIcon, active: Bool, help: String,
                             action: @escaping () -> Void) -> some View {
         Button(action: action) {
-            Label(title, systemImage: systemImage)
-                .labelStyle(.titleAndIcon)
-                .dockPill(
-                    fill: active ? AppTheme.Accent.canvasAI : AppTheme.Interaction.fill(AppTheme.Opacity.faint),
-                    foreground: active ? AppTheme.MediaOverlay.primaryColor : AppTheme.Text.primaryColor
-                )
+            PhosphorImage(icon)
+                .frame(width: AppTheme.IconSize.sm, height: AppTheme.IconSize.sm)
+                .stripButton(fill: active ? AppTheme.Accent.canvasAI : AppTheme.Interaction.fill(AppTheme.Opacity.faint),
+                             foreground: active ? AppTheme.MediaOverlay.primaryColor : AppTheme.Text.primaryColor)
         }
         .buttonStyle(.plain)
         .help(help)
+        .accessibilityLabel(title)
     }
 
     private func wholeClipChip(_ clipId: String) -> some View {
@@ -128,14 +137,13 @@ private struct DockContent: View {
         return Button {
             editor.toggleCanvasObject(clipId: clipId, maskId: nil)
         } label: {
-            Label(L10n.string("Full Frame"), systemImage: "rectangle.dashed")
-                .labelStyle(.titleAndIcon)
-                .dockPill(
-                    fill: selected ? AppTheme.Accent.canvasAI : AppTheme.Tint.blushColor,
-                    foreground: selected ? AppTheme.MediaOverlay.primaryColor : AppTheme.Tint.inkColor
-                )
+            PhosphorImage(.selection)
+                .frame(width: AppTheme.IconSize.sm, height: AppTheme.IconSize.sm)
+                .stripButton(fill: selected ? AppTheme.Accent.canvasAI : AppTheme.Tint.blushColor,
+                             foreground: selected ? AppTheme.MediaOverlay.primaryColor : AppTheme.Tint.inkColor)
         }
         .buttonStyle(.plain)
+        .accessibilityLabel(L10n.string("Full Frame"))
         .help(L10n.string("Presets and changes for the full frame, not one object"))
     }
 }
@@ -152,18 +160,13 @@ private struct ObjectChip: View {
         Button {
             editor.toggleCanvasObject(clipId: clipId, maskId: mask.id)
         } label: {
-            HStack(spacing: AppTheme.Spacing.xs) {
-                ObjectThumbnail(maskId: mask.id)
-                Text(verbatim: mask.label).lineLimit(1)
-            }
-            .dockPill(
-                fill: selected ? AppTheme.Accent.canvasAI : AppTheme.ObjectKind.fill,
-                foreground: selected ? AppTheme.MediaOverlay.primaryColor : AppTheme.Tint.inkColor,
-                leadingInset: AppTheme.Spacing.xs
-            )
+            ObjectThumbnail(maskId: mask.id)
+                .stripButton(fill: selected ? AppTheme.Accent.canvasAI : AppTheme.ObjectKind.fill,
+                             foreground: selected ? AppTheme.MediaOverlay.primaryColor : AppTheme.Tint.inkColor)
         }
         .buttonStyle(.plain)
-        .help(L10n.string("Tracked with SAM 3.1"))
+        .help(mask.label)
+        .accessibilityLabel(Text(verbatim: mask.label))
         .onHover { hovering in
             if hovering {
                 editor.hoveredObject = subject
@@ -214,6 +217,24 @@ private struct DockLooksRow: View {
     let subject: CanvasSubject
 
     var body: some View {
+        // A narrow preview stacks the actions under the field, then drops their titles; it never runs under the inspector.
+        ViewThatFits(in: .horizontal) {
+            HStack(spacing: AppTheme.Spacing.xs) {
+                looksAndField
+                actions.labelStyle(.titleAndIcon)
+            }
+            VStack(alignment: .leading, spacing: AppTheme.Spacing.xs) {
+                looksAndField
+                actions.labelStyle(.titleAndIcon)
+            }
+            VStack(alignment: .leading, spacing: AppTheme.Spacing.xs) {
+                looksAndField
+                actions.labelStyle(.iconOnly)
+            }
+        }
+    }
+
+    private var looksAndField: some View {
         HStack(spacing: AppTheme.Spacing.xs) {
             looksMenu
             DescribeLookField(
@@ -221,7 +242,6 @@ private struct DockLooksRow: View {
                 status: editor.lookRequestStatus.flatMap { $0.clipId == subject.clipId ? $0 : nil },
                 onCancel: { editor.cancelLookRequest() }
             ) { editor.requestLook(described: $0, clipId: subject.clipId, maskId: subject.maskId) }
-            actions
         }
     }
 
@@ -275,8 +295,7 @@ private struct DockLooksRow: View {
                     }
                 } label: {
                     Label(L10n.string("Label"), systemImage: "character.textbox")
-                        .labelStyle(.titleAndIcon)
-                        .dockPill(fill: AppTheme.Interaction.fill(AppTheme.Opacity.faint), foreground: AppTheme.Text.primaryColor)
+                            .dockPill(fill: AppTheme.Interaction.fill(AppTheme.Opacity.faint), foreground: AppTheme.Text.primaryColor)
                 }
                 .buttonStyle(.plain)
                 .help(L10n.string("Add the object\u{2019}s name as text that follows it"))
@@ -285,7 +304,6 @@ private struct DockLooksRow: View {
                 editor.insertObjectMention(subject)
             } label: {
                 Label(L10n.string("Ask in Chat"), systemImage: "bubble.left.and.text.bubble.right")
-                    .labelStyle(.titleAndIcon)
                     .dockPill(fill: AppTheme.Background.clearColor, foreground: AppTheme.Accent.canvasAI)
                     .overlay(Capsule(style: .continuous).strokeBorder(AppTheme.Accent.canvasAI, lineWidth: AppTheme.BorderWidth.thin))
             }
@@ -295,7 +313,6 @@ private struct DockLooksRow: View {
                 editor.showCanvasObjectDetails()
             } label: {
                 Label(L10n.string("Tune…"), systemImage: "slider.horizontal.3")
-                    .labelStyle(.titleAndIcon)
                     .dockPill(fill: AppTheme.Interaction.fill(AppTheme.Opacity.faint), foreground: AppTheme.Text.primaryColor)
             }
             .buttonStyle(.plain)
@@ -369,39 +386,38 @@ private struct ProgressPill: View {
 }
 
 /// Shows its content at full width when it fits, otherwise scrolls it horizontally.
-private struct FittingRow<Content: View>: View {
-    @ViewBuilder let content: Content
-
-    var body: some View {
-        ViewThatFits(in: .horizontal) {
-            content.fixedSize(horizontal: true, vertical: false)
-            ScrollView(.horizontal, showsIndicators: false) { content }
-        }
-    }
-}
-
 /// Finds and tracks everything matching a short description ("sky", "the red car") instead of marking it.
 struct TrackByNameField: View {
     let onTrack: (String) -> Void
+    var onCancel: () -> Void = {}
     @State private var name = ""
+    @FocusState private var focused: Bool
+
+    private var trimmed: String { name.trimmingCharacters(in: .whitespacesAndNewlines) }
 
     var body: some View {
-        HStack(spacing: AppTheme.Spacing.xs) {
+        HStack(spacing: AppTheme.Spacing.sm) {
             TextField(L10n.string("Find: sky, the red car…"), text: $name)
-                .textFieldStyle(.roundedBorder)
-                .font(.system(size: AppTheme.FontSize.sm))
-                .controlSize(.small)
+                .textFieldStyle(.plain)
+                .font(.system(size: AppTheme.FontSize.md))
+                .focused($focused)
                 .onSubmit(track)
+                .onExitCommand(perform: onCancel)
+                .padding(.horizontal, AppTheme.Spacing.smMd)
+                .padding(.vertical, AppTheme.Spacing.sm)
+                .veeField(focused: focused)
                 .accessibilityLabel(L10n.string("Find"))
             Button(L10n.string("Find"), action: track)
-                .controlSize(.small)
-                .disabled(name.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty)
+                .buttonStyle(.capsule(.prominent, size: .regular))
+                .disabled(trimmed.isEmpty)
         }
+        .padding(.top, AppTheme.Spacing.xs)
+        .onAppear { focused = true }
     }
 
     private func track() {
-        guard !name.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty else { return }
-        onTrack(name)
+        guard !trimmed.isEmpty else { return }
+        onTrack(trimmed)
         name = ""
     }
 }
@@ -530,7 +546,6 @@ private struct StickerButton: View {
         } else {
             Button { asking = true } label: {
                 Label(L10n.string("Sticker"), systemImage: "face.smiling")
-                    .labelStyle(.titleAndIcon)
                     .dockPill(fill: AppTheme.Interaction.fill(AppTheme.Opacity.faint), foreground: AppTheme.Text.primaryColor)
             }
             .buttonStyle(.plain)
@@ -608,6 +623,15 @@ private extension View {
             .shadow(AppTheme.Shadow.md)
     }
 
+    /// A square button in the tool strip.
+    func stripButton(fill: Color, foreground: Color) -> some View {
+        font(.system(size: AppTheme.FontSize.md, weight: AppTheme.FontWeight.medium))
+            .foregroundStyle(foreground)
+            .frame(width: AppTheme.IconSize.xl, height: AppTheme.IconSize.xl)
+            .background(RoundedRectangle(cornerRadius: AppTheme.Radius.md, style: .continuous).fill(fill))
+            .contentShape(RoundedRectangle(cornerRadius: AppTheme.Radius.md))
+    }
+
     func dockPill(fill: Color, foreground: Color, leadingInset: CGFloat = AppTheme.Spacing.smMd) -> some View {
         font(.system(size: AppTheme.FontSize.sm, weight: AppTheme.FontWeight.medium))
             .foregroundStyle(foreground)
@@ -616,5 +640,56 @@ private extension View {
             .frame(height: AppTheme.IconSize.lgXl)
             .background(Capsule(style: .continuous).fill(fill))
             .contentShape(Capsule())
+    }
+}
+
+private struct ToolHint: Equatable {
+    let kind: CanvasSelectionKind
+    let icon: PhosphorIcon
+    let title: String
+    let text: String
+}
+
+/// A tool's card beside the tool strip: how to use it, plus any controls it needs.
+private struct ToolCard<Accessory: View>: View {
+    let icon: PhosphorIcon
+    let title: String
+    let text: String
+    let onClose: () -> Void
+    @ViewBuilder var accessory: Accessory
+
+    var body: some View {
+        HStack(alignment: .top, spacing: AppTheme.Spacing.smMd) {
+            PhosphorImage(icon)
+                .frame(width: AppTheme.IconSize.xs, height: AppTheme.IconSize.xs)
+                .foregroundStyle(AppTheme.Tint.inkColor)
+                .frame(width: AppTheme.IconSize.lg, height: AppTheme.IconSize.lg)
+                .background(Circle().fill(AppTheme.Tint.lilacColor))
+            VStack(alignment: .leading, spacing: AppTheme.Spacing.xxs) {
+                Text(verbatim: title)
+                    .font(.system(size: AppTheme.FontSize.md, weight: AppTheme.FontWeight.semibold))
+                    .foregroundStyle(AppTheme.Text.primaryColor)
+                Text(verbatim: text)
+                    .font(.system(size: AppTheme.FontSize.sm))
+                    .foregroundStyle(AppTheme.Text.secondaryColor)
+                    .fixedSize(horizontal: false, vertical: true)
+                accessory
+            }
+            .frame(maxWidth: AppTheme.Coach.toolHintWidth, alignment: .leading)
+            Button(action: onClose) {
+                Image(systemName: "xmark")
+                    .font(.system(size: AppTheme.FontSize.xs, weight: AppTheme.FontWeight.semibold))
+                    .foregroundStyle(AppTheme.Text.tertiaryColor)
+                    .frame(width: AppTheme.IconSize.xs, height: AppTheme.IconSize.xs)
+            }
+            .buttonStyle(.plain)
+            .help(L10n.string("Close"))
+        }
+    }
+}
+
+extension ToolCard where Accessory == EmptyView {
+    init(icon: PhosphorIcon, title: String, text: String, onClose: @escaping () -> Void) {
+        self.init(icon: icon, title: title, text: text, onClose: onClose) { EmptyView() }
     }
 }

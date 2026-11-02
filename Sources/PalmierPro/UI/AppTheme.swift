@@ -45,15 +45,33 @@ enum AppTheme {
         static let neutralPillText = Color.white
     }
 
+    enum Tour {
+        static let calloutWidth: CGFloat = 380
+        static let bookendWidth: CGFloat = 520
+        static let calloutPoseHeight: CGFloat = 88
+        static let bookendPoseHeight: CGFloat = 200
+        /// Generous so the clamped callout never runs off the window.
+        static let calloutHeightEstimate: CGFloat = 240
+        static let dotSize: CGFloat = 6
+        static let activeDotWidth: CGFloat = 18
+    }
+
     enum Coach {
         static let barHeight: CGFloat = 30
-        /// An empty section between filled ones still gets room for its label.
-        static let minimumBandWidth: CGFloat = 72
-        static let cardWidth: CGFloat = 640
+        static let laneHeight: CGFloat = 44
+        static let ghostEdgeHeight: CGFloat = 4
+        static let quipInterval: Double = 2.6
+        static let songSlotHeight: CGFloat = 56
+        static let toolHintWidth: CGFloat = 260
+        static let cardWidth: CGFloat = 760
+        static let cardPoseHeight: CGFloat = 120
+        static let statusPoseHeight: CGFloat = 72
         /// Spotlight-like: the card's top sits this far down the window.
         static let cardTopFraction: CGFloat = 0.16
         static let popoverWidth: CGFloat = 340
-        static let nudgeWidth: CGFloat = 320
+        static let veeAvatarSize: CGFloat = 34
+        static let subtitleMaxWidth: CGFloat = 600
+        static var subtitleBackground: Color { Tint.inkColor.opacity(Opacity.prominent) }
         static let thumbnailSize = CGSize(width: 64, height: 36)
         static let lengthFieldWidth: CGFloat = 56
         static let maxSuggestionsHeight: CGFloat = 260
@@ -65,7 +83,7 @@ enum AppTheme {
     enum Home {
         /// Clears the window's traffic lights in the transparent title bar.
         static let trafficLightInset: CGFloat = 80
-        static let headerHeight: CGFloat = 52
+        static let headerHeight: CGFloat = 60
         static let contentPadding: CGFloat = 56
         static let columnGap: CGFloat = 40
         static let projectsWidth: CGFloat = 480
@@ -74,9 +92,8 @@ enum AppTheme {
         static let firstLaunchQuestionSize: CGFloat = 52
         static let projectTitleSize: CGFloat = 22
         static let dropMinHeight: CGFloat = 260
-        static let tile = CGSize(width: 74, height: 48)
-        static let firstLaunchTile = CGSize(width: 120, height: 78)
-        static let tileTilt: Double = 7
+        static let footageIllustrationHeight: CGFloat = 130
+        static let firstLaunchIllustrationHeight: CGFloat = 190
         static let rowThumb = CGSize(width: 64, height: 40)
         static let latestThumbAspect: CGFloat = 2
         static let planStripHeight: CGFloat = 30
@@ -275,6 +292,19 @@ enum AppTheme {
         static var warningColor: Color { Color(warning) }
 
         static var pendingColor: Color { Color(NSColor.systemYellow) }
+    }
+
+    /// The chat's message box: the text area grows with each line, then scrolls.
+    enum Composer {
+        static let minTextHeight: CGFloat = 32
+        static let maxTextHeight: CGFloat = 160
+    }
+
+    /// The chat's @-mention list.
+    enum Mention {
+        static let rowHeight: CGFloat = 40
+        static let maxVisibleRows = 5
+        static let thumbnailSize = CGSize(width: 36, height: 24)
     }
 
     enum AgentActivity {
@@ -551,11 +581,18 @@ enum AppTheme {
         static let skillToastWidth: CGFloat = 380
         static let skillMenuWidth: CGFloat = 168
         static let skillToastDuration: Duration = .seconds(5)
+        static let poweredByVeeHeight: CGFloat = 110
+        static let poweredByBadgeHeight: CGFloat = 38
+        static let poweredByBadgeWidth: CGFloat = 250
+        static let poweredByLinkWidth: CGFloat = 64
+        static let poweredByLogoSize: CGFloat = 20
+        static let poweredByDash: [CGFloat] = [3, 4]
     }
 
     enum EditorPanel {
         static let defaultWidth: CGFloat = 340
-        static let minimumWidth: CGFloat = 300
+        /// The narrowest the inspector's rows fit without cutting off the reset buttons.
+        static let minimumWidth: CGFloat = 320
         static let labelColumnWidth: CGFloat = 88
         static let rowMinHeight: CGFloat = 22
         static let groupHeaderHeight: CGFloat = 28
@@ -564,6 +601,7 @@ enum AppTheme {
         static let compactNumericFieldWidth: CGFloat = 36
         static let fontMenuWidth: CGFloat = 160
         static let textEditorMinHeight: CGFloat = 96
+        static let lookTileHeight: CGFloat = 44
         static let contentInsets = EdgeInsets(
             top: Spacing.smMd,
             leading: Spacing.smMd + IconSize.xs + Spacing.sm,
@@ -579,8 +617,8 @@ enum AppTheme {
             width: 960,
             height: 600
         )
-        static let projectTitlebarLeadingWidth: CGFloat = 228
-        static let projectTitlebarTrailingWidth: CGFloat = 280
+        static let projectTitlebarLeadingWidth: CGFloat = 290
+        static let projectTitlebarTrailingWidth: CGFloat = 320
         static let settingsDefault = NSSize(width: 1200, height: 800)
         static let settingsMin = NSSize(width: 860, height: 640)
     }
@@ -650,6 +688,7 @@ enum AppTheme {
         /// Fluid spring for UI that grows out of and folds back into its container.
         static let fluid = Animation.spring(response: 0.38, dampingFraction: 0.82)
         static let pulse: Double = 0.8
+        static let veeHop: Double = 0.55
         static let slipPreviewRefresh: Duration = .milliseconds(67)
         static let agentChangeHighlightHold: Double = 1.0
         static let agentChangeHighlightFade: Double = 0.3

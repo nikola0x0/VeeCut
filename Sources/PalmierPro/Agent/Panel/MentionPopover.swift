@@ -73,6 +73,7 @@ enum MentionCandidate {
 }
 
 /// Pure render. State lives on `AgentInputBox` so keyboard nav follows the focused TextEditor.
+/// The @-mention list, shown inside the composer above the text so it never covers the conversation.
 struct MentionPopover: View {
     let query: String
     let candidates: [MentionCandidate]
@@ -84,14 +85,14 @@ struct MentionPopover: View {
     @State private var visibleIDs: Set<String> = []
 
     var body: some View {
+        let rows = min(max(candidates.count, 1), AppTheme.Mention.maxVisibleRows)
         VStack(alignment: .leading, spacing: 0) {
             tabStrip
-            Rectangle().fill(AppTheme.Border.subtleColor).frame(height: 0.5)
+            Rectangle().fill(AppTheme.Border.subtleColor).frame(height: AppTheme.BorderWidth.hairline)
             contentArea
-                .frame(height: 280)
+                .frame(height: CGFloat(rows) * AppTheme.Mention.rowHeight)
         }
-        .frame(width: 260)
-        .glassEffect(.clear, in: .rect(cornerRadius: AppTheme.Radius.md))
+        .frame(maxWidth: .infinity)
     }
 
     @ViewBuilder
@@ -100,8 +101,8 @@ struct MentionPopover: View {
             Text(query.isEmpty
                 ? L10n.string(key: tab.localizedEmptyLabel)
                 : L10n.string("No matches for \"\(query)\""))
-                .font(.system(size: AppTheme.FontSize.xs))
-                .foregroundStyle(AppTheme.Text.mutedColor)
+                .font(.system(size: AppTheme.FontSize.sm))
+                .foregroundStyle(AppTheme.Text.tertiaryColor)
                 .frame(maxWidth: .infinity, maxHeight: .infinity)
                 .padding(AppTheme.Spacing.md)
         } else {
@@ -146,30 +147,29 @@ struct MentionPopover: View {
             ? .bottom
             : .top
 
-        withAnimation(.easeOut(duration: 0.12)) {
+        withAnimation(.easeOut(duration: AppTheme.Anim.hover)) {
             proxy.scrollTo(targetID, anchor: anchor)
         }
     }
 
     private var tabStrip: some View {
-        HStack(spacing: 0) {
+        HStack(spacing: AppTheme.Spacing.xxs) {
             ForEach(MentionTab.allCases, id: \.self) { t in
                 Text(L10n.string(key: t.localizedLabel))
-                    .font(.system(size: AppTheme.FontSize.xs, weight: t == tab ? .semibold : .regular))
-                    .foregroundStyle(t == tab ? AppTheme.Text.primaryColor : AppTheme.Text.tertiaryColor)
+                    .font(.system(size: AppTheme.FontSize.sm, weight: t == tab ? AppTheme.FontWeight.semibold : AppTheme.FontWeight.medium))
+                    .foregroundStyle(t == tab ? AppTheme.Accent.primary : AppTheme.Text.secondaryColor)
+                    .lineLimit(1)
                     .frame(maxWidth: .infinity)
-                    .padding(.vertical, 5)
+                    .padding(.vertical, AppTheme.Spacing.xs)
                     .background(
-                        t == tab
-                            ? AppTheme.Accent.primary.opacity(0.18)
-                            : Color.clear,
-                        in: RoundedRectangle(cornerRadius: AppTheme.Radius.sm)
+                        t == tab ? AppTheme.Accent.primary.opacity(AppTheme.Opacity.muted) : Color.clear,
+                        in: Capsule(style: .continuous)
                     )
-                    .contentShape(Rectangle())
+                    .contentShape(Capsule(style: .continuous))
                     .onTapGesture { tab = t }
             }
         }
-        .padding(AppTheme.Spacing.xs)
+        .padding(AppTheme.Spacing.sm)
     }
 
     private func mentionRow(_ candidate: MentionCandidate, isHighlighted: Bool) -> some View {
@@ -191,23 +191,28 @@ struct MentionPopover: View {
                     }
                 }
             }
-            .frame(width: 28, height: 20)
+            .frame(width: AppTheme.Mention.thumbnailSize.width, height: AppTheme.Mention.thumbnailSize.height)
             .clipShape(RoundedRectangle(cornerRadius: AppTheme.Radius.sm))
 
-            VStack(alignment: .leading, spacing: 1) {
+            VStack(alignment: .leading, spacing: 0) {
                 Text(verbatim: candidate.displayName)
-                    .font(.system(size: AppTheme.FontSize.xs, weight: .medium))
+                    .font(.system(size: AppTheme.FontSize.md, weight: AppTheme.FontWeight.medium))
                     .foregroundStyle(AppTheme.Text.primaryColor)
                     .lineLimit(1)
+                    .truncationMode(.middle)
                 Text(verbatim: subtitle(candidate))
-                    .font(.system(size: AppTheme.FontSize.xxs))
+                    .font(.system(size: AppTheme.FontSize.sm))
                     .foregroundStyle(AppTheme.Text.tertiaryColor)
             }
-            Spacer()
+            Spacer(minLength: 0)
         }
         .padding(.horizontal, AppTheme.Spacing.sm)
-        .padding(.vertical, 4)
-        .background(isHighlighted ? AppTheme.Accent.primary.opacity(0.15) : .clear)
+        .frame(maxHeight: .infinity)
+        .background(isHighlighted ? AppTheme.Accent.primary.opacity(AppTheme.Opacity.muted) : .clear,
+                    in: RoundedRectangle(cornerRadius: AppTheme.Radius.md, style: .continuous))
+        .padding(.horizontal, AppTheme.Spacing.xs)
+        .padding(.vertical, AppTheme.Spacing.xxs / 2)
+        .frame(height: AppTheme.Mention.rowHeight)
     }
 
     private func placeholder(systemImage: String) -> some View {

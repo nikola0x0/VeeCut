@@ -49,8 +49,8 @@ final class AgentService {
 
     var availableModels: [AgentModel] { AgentModel.allCases }
 
-    var activeBYOKProvider: AgentProvider? {
-        canStream ? model.provider : nil
+    func hasKey(for provider: AgentProvider) -> Bool {
+        !credentials[provider].isEmpty
     }
 
     var reasoningEffort: AgentReasoningEffort {

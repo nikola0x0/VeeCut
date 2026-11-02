@@ -1,7 +1,7 @@
 import SwiftUI
 
 struct CapsuleButtonStyle: ButtonStyle {
-    enum Variant { case secondary, prominent }
+    enum Variant { case secondary, tinted, prominent }
     enum Size { case small, regular }
 
     var variant: Variant = .secondary
@@ -26,16 +26,20 @@ struct CapsuleButtonStyle: ButtonStyle {
 
         private var foreground: AnyShapeStyle {
             guard isEnabled else { return AnyShapeStyle(AppTheme.Text.mutedColor) }
-            return variant == .prominent
-                ? AnyShapeStyle(AppTheme.Background.baseColor)
-                : AnyShapeStyle(AppTheme.Text.secondaryColor)
+            switch variant {
+            case .secondary: return AnyShapeStyle(AppTheme.Text.secondaryColor)
+            case .tinted: return AnyShapeStyle(AppTheme.Accent.primary)
+            case .prominent: return AnyShapeStyle(AppTheme.Background.baseColor)
+            }
         }
         private var background: AnyShapeStyle {
             guard isEnabled else { return AnyShapeStyle(AppTheme.Background.raisedColor) }
             if let fill { return fill }
-            return variant == .prominent
-                ? AnyShapeStyle(AppTheme.Accent.primary)
-                : AnyShapeStyle(AppTheme.Background.prominentColor)
+            switch variant {
+            case .secondary: return AnyShapeStyle(AppTheme.Background.prominentColor)
+            case .tinted: return AnyShapeStyle(AppTheme.Accent.primary.opacity(AppTheme.Opacity.muted))
+            case .prominent: return AnyShapeStyle(AppTheme.Accent.primary)
+            }
         }
 
         var body: some View {

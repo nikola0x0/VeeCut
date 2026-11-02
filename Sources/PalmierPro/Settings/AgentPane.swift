@@ -6,6 +6,7 @@ struct AgentPane: View {
 
     var body: some View {
         VStack(alignment: .leading, spacing: AppTheme.Spacing.xxl) {
+            VeePoweredBy()
             SettingsSection(title: L10n.string("AI Chat")) {
                 apiKeySection
             }

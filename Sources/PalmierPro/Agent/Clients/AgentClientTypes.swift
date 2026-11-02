@@ -76,9 +76,9 @@ enum AgentReasoningEffort: String, CaseIterable, Sendable {
 }
 
 enum AgentModel: String, CaseIterable, Codable, Sendable {
-    case sonnet5 = "claude-sonnet-5"
-    case opus5 = "claude-opus-5"
-    case fable5 = "claude-fable-5"
+    case sonnet5 = "claude-sonnet-5-5"
+    case opus5 = "claude-opus-5-5"
+    case fable5 = "claude-fable-5-1"
     case luna = "gpt-5.6-luna"
     case terra = "gpt-5.6-terra"
     case sol = "gpt-5.6-sol"
@@ -88,9 +88,9 @@ enum AgentModel: String, CaseIterable, Codable, Sendable {
 
     var displayName: String {
         switch self {
-        case .sonnet5: "Sonnet 5"
-        case .opus5: "Opus 5"
-        case .fable5: "Fable 5"
+        case .sonnet5: "Sonnet 5.5"
+        case .opus5: "Opus 5.5"
+        case .fable5: "Fable 5.1"
         case .luna: "GPT-5.6 Luna"
         case .terra: "GPT-5.6 Terra"
         case .sol: "GPT-5.6 Sol"

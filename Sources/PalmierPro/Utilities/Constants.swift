@@ -6,11 +6,13 @@ enum Layout {
     static let mediaPanelMin: CGFloat = 280
 
     // Inspector
-    static let inspectorDefault: CGFloat = AppTheme.EditorPanel.defaultWidth
-    static let inspectorMin: CGFloat = AppTheme.EditorPanel.minimumWidth
+    static let inspectorDefault: CGFloat = AppTheme.EditorPanel.defaultWidth + panelGap
+    static let inspectorMin: CGFloat = AppTheme.EditorPanel.minimumWidth + panelGap
 
     // Agent panel
-    static let agentPanelMin: CGFloat = 240
+    /// Wide enough for the composer with the longest model name; ComposerLayoutTests guards it.
+    static let agentPanelMin: CGFloat = 320
+    static let agentPanelDefault: CGFloat = 380
     static let agentPanelMax: CGFloat = 640
     static let chatColumnMax: CGFloat = 640
 

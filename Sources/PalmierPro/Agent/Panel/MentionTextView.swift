@@ -62,14 +62,15 @@ struct MentionTextView: NSViewRepresentable {
         }
     }
 
+    /// Measures with TextKit 2; asking a TextKit 2 view for `layoutManager` returns a stand-in that measures nothing.
     func sizeThatFits(_ proposal: ProposedViewSize, nsView: NSScrollView, context: Context) -> CGSize? {
-        guard let textView = context.coordinator.textView, let container = textView.textContainer,
-              let layoutManager = textView.layoutManager else { return nil }
+        guard let textView = context.coordinator.textView,
+              let layout = textView.textLayoutManager, let container = layout.textContainer else { return nil }
         let width = proposal.width ?? nsView.frame.width
-        container.containerSize = NSSize(width: max(width, 1), height: .greatestFiniteMagnitude)
-        layoutManager.ensureLayout(for: container)
-        let height = max(layoutManager.usedRect(for: container).height, Coordinator.font.boundingRectForFont.height)
-        return CGSize(width: width, height: ceil(height))
+        container.size = NSSize(width: max(width, 1), height: CGFloat.greatestFiniteMagnitude)
+        layout.ensureLayout(for: layout.documentRange)
+        let content = ceil(max(layout.usageBoundsForTextContainer.height, Coordinator.font.boundingRectForFont.height))
+        return CGSize(width: width, height: min(max(content, AppTheme.Composer.minTextHeight), AppTheme.Composer.maxTextHeight))
     }
 
     @MainActor
@@ -146,7 +147,8 @@ struct MentionTextView: NSViewRepresentable {
                 NSApp.currentEvent?.modifierFlags.contains(.shift) == true ? .newline : .submit
             case #selector(NSResponder.insertTab(_:)): .tab
             case #selector(NSResponder.insertBacktab(_:)): .backtab
-            case #selector(NSResponder.cancelOperation(_:)): .cancel
+            // Escape arrives as complete: in a text view, not cancelOperation:.
+            case #selector(NSResponder.cancelOperation(_:)), #selector(NSTextView.complete(_:)): .cancel
             default: nil
             }
             guard let command else { return false }

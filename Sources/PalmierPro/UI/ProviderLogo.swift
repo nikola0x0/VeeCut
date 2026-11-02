@@ -14,13 +14,18 @@ struct ProviderLogo: View {
 
         return Dictionary(uniqueKeysWithValues: urls.compactMap { url in
             let filename = url.deletingPathExtension().lastPathComponent
-            guard url.pathExtension == "png",
+            guard ["png", "svg"].contains(url.pathExtension),
                   filename.hasPrefix("logo-"),
                   let image = NSImage(contentsOf: url) else { return nil }
             image.size = NSSize(width: AppTheme.IconSize.xs, height: AppTheme.IconSize.xs)
-            return (String(filename.dropFirst("logo-".count)), image)
+            let key = String(filename.dropFirst("logo-".count))
+            image.isTemplate = monochrome.contains(key)
+            return (key, image)
         })
     }()
+
+    /// Single-colour brand marks, drawn in the text colour so they read in light and dark mode.
+    private static let monochrome: Set<String> = ["anthropic", "openai"]
 
     static func hasBundledLogo(for iconKey: String) -> Bool {
         images[iconKey] != nil
@@ -32,6 +37,7 @@ struct ProviderLogo: View {
                 Image(nsImage: image)
                     .resizable()
                     .aspectRatio(contentMode: .fit)
+                    .foregroundStyle(AppTheme.Text.primaryColor)
             } else {
                 Image(systemName: "sparkles")
                     .foregroundStyle(AppTheme.Text.tertiaryColor)

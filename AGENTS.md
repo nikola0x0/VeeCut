@@ -172,6 +172,12 @@ All UI styling MUST use `AppTheme` constants from `Sources/PalmierPro/UI/AppThem
 
 If a needed value doesn't exist in AppTheme, add it there first — don't hardcode it.
 
+Build controls from the shared components before styling anything by hand:
+
+- **Buttons and chips** → `.buttonStyle(.capsule(...))` (`secondary`, `tinted`, `prominent`); chip content → `ChipLabel`
+- **Menus shown as chips** → `.chipMenu()` (native `.borderlessButton` menus drop custom label views)
+- **Text-entry surfaces** → `.veeField(focused:)`
+
 ## Drag and drop
 
 SwiftUI `.onDrop` on a parent view shadows every drop target inside its layout area on macOS 26 — even AppKit `NSDraggingDestination` children registered directly with the window. Inner `.onDrop` modifiers silently never fire while a parent `.onDrop` is active.
