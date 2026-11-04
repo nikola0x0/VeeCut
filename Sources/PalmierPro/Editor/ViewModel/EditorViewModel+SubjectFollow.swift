@@ -164,17 +164,17 @@ extension EditorViewModel {
     }
 
     /// The follower's position track: its center at the link's spot of the subject's box (fractions of the box,
-    /// possibly outside it) on every frame both clips share where the subject shows.
+    /// possibly outside it) on every frame both clips share where the subject shows, kept on the canvas so at
+    /// most half of the follower ever leaves the frame.
     func followPath(for follower: Clip, link: SubjectFollowLink) -> Result<KeyframeTrack<AnimPair>, SubjectFollowFailure> {
         followBoxes(for: follower, link: link).flatMap { boxes in
             let samples = boxes.map { frame, box in
                 let size = follower.sizeAt(frame: frame)
+                let centerX = min(max(box.minX + link.anchorX * box.width, 0), 1)
+                let centerY = min(max(box.minY + link.anchorY * box.height, 0), 1)
                 return SubjectFollowPath.Sample(
                     offset: frame - follower.startFrame,
-                    topLeft: CGPoint(
-                        x: box.minX + link.anchorX * box.width - size.width / 2,
-                        y: box.minY + link.anchorY * box.height - size.height / 2
-                    )
+                    topLeft: CGPoint(x: centerX - size.width / 2, y: centerY - size.height / 2)
                 )
             }
             guard let track = SubjectFollowPath.track(samples) else { return .failure(.subjectAbsent) }

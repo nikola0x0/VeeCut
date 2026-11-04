@@ -80,6 +80,21 @@ struct SubjectFollowTests {
         }
     }
 
+    @Test func followerNeverLeavesMoreThanHalfOffTheFrame() throws {
+        var high = textClip()
+        high.transform = Transform(topLeft: (0.1, -0.6), width: 0.2, height: 0.1)
+        let editor = editor([Fixtures.videoTrack(clips: [high]), Fixtures.videoTrack(clips: [Fixtures.clip(id: "video", start: 0, duration: 30)])])
+        let mask = movingMask(in: editor)
+
+        _ = try editor.followSubject(clipId: "text", subject: CanvasSubject(clipId: "video", maskId: mask.id)).get()
+
+        let followed = try #require(editor.clipFor(id: "text"))
+        for frame in [0, 10, 20, 29] {
+            let center = center(of: followed, at: frame)
+            #expect((0...1).contains(center.x) && (0...1).contains(center.y))
+        }
+    }
+
     @Test func followingIsOneUndoStep() throws {
         let editor = editor([Fixtures.videoTrack(clips: [textClip()]), Fixtures.videoTrack(clips: [Fixtures.clip(id: "video", start: 0, duration: 30)])])
         let mask = movingMask(in: editor)
