@@ -16,6 +16,9 @@ struct PlanSection: Codable, Sendable, Equatable, Identifiable {
     var suggestions: [PlanMoment] = []
     /// How fast the cuts come, from the song part this section sits on; nil without a song.
     var pace: MusicEnergy? = nil
+
+    /// The length a section starts with when added by hand.
+    static let newSectionSeconds = 10.0
 }
 
 /// The song a plan was cut to: its tempo and where the drop lands, in song seconds from the start.

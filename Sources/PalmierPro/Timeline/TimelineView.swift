@@ -1957,6 +1957,7 @@ final class TimelineView: NSView, NSPopoverDelegate {
             tracks: editor.timeline.tracks,
             includeTimelineStart: true,
             markerFrames: editor.timelineMarkerSnapFrames(),
+            sectionFrames: editor.planSectionSnapFrames(),
             beatFrames: editor.beatSnapFrames(for:)
         )
         if let snap = SnapEngine.findSnap(

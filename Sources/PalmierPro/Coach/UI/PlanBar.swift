@@ -46,13 +46,18 @@ struct PlanBar: View {
                 ZStack(alignment: .leading) {
                     ForEach(Array(plan.sections.enumerated()), id: \.element.id) { index, section in
                         let band = bands[index]
-                        let slotWidth = Double(band.slot.count) * zoom
                         PlanBand(
                             section: section, progress: progress[index], index: index, count: plan.sections.count,
-                            placedFraction: band.slot.isEmpty ? 0 : Double(band.placed?.count ?? 0) / Double(band.slot.count)
+                            placedFraction: band.slot.isEmpty ? 0 : Double(band.placed?.count ?? 0) / Double(band.slot.count),
+                            slotWidth: Double(band.slot.count) * zoom,
+                            beatSeconds: plan.music?.beatSeconds
                         )
-                        .frame(width: slotWidth)
                         .offset(x: Double(band.slot.lowerBound) * zoom)
+                    }
+                    if let last = plan.sections.last, let end = bands.last?.slot.upperBound {
+                        AddSectionBand { _ = editor.addPlanSection(after: last.id) }
+                            .frame(width: PlanSection.newSectionSeconds * Double(editor.timeline.fps) * zoom)
+                            .offset(x: Double(end) * zoom)
                     }
                 }
             }
@@ -79,13 +84,22 @@ struct PlanBar: View {
             Divider()
             Button(L10n.string("Remove Plan"), role: .destructive) { editor.setPlan(nil, actionName: "Remove Plan") }
         } label: {
-            Image(systemName: "sparkles")
-                .frame(width: AppTheme.IconSize.sm, height: AppTheme.IconSize.sm)
+            HStack(spacing: AppTheme.Spacing.xxs) {
+                PhosphorImage(.list)
+                    .frame(width: AppTheme.IconSize.xxs, height: AppTheme.IconSize.xxs)
+                Text(L10n.string("Plan"))
+                Image(systemName: "chevron.down")
+                    .font(.system(size: AppTheme.FontSize.micro, weight: AppTheme.FontWeight.semibold))
+            }
+            .font(.system(size: AppTheme.FontSize.xs, weight: AppTheme.FontWeight.medium))
+            .foregroundStyle(AppTheme.Text.secondaryColor)
+            .planBarChip(border: AppTheme.Border.subtleColor)
         }
-        .menuStyle(.borderlessButton)
+        .menuStyle(.button)
+        .buttonStyle(.plain)
         .menuIndicator(.hidden)
         .fixedSize()
-        .help(L10n.string("Plan"))
+        .help(L10n.string("Edit the plan: add sections, re-plan, or remove it"))
     }
 }
 
@@ -97,12 +111,50 @@ private struct PlanBand: View {
     let count: Int
     /// The share of the band covered by placed clips; the rest is the section's missing time.
     let placedFraction: Double
+    let slotWidth: Double
+    let beatSeconds: Double?
     @State private var showsDetails = false
     @State private var isDropTargeted = false
+    @State private var isHovered = false
+    @State private var resizeFrames: Double?
 
     private var color: Color { AppTheme.Coach.bandColors[index % AppTheme.Coach.bandColors.count] }
 
+    private var resizedSeconds: Double? {
+        resizeFrames.map { PlanLayout.resizedSeconds(from: section.targetSeconds, dragFrames: $0, fps: editor.timeline.fps, beatSeconds: beatSeconds) }
+    }
+
+    private var displayWidth: Double {
+        guard let seconds = resizedSeconds else { return slotWidth }
+        return max(slotWidth + (seconds - section.targetSeconds) * Double(editor.timeline.fps) * editor.zoomScale, AppTheme.Coach.bandResizeHandleWidth * 2)
+    }
+
     var body: some View {
+        band
+            .frame(width: displayWidth)
+            .overlay(alignment: .trailing) { resizeHandle }
+    }
+
+    private var resizeHandle: some View {
+        Rectangle()
+            .fill(Color.clear)
+            .frame(width: AppTheme.Coach.bandResizeHandleWidth)
+            .contentShape(Rectangle())
+            .pointerStyle(.columnResize)
+            .gesture(
+                DragGesture(minimumDistance: 1, coordinateSpace: .global)
+                    .onChanged { value in resizeFrames = value.translation.width / max(editor.zoomScale, 1e-6) }
+                    .onEnded { _ in
+                        if let seconds = resizedSeconds, seconds != section.targetSeconds {
+                            editor.setPlanSectionTarget(section.id, seconds: seconds)
+                        }
+                        resizeFrames = nil
+                    }
+            )
+            .help(L10n.string("Drag to change the section's length"))
+    }
+
+    private var band: some View {
         GeometryReader { geometry in
             ZStack(alignment: .leading) {
                 RoundedRectangle(cornerRadius: AppTheme.Radius.sm)
@@ -114,19 +166,28 @@ private struct PlanBand: View {
                 RoundedRectangle(cornerRadius: AppTheme.Radius.sm)
                     .fill(color)
                     .frame(width: geometry.size.width * placedFraction)
-                Text(verbatim: label)
-                    .font(.system(size: AppTheme.FontSize.xs, weight: AppTheme.FontWeight.medium))
-                    .foregroundStyle(AppTheme.Tint.inkColor)
-                    .lineLimit(1)
-                    .padding(.horizontal, AppTheme.Spacing.sm)
+                HStack(spacing: AppTheme.Spacing.xxs) {
+                    Text(verbatim: label)
+                        .font(.system(size: AppTheme.FontSize.xs, weight: AppTheme.FontWeight.medium))
+                        .foregroundStyle(AppTheme.Tint.inkColor)
+                        .lineLimit(1)
+                    if isHovered || resizeFrames != nil {
+                        Image(systemName: "pencil")
+                            .font(.system(size: AppTheme.FontSize.xxs, weight: AppTheme.FontWeight.semibold))
+                            .foregroundStyle(AppTheme.Tint.inkColor)
+                    }
+                }
+                .padding(.horizontal, AppTheme.Spacing.sm)
             }
             .overlay {
                 RoundedRectangle(cornerRadius: AppTheme.Radius.sm)
-                    .strokeBorder(AppTheme.Accent.primary, lineWidth: isDropTargeted ? AppTheme.BorderWidth.thick : 0)
+                    .strokeBorder(AppTheme.Accent.primary, lineWidth: isDropTargeted || isHovered || resizeFrames != nil ? AppTheme.BorderWidth.focus : 0)
             }
         }
         .contentShape(Rectangle())
-        .help(section.hint.isEmpty ? section.title : "\(section.title): \(section.hint)")
+        .onHover { isHovered = $0 }
+        .pointerStyle(.link)
+        .help(L10n.string("\(section.title). Click to edit, drag the right edge to change its length, or drop clips here."))
         .onTapGesture { showsDetails = true }
         .popover(isPresented: $showsDetails, arrowEdge: .bottom) {
             PlanSectionPopover(sectionId: section.id)
@@ -153,6 +214,7 @@ private struct PlanBand: View {
 
     private var label: String {
         let title = section.title
+        if let seconds = resizedSeconds { return "\(title)  \(Int(seconds.rounded())) s" }
         if progress.isFilled { return "\(title) ✓" }
         return "\(title)  \(Int(progress.actualSeconds.rounded()))/\(Int(progress.targetSeconds.rounded())) s"
     }
@@ -166,15 +228,47 @@ private struct PlanBand: View {
     }
 }
 
+/// Where the next section would go: a dashed band as long as a new section, added on click.
+private struct AddSectionBand: View {
+    let action: () -> Void
+    @State private var isHovered = false
+
+    var body: some View {
+        Button(action: action) {
+            Label(L10n.string("Add Section"), systemImage: "plus")
+                .font(.system(size: AppTheme.FontSize.xs, weight: AppTheme.FontWeight.medium))
+                .foregroundStyle(isHovered ? AppTheme.Accent.primary : AppTheme.Text.tertiaryColor)
+                .lineLimit(1)
+                .frame(maxWidth: .infinity, maxHeight: .infinity)
+                .background(
+                    RoundedRectangle(cornerRadius: AppTheme.Radius.sm)
+                        .fill(isHovered ? AppTheme.Accent.primary.opacity(AppTheme.Opacity.subtle) : Color.clear)
+                )
+                .overlay(
+                    RoundedRectangle(cornerRadius: AppTheme.Radius.sm)
+                        .strokeBorder(isHovered ? AppTheme.Accent.primary : AppTheme.Border.subtleColor,
+                                      style: StrokeStyle(lineWidth: AppTheme.BorderWidth.thin, dash: [AppTheme.Spacing.xs, AppTheme.Spacing.xxs]))
+                )
+                .contentShape(RoundedRectangle(cornerRadius: AppTheme.Radius.sm))
+        }
+        .buttonStyle(.plain)
+        .onHover { isHovered = $0 }
+        .help(L10n.string("Add a section after the last one"))
+    }
+}
+
 /// How many tips are waiting; Vee says the first one over the preview.
 private struct PlanTipsLabel: View {
     @Environment(EditorViewModel.self) private var editor
 
     var body: some View {
         let count = editor.coachNudges.count
-        Text(count == 0 ? L10n.string("Plan") : L10n.string("\(count) tips"))
-            .font(.system(size: AppTheme.FontSize.xs, weight: AppTheme.FontWeight.semibold))
-            .foregroundStyle(count == 0 ? AppTheme.Text.secondaryColor : AppTheme.Accent.primary)
+        if count > 0 {
+            Text(L10n.string("\(count) tips"))
+                .font(.system(size: AppTheme.FontSize.xs, weight: AppTheme.FontWeight.semibold))
+                .foregroundStyle(AppTheme.Accent.primary)
+                .lineLimit(1)
+        }
     }
 }
 
@@ -192,13 +286,7 @@ private struct MusicSlot: View {
         }
         .font(.system(size: AppTheme.FontSize.xs))
         .foregroundStyle(seconds == nil ? AppTheme.Text.tertiaryColor : AppTheme.Text.secondaryColor)
-        .padding(.horizontal, AppTheme.Spacing.xs)
-        .padding(.vertical, AppTheme.Spacing.xxs)
-        .overlay(
-            RoundedRectangle(cornerRadius: AppTheme.Radius.sm)
-                .strokeBorder(isTargeted ? AppTheme.Accent.primary : AppTheme.Border.subtleColor,
-                              style: StrokeStyle(lineWidth: AppTheme.BorderWidth.thin, dash: seconds == nil ? [AppTheme.Spacing.xs] : []))
-        )
+        .planBarChip(border: isTargeted ? AppTheme.Accent.primary : AppTheme.Border.subtleColor, dashed: seconds == nil)
         .help(L10n.string("Drop a song here. It starts at the beginning and its beats guide the cuts."))
         .dropDestination(for: String.self) { items, _ in
             editor.addMusic(fromDragStrings: items)
@@ -215,5 +303,18 @@ struct ScrolledWithTimeline<Content: View>: View {
         content
             .frame(minWidth: 0, maxWidth: .infinity, alignment: .leading)
             .offset(x: -viewport.scrollX)
+    }
+}
+
+private extension View {
+    /// The plan bar's small outlined chips (the Plan menu and the music slot), sized to its 10 pt labels.
+    func planBarChip(border: Color, dashed: Bool = false) -> some View {
+        padding(.horizontal, AppTheme.Spacing.xs)
+            .padding(.vertical, AppTheme.Spacing.xxs)
+            .overlay(
+                RoundedRectangle(cornerRadius: AppTheme.Radius.sm)
+                    .strokeBorder(border, style: StrokeStyle(lineWidth: AppTheme.BorderWidth.thin, dash: dashed ? [AppTheme.Spacing.xs] : []))
+            )
+            .contentShape(RoundedRectangle(cornerRadius: AppTheme.Radius.sm))
     }
 }

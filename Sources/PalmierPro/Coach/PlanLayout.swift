@@ -55,6 +55,17 @@ enum PlanLayout {
         return membership
     }
 
+    static let barBeats = 4.0
+
+    /// A section's new length after dragging its band's trailing edge: whole bars when cut to a song, else whole
+    /// seconds, never shorter than one bar or one second.
+    static func resizedSeconds(from seconds: Double, dragFrames: Double, fps: Int, beatSeconds: Double?) -> Double {
+        let step = beatSeconds.map { $0 * barBeats }.flatMap { $0 > 0 && $0.isFinite ? $0 : nil } ?? 1
+        let proposed = seconds + dragFrames / Double(max(fps, 1))
+        guard proposed.isFinite else { return seconds }
+        return max(step, (proposed / step).rounded() * step)
+    }
+
     /// Bands in timeline frames; a slot never runs into a later section's clips.
     static func bands(_ plan: EditPlan, in timeline: Timeline, progress: [SectionProgress]? = nil) -> [SectionBand] {
         let fps = Double(max(timeline.fps, 1))

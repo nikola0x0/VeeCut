@@ -389,6 +389,7 @@ final class TimelineInputController {
                 playheadFrame: editor.currentFrame,
                 includePlayhead: true,
                 markerFrames: editor.timelineMarkerSnapFrames(),
+                sectionFrames: editor.planSectionSnapFrames(),
                 beatFrames: editor.beatSnapFrames(for:)
             )
             let rangeEndFrame: Int
@@ -413,6 +414,7 @@ final class TimelineInputController {
                 playheadFrame: editor.currentFrame,
                 includePlayhead: true,
                 markerFrames: editor.timelineMarkerSnapFrames(excludingMarkerIds: [drag.original.id]),
+                sectionFrames: editor.planSectionSnapFrames(),
                 beatFrames: editor.beatSnapFrames(for:)
             )
             func snapped(_ position: Int, probes: [Int] = [0]) -> Int {
@@ -448,6 +450,7 @@ final class TimelineInputController {
                 includePlayhead: true,
                 includeTimelineStart: true,
                 markerFrames: editor.timelineMarkerSnapFrames(),
+                sectionFrames: editor.planSectionSnapFrames(),
                 beatFrames: editor.beatSnapFrames(for:)
             )
 
@@ -496,6 +499,7 @@ final class TimelineInputController {
                 excludeClipIds: [drag.clipId],
                 includePlayhead: true,
                 markerFrames: editor.timelineMarkerSnapFrames(),
+                sectionFrames: editor.planSectionSnapFrames(),
                 beatFrames: editor.beatSnapFrames(for:),
                 includeExcludedClipBeats: true
             )
@@ -528,6 +532,7 @@ final class TimelineInputController {
                 excludeClipIds: [drag.clipId],
                 includePlayhead: true,
                 markerFrames: editor.timelineMarkerSnapFrames(),
+                sectionFrames: editor.planSectionSnapFrames(),
                 beatFrames: editor.beatSnapFrames(for:),
                 includeExcludedClipBeats: true
             )
@@ -901,6 +906,7 @@ final class TimelineInputController {
                 playheadFrame: editor.currentFrame,
                 includePlayhead: true,
                 markerFrames: editor.timelineMarkerSnapFrames(),
+                sectionFrames: editor.planSectionSnapFrames(),
                 beatFrames: editor.beatSnapFrames(for:)
             )
             if let snap = SnapEngine.findSnap(

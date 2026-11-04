@@ -74,6 +74,8 @@ enum AppTheme {
         static var subtitleBackground: Color { Tint.inkColor.opacity(Opacity.prominent) }
         static let thumbnailSize = CGSize(width: 64, height: 36)
         static let lengthFieldWidth: CGFloat = 56
+        /// The grab area on a plan band's trailing edge.
+        static let bandResizeHandleWidth: CGFloat = 8
         static let maxSuggestionsHeight: CGFloat = 260
         static var bandColors: [Color] {
             [Tint.lilacColor, Tint.peachColor, Tint.blushColor, Color(Palette.periwinkleLight)]

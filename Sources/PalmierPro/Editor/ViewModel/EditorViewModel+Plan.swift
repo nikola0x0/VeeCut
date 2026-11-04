@@ -6,6 +6,13 @@ enum PlanPlacementFailure: Error, Equatable {
 
 /// The timeline's edit plan: sections, membership and placing moments. Every change is one undo step.
 extension EditorViewModel {
+    /// Where the plan's sections start and end on the timeline, as the plan bar draws them; clips snap to these.
+    func planSectionSnapFrames() -> [Int] {
+        guard let plan = timeline.plan else { return [] }
+        let bands = PlanLayout.bands(plan, in: timeline)
+        return Set(bands.flatMap { [$0.slot.lowerBound, $0.slot.upperBound] }).sorted()
+    }
+
     func planTrackIndex() -> Int? {
         guard let trackId = timeline.plan?.trackId else { return nil }
         return timeline.tracks.firstIndex { $0.id == trackId && $0.type == .video }
@@ -83,7 +90,7 @@ extension EditorViewModel {
 
     @discardableResult
     func addPlanSection(after id: String?) -> String? {
-        let section = PlanSection(title: L10n.string("New Section"), targetSeconds: 10, hint: "")
+        let section = PlanSection(title: L10n.string("New Section"), targetSeconds: PlanSection.newSectionSeconds, hint: "")
         return editPlan([.add(section, after: id)], actionName: "Add Section") == nil ? section.id : nil
     }
 
