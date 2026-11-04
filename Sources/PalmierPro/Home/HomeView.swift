@@ -6,6 +6,7 @@ import UniformTypeIdentifiers
 struct HomeView: View {
     @Bindable private var onboarding = OnboardingStore.shared
     @Bindable private var changelog = ChangelogStore.shared
+    @State private var isTargeted = false
 
     var body: some View {
         VStack(spacing: 0) {
@@ -31,6 +32,21 @@ struct HomeView: View {
             maxHeight: .infinity
         )
         .background(AppTheme.Background.baseColor)
+        .overlay {
+            if isTargeted {
+                ZStack {
+                    AppTheme.Tint.lilacColor.opacity(AppTheme.Opacity.medium)
+                    RoundedRectangle(cornerRadius: AppTheme.Radius.xl, style: .continuous)
+                        .strokeBorder(AppTheme.Accent.primary,
+                                      style: StrokeStyle(lineWidth: AppTheme.BorderWidth.thick, dash: [AppTheme.Spacing.sm, AppTheme.Spacing.xs]))
+                        .padding(AppTheme.Spacing.md)
+                }
+                .allowsHitTesting(false)
+                .transition(.opacity)
+            }
+        }
+        .animation(.easeOut(duration: AppTheme.Anim.hover), value: isTargeted)
+        .modifier(WindowFootageDrop(isEnabled: ProjectRegistry.shared.entries.isEmpty, isTargeted: $isTargeted))
         .foregroundStyle(AppTheme.Text.primaryColor)
         .focusEffectDisabled()
         .task { await VisualModelLoader.shared.prepare() }
@@ -138,10 +154,22 @@ private struct StartButtons: View {
     }
 }
 
+/// With no projects the whole window, header included, takes the drop; otherwise the drop zone does.
+private struct WindowFootageDrop: ViewModifier {
+    let isEnabled: Bool
+    @Binding var isTargeted: Bool
+
+    func body(content: Content) -> some View {
+        if isEnabled {
+            content.onDrop(of: [.fileURL], isTargeted: $isTargeted, perform: FootageDrop.accept)
+        } else {
+            content
+        }
+    }
+}
+
 /// No projects yet: just the question and a way in; footage can be dropped anywhere.
 private struct FirstLaunchView: View {
-    @State private var isTargeted = false
-
     var body: some View {
         VStack(spacing: AppTheme.Spacing.xlXxl) {
             VeeIllustration(name: .footageBox, height: AppTheme.Home.firstLaunchIllustrationHeight)
@@ -157,8 +185,6 @@ private struct FirstLaunchView: View {
         }
         .padding(AppTheme.Home.contentPadding)
         .frame(maxWidth: .infinity, maxHeight: .infinity)
-        .background(AppTheme.Tint.lilacColor.opacity(isTargeted ? AppTheme.Opacity.medium : 0))
-        .onDrop(of: [.fileURL], isTargeted: $isTargeted, perform: FootageDrop.accept)
     }
 }
 
