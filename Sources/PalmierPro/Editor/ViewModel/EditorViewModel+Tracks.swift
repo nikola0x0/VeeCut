@@ -8,28 +8,51 @@ extension EditorViewModel {
     @discardableResult
     func insertTrack(at index: Int, type: ClipType) -> Int {
         let clamped = partitionedInsertionIndex(for: type, requested: index)
-        let track = Track(type: type)
         withTimelineSwap(actionName: "Add Track") {
+            freezeTrackNumbers()
+            let taken = Set(timeline.tracks.filter { $0.type == type }.compactMap(\.number))
+            var track = Track(type: type)
+            track.number = (1...).first { !taken.contains($0) }
             timeline.tracks.insert(track, at: clamped)
         }
         return clamped
     }
 
-    /// "V1", "A1", "I1" label for the track at the given index.
+    /// "V1", "A1", "I1" label for the track at the given index: its own number once fixed, else the next free one by position.
     func timelineTrackDisplayLabel(at trackIndex: Int) -> String {
         guard timeline.tracks.indices.contains(trackIndex) else { return "" }
-        let type = timeline.tracks[trackIndex].type
-        var n = 0
-        if type == .audio {
-            for i in 0...trackIndex where timeline.tracks[i].type == type {
-                n += 1
-            }
-        } else {
-            for i in trackIndex..<max(trackIndex + 1, zones.firstAudioIndex) where timeline.tracks[i].type == type {
-                n += 1
+        return "\(timeline.tracks[trackIndex].type.trackLabelPrefix)\(trackNumbers()[trackIndex])"
+    }
+
+    /// Each track's label number. Fixed numbers stay; the rest take the smallest unused numbers in label order
+    /// (visual tracks bottom up, audio top down), so no two tracks of a kind ever share one.
+    private func trackNumbers() -> [Int] {
+        let tracks = timeline.tracks
+        var numbers = tracks.map(\.number)
+        let firstAudio = zones.firstAudioIndex
+        for type in Set(tracks.map(\.type)) {
+            var taken = Set(tracks.filter { $0.type == type }.compactMap(\.number))
+            let order = tracks.indices.filter { tracks[$0].type == type }
+                .sorted { lhs, rhs in
+                    let lhsAudio = lhs >= firstAudio, rhsAudio = rhs >= firstAudio
+                    return type == .audio || lhsAudio || rhsAudio ? lhs < rhs : lhs > rhs
+                }
+            var next = 1
+            for index in order where numbers[index] == nil {
+                while taken.contains(next) { next += 1 }
+                numbers[index] = next
+                taken.insert(next)
             }
         }
-        return "\(type.trackLabelPrefix)\(n)"
+        return numbers.map { $0 ?? 1 }
+    }
+
+    /// Stores every track's current label number, so moving or adding tracks doesn't renumber the others.
+    private func freezeTrackNumbers() {
+        let numbers = trackNumbers()
+        for index in timeline.tracks.indices where timeline.tracks[index].number == nil {
+            timeline.tracks[index].number = numbers[index]
+        }
     }
 
     @discardableResult
@@ -88,6 +111,7 @@ extension EditorViewModel {
         let upper = isAudio ? z.trackCount - 1 : z.firstAudioIndex - 1
         let dest = max(lower, min(upper, targetIndex))
         guard dest != from else { return }
+        freezeTrackNumbers()
         let track = timeline.tracks.remove(at: from)
         timeline.tracks.insert(track, at: dest)
     }

@@ -36,10 +36,36 @@ struct TrackDisplayLabelTests {
         #expect(editor.timeline.tracks[0].name == "B-roll")
 
         editor.reorderTrackLive(id: trackId, to: 1)
-        #expect(editor.timelineTrackDisplayLabel(at: 1) == "V1")
+        #expect(editor.timelineTrackDisplayLabel(at: 1) == "V2")
         #expect(editor.timeline.tracks[1].name == "B-roll")
         #expect(throws: TrackNameValidationError.self) { try editor.setTrackName(id: trackId, to: "Bad\nName") }
         #expect(editor.timeline.tracks[1].name == "B-roll")
+    }
+
+    @Test func aDraggedTrackKeepsItsLabel() {
+        let editor = makeEditor([Fixtures.videoTrack(id: "top"), Fixtures.videoTrack(id: "bottom"), Fixtures.audioTrack(id: "a1"), Fixtures.audioTrack(id: "a2")])
+        editor.reorderTrackLive(id: "top", to: 1)
+        editor.reorderTrackLive(id: "a2", to: 2)
+        #expect(editor.timeline.tracks.map(\.id) == ["bottom", "top", "a2", "a1"])
+        #expect(editor.timeline.tracks.indices.map(editor.timelineTrackDisplayLabel(at:)) == ["V1", "V2", "A2", "A1"])
+    }
+
+    @Test func aNewTrackTakesTheSmallestFreeNumber() {
+        let editor = makeEditor([Fixtures.videoTrack(id: "v2"), Fixtures.videoTrack(id: "v1")])
+        editor.reorderTrackLive(id: "v2", to: 1)
+        _ = editor.insertTrack(at: 0, type: .video)
+        #expect(editor.timelineTrackDisplayLabel(at: 0) == "V3")
+
+        editor.timeline.tracks.removeAll { $0.id == "v1" }
+        _ = editor.insertTrack(at: 0, type: .video)
+        #expect(Set(editor.timeline.tracks.indices.map(editor.timelineTrackDisplayLabel(at:))) == ["V1", "V2", "V3"])
+    }
+
+    @Test func aMovedTracksLabelSurvivesSaveAndReopen() throws {
+        let editor = makeEditor([Fixtures.videoTrack(id: "top"), Fixtures.videoTrack(id: "bottom")])
+        editor.reorderTrackLive(id: "top", to: 1)
+        let reopened = makeEditor(try JSONDecoder().decode([Track].self, from: JSONEncoder().encode(editor.timeline.tracks)))
+        #expect(reopened.timeline.tracks.indices.map(reopened.timelineTrackDisplayLabel(at:)) == ["V1", "V2"])
     }
 
     @Test func outOfRangeIndexReturnsEmpty() {

@@ -118,6 +118,8 @@ struct Track: Codable, Sendable, Equatable, Identifiable {
     var clips: [Clip] = []
 
     var displayHeight: CGFloat = TrackSize.defaultHeight
+    /// The number in its V1 / A1 label once fixed, so the label moves with the track; nil until a track is added or moved.
+    var number: Int?
 
     var endFrame: Int {
         var maxFrame = 0
@@ -140,7 +142,7 @@ struct Track: Codable, Sendable, Equatable, Identifiable {
     }
 
     private enum CodingKeys: String, CodingKey {
-        case id, type, name, muted, hidden, syncLocked, clips, displayHeight
+        case id, type, name, muted, hidden, syncLocked, clips, displayHeight, number
     }
 }
 
@@ -157,7 +159,8 @@ extension Track {
             syncLocked: (try? c.decode(Bool.self, forKey: .syncLocked)) ?? true,
             clips: (try? c.decode([Clip].self, forKey: .clips)) ?? [],
             displayHeight: (try? c.decode(CGFloat.self, forKey: .displayHeight))
-                .map { min(max($0, TrackSize.minHeight), TrackSize.maxHeight) } ?? TrackSize.defaultHeight
+                .map { min(max($0, TrackSize.minHeight), TrackSize.maxHeight) } ?? TrackSize.defaultHeight,
+            number: (try? c.decode(Int.self, forKey: .number)).flatMap { $0 > 0 ? $0 : nil }
         )
     }
 }
