@@ -252,12 +252,21 @@ struct AgentPanelView: View {
             ScrollView {
                 LazyVStack(alignment: .leading, spacing: AppTheme.Spacing.xl) {
                     let results = toolResults
-                    ForEach(service.messages) { msg in
-                        AgentMessageView(message: msg, toolResults: results)
+                    let messages = service.messages
+                    ForEach(Array(messages.enumerated()), id: \.element.id) { index, msg in
+                        AgentMessageView(message: msg, toolResults: results, startsVeeRun: AgentMessage.startsVeeRun(messages, at: index))
                             .id(msg.id)
                     }
                     if service.isStreaming {
-                        ThinkingDots().id("streaming-indicator")
+                        HStack(alignment: .center, spacing: AppTheme.ChatThread.avatarGap) {
+                            if AgentMessage.veeIsTypingNewRun(messages) {
+                                VeeChatAvatar()
+                            } else {
+                                Color.clear.frame(width: AppTheme.ChatThread.avatarSize, height: 1)
+                            }
+                            ThinkingDots()
+                        }
+                        .id("streaming-indicator")
                     }
                     errorBanner
                         .padding(.top, AppTheme.Spacing.sm)

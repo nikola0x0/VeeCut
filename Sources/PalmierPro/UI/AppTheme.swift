@@ -304,6 +304,13 @@ enum AppTheme {
         static let maxTextHeight: CGFloat = 160
     }
 
+    /// Vee's side of the chat: an avatar opens each run of replies and the run lines up beside it.
+    enum ChatThread {
+        static let avatarSize: CGFloat = 28
+        static let avatarGap: CGFloat = Spacing.sm
+        static var replyIndent: CGFloat { avatarSize + avatarGap }
+    }
+
     /// The chat's @-mention list.
     enum Mention {
         static let rowHeight: CGFloat = 40

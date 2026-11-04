@@ -4,6 +4,8 @@ import SwiftUI
 struct AgentMessageView: View {
     let message: AgentMessage
     let toolResults: [String: ToolRunResult]
+    /// The first reply after the user's message carries Vee's avatar and name.
+    var startsVeeRun = false
     @State private var isHovering = false
 
     var body: some View {
@@ -64,8 +66,27 @@ struct AgentMessageView: View {
         // Tool-result user messages render merged into the preceding assistant row.
     }
 
-    @ViewBuilder
     private var assistantBody: some View {
+        HStack(alignment: .top, spacing: AppTheme.ChatThread.avatarGap) {
+            if startsVeeRun {
+                VeeChatAvatar()
+            } else {
+                Color.clear.frame(width: AppTheme.ChatThread.avatarSize, height: 1)
+            }
+            VStack(alignment: .leading, spacing: AppTheme.Spacing.xs) {
+                if startsVeeRun {
+                    Text(L10n.string("Vee"))
+                        .font(.custom(AppTheme.Brand.wordmarkFontName, size: AppTheme.FontSize.md).weight(AppTheme.FontWeight.semibold))
+                        .foregroundStyle(AppTheme.Text.primaryColor)
+                        .frame(minHeight: AppTheme.ChatThread.avatarSize, alignment: .center)
+                }
+                replyBlocks
+            }
+        }
+    }
+
+    @ViewBuilder
+    private var replyBlocks: some View {
         VStack(alignment: .leading, spacing: AppTheme.Spacing.md) {
             ForEach(Array(message.blocks.enumerated()), id: \.offset) { _, block in
                 switch block {
@@ -144,7 +165,7 @@ private struct ThinkingSummaryView: View {
             .overlay(alignment: .leading) {
                 Rectangle()
                     .fill(AppTheme.Border.subtleColor)
-                    .frame(width: AppTheme.BorderWidth.medium)
+                    .frame(width: AppTheme.BorderWidth.focus)
             }
             .textSelection(.enabled)
     }
@@ -307,5 +328,13 @@ private struct ToolResultImageView: View {
             let data = await Task.detached { Data(base64Encoded: base64) }.value
             if let data { image = NSImage(data: data) }
         }
+    }
+}
+
+/// Vee's face beside its replies.
+struct VeeChatAvatar: View {
+    var body: some View {
+        VeeIllustration(name: .avatar, height: AppTheme.ChatThread.avatarSize)
+            .frame(width: AppTheme.ChatThread.avatarSize, height: AppTheme.ChatThread.avatarSize)
     }
 }
