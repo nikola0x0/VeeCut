@@ -1,8 +1,12 @@
 # VeeCut
 
-**The friendly AI video editor anyone can use, from first-time creators to pros.**
+**The video editor with an AI director.**
 
-VeeCut pushes AI as far as it goes to cut out the manual work of editing. Draw on the preview to point at a person, the sky, or a product, and Meta's SAM 3.1 selects it and tracks it through the clip. Then type or say what you want, and Meta's models turn it into color grades, effects, and animated text or stickers. Beginners get a great result in one step. Pros can still fine-tune every edit and undo it.
+Vee watches your footage, plans the cut to your song, then edits whatever you ask. Open source, for Mac, built on Meta's Muse Spark, SAM 3.1, Muse Image and Muse Voice.
+
+- **Vee directs.** Drop in the clips you shot. Vee reads every one with Muse Spark, including what's said, pitches a few videos you could make, reads your song's tempo and drop, and lays out a plan with suggested clips cut to the beat. You keep what you like.
+- **Vee edits.** Click a person or thing in the preview, or name it, and SAM 3.1 tracks it through the shot. Then ask in plain words or by voice: make him pop, put sunglasses on the cat, add Vietnamese captions, make it 9:16. Vee picks the tools and does it, one undo step per ask.
+- **You stay the editor.** Switch from Simple to Pro for every wheel, curve and keyframe, undo anything Vee did, or bring your own Claude or GPT key.
 
 Built for the Meta Global AI Developer Hackathon (Oct 27 – Nov 4, 2026), Indie Developer track.
 
@@ -12,7 +16,28 @@ Built for the Meta Global AI Developer Hackathon (Oct 27 – Nov 4, 2026), Indie
 
 Everything after the [`hackathon-baseline`](../../tree/hackathon-baseline) tag was built during the event (Oct 27 – Nov 4, 2026). Compare: [`hackathon-baseline...main`](../../compare/hackathon-baseline...main).
 
-_This section is filled in as features land._
+### Meta models, wired into the editor
+- **SAM 3.1** through the Meta Model API: a Swift port of Meta's SAM mask decoder (bit-identical to the reference, see below), tracked masks saved in the project, effects rendered inside or outside a mask with feathered edges, and frame-exact tracking on just the part of a clip the timeline uses. Transient server errors are retried.
+- **Muse Spark** runs Vee's chat with VeeCut's ~60 editing tools, reads every clip (contact sheets plus what's said), pitches video ideas and plans the edit.
+- **Muse Image** draws stickers on a flat background, and Apple Vision cuts them out. VeeCut's own mascot art was made with it too (`scripts/vee`).
+- **Muse Voice** transcribes captions in any language, Vietnamese included, in batch.
+
+### Vee directs
+- **Footage reading and ideas:** drop in a folder; Vee watches it in the background and suggests three videos you could make.
+- **Music-first planning:** Vee finds a song's tempo, parts and drop, plans sections to those parts, snaps every cut to a detected beat, keeps the drop inside the cut, and trims the song to the nearest part.
+- **Suggested timeline:** the plan shows as ghost clips on the timeline; keep one or Keep All as one undo step. The plan bar shows each section on the timeline's own scale and how full it is.
+- **Coaching:** tips with one-click fixes, Vee's short lines over the preview, and Vee Speaks Aloud with hold-Option-Space to talk back.
+
+### Vee edits
+- **Canvas objects:** click, brush or name anything in the preview and SAM tracks it through the shot; objects get name tags and can be @-tagged in the chat.
+- **Looks:** one-click subject and background looks (Pop Subject, Blur Background, Cinematic, Moody…) and a describe-a-look box powered by Muse Spark; Vee uses the same presets through `apply_look`.
+- **Things that follow:** text, labels and Muse Image stickers ride on a tracked object, and never drift more than half off the frame.
+- **Smooth Skin:** a face-only retouch that finds the face with SAM.
+- **Agent tools:** `track_object`, `apply_look`, `follow_object`, `add_sticker`, `smooth_skin`, `get_plan`, `make_plan`, `edit_plan`, `add_to_section`, each covered by MCP tests.
+- **Skills:** the skill library ships inside the app and works offline, and VeeCut adds two of its own: `vee-travel-reel` and `write-vee-skill`, which turns your own routine into a skill.
+
+### The editor around Vee
+- Simple and Pro modes, a magnetic timeline, Cmd-scroll zoom, a saved edit history, floating card panels, a new home screen, a pastel design system with shared chip, field and button components, the "Vee is powered by" key manager, and a Vee-narrated onboarding tour.
 
 ## Pre-hackathon base (not part of the submission)
 
