@@ -8,6 +8,7 @@ struct VeeIllustration: View {
         case footageBox = "footage-box"
         case tourWelcome = "tour-welcome", tourPointUp = "tour-point-up", tourChat = "tour-chat", tourSwitch = "tour-switch"
         case tourFootage = "tour-footage", tourCamera = "tour-camera", tourTimeline = "tour-timeline", tourTune = "tour-tune", tourDone = "tour-done"
+        case poweredBy = "powered-by"
     }
 
     let name: Name

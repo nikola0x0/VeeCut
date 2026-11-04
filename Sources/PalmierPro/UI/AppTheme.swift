@@ -597,10 +597,14 @@ enum AppTheme {
         static let skillToastDuration: Duration = .seconds(5)
         static let poweredByVeeHeight: CGFloat = 110
         static let poweredByBadgeHeight: CGFloat = 38
-        static let poweredByBadgeWidth: CGFloat = 250
+        static let poweredByBadgeWidth: CGFloat = 300
         static let poweredByLinkWidth: CGFloat = 64
         static let poweredByLogoSize: CGFloat = 20
         static let poweredByDash: [CGFloat] = [3, 4]
+        /// Each provider's own brand color, used once it's connected.
+        static let metaBrand = Color(NSColor(srgbRed: 0/255, green: 129/255, blue: 251/255, alpha: 1))
+        static let anthropicBrand = Color(NSColor(srgbRed: 217/255, green: 119/255, blue: 87/255, alpha: 1))
+        static var openAIBrand: Color { Text.primaryColor }
     }
 
     enum EditorPanel {
@@ -703,6 +707,7 @@ enum AppTheme {
         static let fluid = Animation.spring(response: 0.38, dampingFraction: 0.82)
         static let pulse: Double = 0.8
         static let veeHop: Double = 0.55
+        static let linkDraw: Double = 0.7
         static let slipPreviewRefresh: Duration = .milliseconds(67)
         static let agentChangeHighlightHold: Double = 1.0
         static let agentChangeHighlightFade: Double = 0.3
