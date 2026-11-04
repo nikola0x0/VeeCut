@@ -14,7 +14,7 @@ enum SkillCatalogError: Error {
     case missingResource(String)
 }
 
-/// Skills bundled under Resources/Skills, sourced from palmier-io/palmier-skills (Apache-2.0).
+/// Skills bundled under Resources/Skills: VeeCut's own (vee-travel-reel, write-vee-skill) and five from palmier-io/palmier-skills (Apache-2.0).
 @Observable
 @MainActor
 final class SkillCatalog {

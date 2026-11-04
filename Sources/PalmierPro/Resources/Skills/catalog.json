@@ -33,5 +33,19 @@
     "description": "Covers assembling raw footage, trimming bad takes and silences, choosing and applying a talking-head/b-roll format (straight intercut, stacked split, or masked/floating overlay), and caption placement for UGC-style content — agnostic to whether the clips are AI-generated or real filmed footage. Use whenever the user wants to edit, cut, assemble, format, or caption UGC-style video, or pick a talking-head + b-roll layout. Picks up after ugc-photo-prompts/ugc-video-prompts if the footage is AI-generated, or after real footage is imported via import_media.",
     "sha": "0e7e931da735",
     "path": "skills/ugc-editing/SKILL.md"
+  },
+  {
+    "id": "vee-travel-reel",
+    "name": "vee-travel-reel",
+    "description": "Turn a trip's raw clips into a short travel reel cut to a song in VeeCut — plan the sections to the song with Muse Spark, place the best moments, make the main person pop with SAM 3.1, add a sticker that follows them, caption the talking in its own language, and reframe to 9:16. Use when the user asks for a travel reel, trip recap, holiday vlog, \"make a reel from my trip\", or a short vertical video of their footage cut to music.",
+    "sha": "54190c863abf",
+    "path": "skills/vee-travel-reel/SKILL.md"
+  },
+  {
+    "id": "write-vee-skill",
+    "name": "write-vee-skill",
+    "description": "Turn the user's own editing routine into a reusable VeeCut skill that Vee follows next time — interview them about the steps, map each step to VeeCut's tools (plan, SAM 3.1 tracking, looks, stickers, captions, reframing), write the SKILL.md and save it with manage_skills. Use when the user asks to make, write, save or teach Vee a skill, a workflow, a recipe or a template (\"every Friday I cut a food vlog like this\", \"remember how I do my intros\", \"make this my default reel\").",
+    "sha": "992f7d9a3d72",
+    "path": "skills/write-vee-skill/SKILL.md"
   }
 ]
