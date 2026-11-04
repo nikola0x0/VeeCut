@@ -113,6 +113,10 @@ final class EditorViewModel {
     @ObservationIgnored lazy var coachVoice: any CoachSpeaking = CoachVoice()
     @ObservationIgnored var spokenCoachLines: Set<String> = []
     var coachListening = false
+    /// True while ⌥Space is held, so the hint says to release it rather than to click Stop.
+    var coachListeningHeld = false
+    /// True from the end of a recording until Muse Voice returns the words.
+    var coachTranscribing = false
     @ObservationIgnored let voiceCapture = VoiceCapture()
     @ObservationIgnored var coachListenTask: Task<Void, Never>?
     @ObservationIgnored var coachAwaitingReply = false

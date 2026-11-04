@@ -36,12 +36,6 @@ struct CoachUtteranceTests {
         return editor
     }
 
-    @Test func holdToTalkIsIgnoredInPassiveMode() {
-        let editor = editor(mode: .passive)
-        editor.startCoachListening()
-        #expect(!editor.coachListening)
-    }
-
     @Test func sayingYesAppliesTheCurrentTip() {
         let editor = editor(mode: .active)
         editor.refreshCoachNudges()

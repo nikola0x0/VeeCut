@@ -15,22 +15,72 @@ struct CoachOverlay: View {
             }
         }
         .overlay(alignment: .top) {
-            if editor.coachListening {
-                Label(L10n.string("Listening…"), systemImage: "waveform")
-                    .font(.system(size: AppTheme.FontSize.md, weight: AppTheme.FontWeight.semibold))
-                    .foregroundStyle(AppTheme.Text.primaryColor)
-                    .symbolEffect(.variableColor.iterative)
-                    .padding(.horizontal, AppTheme.Spacing.lg)
-                    .padding(.vertical, AppTheme.Spacing.sm)
-                    .background(AppTheme.Background.raisedColor, in: Capsule())
-                    .overlay(Capsule().strokeBorder(AppTheme.Accent.primary, lineWidth: AppTheme.BorderWidth.focus))
-                    .shadow(AppTheme.Shadow.md)
+            if editor.coachListening || editor.coachTranscribing {
+                VeeVoicePill()
                     .padding(.top, AppTheme.Spacing.xl)
-                    .transition(.opacity)
+                    .transition(.opacity.combined(with: .scale(scale: 0.95, anchor: .top)))
             }
         }
         .animation(.easeOut(duration: AppTheme.Anim.transition), value: editor.showsCoachCard)
         .animation(.easeOut(duration: AppTheme.Anim.transition), value: editor.coachListening)
+        .animation(.easeOut(duration: AppTheme.Anim.transition), value: editor.coachTranscribing)
+    }
+}
+
+/// Vee listening while you talk, with your voice's level, then writing it down once you stop.
+private struct VeeVoicePill: View {
+    @Environment(EditorViewModel.self) private var editor
+
+    var body: some View {
+        let listening = editor.coachListening
+        HStack(spacing: AppTheme.Spacing.md) {
+            VeeIllustration(name: listening ? .listening : .planning, height: AppTheme.Coach.voicePoseHeight)
+            VStack(alignment: .leading, spacing: AppTheme.Spacing.xxs) {
+                HStack(spacing: AppTheme.Spacing.sm) {
+                    Text(listening ? L10n.string("Listening…") : L10n.string("Got it. Writing it down…"))
+                        .font(.custom(AppTheme.Brand.wordmarkFontName, size: AppTheme.FontSize.lg).weight(AppTheme.FontWeight.semibold))
+                        .foregroundStyle(AppTheme.Text.primaryColor)
+                    if listening {
+                        VoiceLevelBars(level: editor.voiceCapture.level)
+                    } else {
+                        ProgressView().controlSize(.small)
+                    }
+                }
+                if listening {
+                    Text(editor.coachListeningHeld ? L10n.string("Release ⌥Space to send") : L10n.string("Click Stop to send"))
+                        .font(.system(size: AppTheme.FontSize.sm))
+                        .foregroundStyle(AppTheme.Text.secondaryColor)
+                }
+            }
+        }
+        .padding(.leading, AppTheme.Spacing.md)
+        .padding(.trailing, AppTheme.Spacing.xl)
+        .padding(.vertical, AppTheme.Spacing.sm)
+        .background(AppTheme.Background.raisedColor, in: Capsule())
+        .overlay(Capsule().strokeBorder(AppTheme.Accent.primary, lineWidth: AppTheme.BorderWidth.focus))
+        .shadow(AppTheme.Shadow.md)
+    }
+}
+
+/// Bars that rise with the microphone level; only this view redraws as the level changes.
+private struct VoiceLevelBars: View {
+    let level: VoiceLevel
+
+    var body: some View {
+        SwiftUI.TimelineView(.periodic(from: .now, by: AppTheme.Coach.voiceMeterRefresh)) { _ in
+            let value = level.value
+            HStack(spacing: AppTheme.Spacing.xxs) {
+                ForEach(AppTheme.Coach.voiceBarWeights.indices, id: \.self) { index in
+                    Capsule()
+                        .fill(AppTheme.Accent.primary)
+                        .frame(width: AppTheme.Coach.voiceBarWidth,
+                               height: max(AppTheme.Coach.voiceBarMinHeight,
+                                           AppTheme.Coach.voiceBarMaxHeight * value * AppTheme.Coach.voiceBarWeights[index]))
+                }
+            }
+            .frame(height: AppTheme.Coach.voiceBarMaxHeight)
+            .animation(.easeOut(duration: AppTheme.Anim.voiceLevel), value: value)
+        }
     }
 }
 

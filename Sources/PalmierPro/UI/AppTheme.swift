@@ -58,6 +58,13 @@ enum AppTheme {
 
     enum Coach {
         static let barHeight: CGFloat = 30
+        /// The voice pill: Vee's pose beside live microphone bars.
+        static let voicePoseHeight: CGFloat = 40
+        static let voiceBarWidth: CGFloat = 3
+        static let voiceBarMinHeight: CGFloat = 3
+        static let voiceBarMaxHeight: CGFloat = 18
+        static let voiceBarWeights: [Double] = [0.45, 0.75, 1, 0.75, 0.45]
+        static let voiceMeterRefresh: Double = 1.0 / 30
         static let laneHeight: CGFloat = 44
         static let ghostEdgeHeight: CGFloat = 4
         static let quipInterval: Double = 2.6
@@ -708,6 +715,7 @@ enum AppTheme {
         static let pulse: Double = 0.8
         static let veeHop: Double = 0.55
         static let linkDraw: Double = 0.7
+        static let voiceLevel: Double = 0.08
         static let slipPreviewRefresh: Duration = .milliseconds(67)
         static let agentChangeHighlightHold: Double = 1.0
         static let agentChangeHighlightFade: Double = 0.3

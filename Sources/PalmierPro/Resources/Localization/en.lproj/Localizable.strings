@@ -206,6 +206,7 @@
 "Clear index" = "Clear index";
 "Clear search" = "Clear search";
 "Clearing…" = "Clearing…";
+"Click Stop to send" = "Click Stop to send";
 "Click me, or press ⌥⌘A, whenever you want to chat. I can cut your clips, track people and things, and add stickers and captions." = "Click me, or press ⌥⌘A, whenever you want to chat. I can cut your clips, track people and things, and add stickers and captions.";
 "Click to rename" = "Click to rename";
 "Clip" = "Clip";
@@ -445,6 +446,7 @@
 "Golden Hour" = "Golden Hour";
 "Google" = "Google";
 "Got a song? Pick it here and I’ll cut to its beat." = "Got a song? Pick it here and I’ll cut to its beat.";
+"Got it. Writing it down…" = "Got it. Writing it down…";
 "Grab attention in the first second" = "Grab attention in the first second";
 "Grid" = "Grid";
 "Grid 2×2" = "Grid 2×2";
@@ -788,6 +790,7 @@
 "Refresh" = "Refresh";
 "Refresh Community Skills" = "Refresh Community Skills";
 "Refresh to check for available skills." = "Refresh to check for available skills.";
+"Release ⌥Space to send" = "Release ⌥Space to send";
 "Relink Folder…" = "Relink Folder…";
 "Relinked %lld of %lld offline clips." = "Relinked %lld of %lld offline clips.";
 "Relink…" = "Relink…";

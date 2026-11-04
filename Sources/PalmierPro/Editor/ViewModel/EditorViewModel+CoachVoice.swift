@@ -1,20 +1,21 @@
 import AppKit
 
-/// Hold-to-talk in Active mode, or the card's Say It button: record, transcribe with Muse Voice, then answer the tip or act on the request.
+/// Hold ⌥Space or the card's Say It button: record, transcribe with Muse Voice, then answer the tip or act on the request.
+/// Works whether or not Vee speaks aloud; that setting only decides if her replies are spoken.
 extension EditorViewModel {
     func startCoachListening() {
-        guard coachMode == .active else { return }
-        beginCoachListening()
+        beginCoachListening(held: true)
     }
 
-    /// The card's Say It button: tap to start, tap again to stop, in either mode.
+    /// The card's Say It button: tap to start, tap again to stop.
     func toggleCoachListening() {
-        if coachListening { finishCoachListening() } else { beginCoachListening() }
+        if coachListening { finishCoachListening() } else { beginCoachListening(held: false) }
     }
 
-    private func beginCoachListening() {
+    private func beginCoachListening(held: Bool) {
         guard !coachListening else { return }
         coachListening = true
+        coachListeningHeld = held
         coachVoice.stop()
         let capture = voiceCapture
         coachListenTask = Task { [weak self] in
@@ -30,10 +31,12 @@ extension EditorViewModel {
     func finishCoachListening() {
         guard coachListening else { return }
         coachListening = false
+        coachTranscribing = true
         let capture = voiceCapture
         let starting = coachListenTask
         let locale = coachSpeechLocale
         coachListenTask = Task { [weak self] in
+            defer { self?.coachTranscribing = false }
             await starting?.value
             let url: URL
             do { url = try await capture.stop() } catch { return }

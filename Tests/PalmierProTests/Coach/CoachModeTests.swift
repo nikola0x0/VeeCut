@@ -45,6 +45,16 @@ struct CoachModeTests {
         #expect(speaker.spoken.isEmpty)
     }
 
+    @Test func aSpokenRequestGetsATextOnlyReplyWhileVeeIsQuiet() {
+        let (editor, speaker) = editor(mode: .passive)
+        editor.coachAwaitingReply = true
+
+        editor.coachReplyFinished("Done. Her skin is smoother.")
+
+        #expect(speaker.spoken.isEmpty)
+        #expect(!editor.coachAwaitingReply)
+    }
+
     @Test func switchingToPassiveStopsSpeech() {
         let (editor, speaker) = editor(mode: .active)
 

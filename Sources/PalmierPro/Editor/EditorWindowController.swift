@@ -112,8 +112,8 @@ final class EditorWindowController: NSWindowController, NSWindowDelegate {
             }
             return false
 
-        case 49: // Space; Option-Space is hold-to-talk in Active Coach
-            if mods.contains(.option), editorViewModel.coachMode == .active {
+        case 49: // Space; Option-Space is hold-to-talk to Vee
+            if mods.contains(.option) {
                 if !event.isARepeat { editorViewModel.startCoachListening() }
                 return true
             }
