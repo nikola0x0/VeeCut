@@ -17,6 +17,7 @@
 "%@, %lld seconds" = "%@, %lld seconds";
 "%@, %lld skills" = "%@, %lld skills";
 "%@, about %lld minutes" = "%@, about %lld minutes";
+"%@. Click to edit, drag the right edge to change its length, or drop clips here." = "%@. Click to edit, drag the right edge to change its length, or drop clips here.";
 "%@: %@." = "%@: %@.";
 "%@’s face" = "%@’s face";
 "%lld by timecode, %lld by audio" = "%lld by timecode, %lld by audio";
@@ -39,7 +40,6 @@
 "A clip can’t follow an object inside itself." = "A clip can’t follow an object inside itself.";
 "A slow, wide establishing shot" = "A slow, wide establishing shot";
 "A video editor built for AI. Edit with an assistant that works on your timeline." = "A video editor built for AI. Edit with an assistant that works on your timeline.";
-"AI Chat" = "AI Chat";
 "AI transcription" = "AI transcription";
 "AI videos" = "AI videos";
 "About VeeCut" = "About VeeCut";
@@ -57,6 +57,7 @@
 "Add Section" = "Add Section";
 "Add Section After" = "Add Section After";
 "Add Text" = "Add Text";
+"Add Transitions" = "Add Transitions";
 "Add a Meta API key in Settings" = "Add a Meta API key in Settings";
 "Add a Meta Model API key in Settings to describe looks." = "Add a Meta Model API key in Settings to describe looks.";
 "Add a Meta Model API key in Settings to draw stickers." = "Add a Meta Model API key in Settings to draw stickers.";
@@ -64,12 +65,12 @@
 "Add a Meta Model API key in Settings to use Muse Spark." = "Add a Meta Model API key in Settings to use Muse Spark.";
 "Add a comment" = "Add a comment";
 "Add a key in Settings to use" = "Add a key in Settings to use";
+"Add a section after the last one" = "Add a section after the last one";
 "Add an Anthropic API key in Settings to use this model." = "Add an Anthropic API key in Settings to use this model.";
 "Add an OpenAI API key in Settings to use this model." = "Add an OpenAI API key in Settings to use this model.";
 "Add captions" = "Add captions";
 "Add effect" = "Add effect";
 "Add emoji" = "Add emoji";
-"Add key below" = "Add key below";
 "Add keyframe" = "Add keyframe";
 "Add nonempty name and description fields to the skill frontmatter." = "Add nonempty name and description fields to the skill frontmatter.";
 "Add the object’s name as text that follows it" = "Add the object’s name as text that follows it";
@@ -97,7 +98,6 @@
 "Angle" = "Angle";
 "Animate" = "Animate";
 "Animation" = "Animation";
-"Anthropic API Key" = "Anthropic API Key";
 "Appearance" = "Appearance";
 "Applied “%@”. Describe another…" = "Applied “%@”. Describe another…";
 "Apply" = "Apply";
@@ -230,6 +230,7 @@
 "Community Skills Unavailable" = "Community Skills Unavailable";
 "Compatibility: %@" = "Compatibility: %@";
 "Completed" = "Completed";
+"Connect" = "Connect";
 "Connect an agent" = "Connect an agent";
 "Connect an external agent to inspect and edit the open VeeCut project." = "Connect an external agent to inspect and edit the open VeeCut project.";
 "Connected" = "Connected";
@@ -334,6 +335,7 @@
 "Downloading…" = "Downloading…";
 "Downloads a %@ on-device model so you can search media visually." = "Downloads a %@ on-device model so you can search media visually.";
 "Drag to add or shape a point · double-click to remove" = "Drag to add or shape a point · double-click to remove";
+"Drag to change the section's length" = "Drag to change the section's length";
 "Drag to move Vee" = "Drag to move Vee";
 "Draw a sticker with Muse Image" = "Draw a sticker with Muse Image";
 "Draw a sticker with Muse Image that follows this object" = "Draw a sticker with Muse Image that follows this object";
@@ -355,6 +357,7 @@
 "Edit" = "Edit";
 "Edit History" = "Edit History";
 "Edit crop on canvas" = "Edit crop on canvas";
+"Edit the plan: add sections, re-plan, or remove it" = "Edit the plan: add sections, re-plan, or remove it";
 "Edited %@" = "Edited %@";
 "Editing" = "Editing";
 "Editor Mode" = "Editor Mode";
@@ -430,10 +433,8 @@
 "General" = "General";
 "Generate" = "Generate";
 "Generating…" = "Generating…";
-"Get Anthropic API key" = "Get Anthropic API key";
-"Get Meta Model API key" = "Get Meta Model API key";
-"Get OpenAI API key" = "Get OpenAI API key";
 "Get Started" = "Get Started";
+"Get a %@ API key" = "Get a %@ API key";
 "Get a notification when a background export finishes." = "Get a notification when a background export finishes.";
 "Getting the search model ready." = "Getting the search model ready.";
 "GitHub" = "GitHub";
@@ -490,6 +491,7 @@
 "Import Media" = "Import Media";
 "Import Media…" = "Import Media…";
 "Import a song into the Media panel first." = "Import a song into the Media panel first.";
+"Import a video clip to plan your edit." = "Import a video clip to plan your edit.";
 "Import clips or drop them in. I'll watch them and suggest what to make." = "Import clips or drop them in. I'll watch them and suggest what to make.";
 "Import video to plan an edit from." = "Import video to plan an edit from.";
 "Index" = "Index";
@@ -534,6 +536,7 @@
 "Key Hue" = "Key Hue";
 "Keyboard Shortcuts" = "Keyboard Shortcuts";
 "Keyframes" = "Keyframes";
+"Keys stay in your Mac’s Keychain. The Meta key also runs SAM 3.1 tracking, Muse Image stickers and Muse Voice captions." = "Keys stay in your Mac’s Keychain. The Meta key also runs SAM 3.1 tracking, Muse Image stickers and Muse Voice captions.";
 "LUT" = "LUT";
 "LUTs" = "LUTs";
 "Label" = "Label";
@@ -595,8 +598,6 @@
 "Media search" = "Media search";
 "Media workspace layout" = "Media workspace layout";
 "Medium" = "Medium";
-"Meta Model API Key" = "Meta Model API Key";
-"Meta Models" = "Meta Models";
 "Meta’s SAM service had a problem. Try again in a moment." = "Meta’s SAM service had a problem. Try again in a moment.";
 "Mic" = "Mic";
 "Midpoint" = "Midpoint";
@@ -692,11 +693,11 @@
 "Open Timeline" = "Open Timeline";
 "Open with your strongest shot?" = "Open with your strongest shot?";
 "Open with “%@” as your hook?" = "Open with “%@” as your hook?";
-"OpenAI API Key" = "OpenAI API Key";
 "Opening" = "Opening";
 "Open…" = "Open…";
 "Or ask me to:" = "Or ask me to:";
 "Or drag it onto the timeline." = "Or drag it onto the timeline.";
+"Or start from a template:" = "Or start from a template:";
 "Or tell me your own idea: what, how long, what feeling" = "Or tell me your own idea: what, how long, what feeling";
 "Organize with Vee" = "Organize with Vee";
 "Original" = "Original";
@@ -711,8 +712,10 @@
 "Padding" = "Padding";
 "Paint over the area. SAM snaps it to the edges and follows it." = "Paint over the area. SAM snaps it to the edges and follows it.";
 "Paste" = "Paste";
+"Paste API key" = "Paste API key";
 "Paste Clip Settings" = "Paste Clip Settings";
 "Paste Settings" = "Paste Settings";
+"Paste a %@ API key to use %@" = "Paste a %@ API key to use %@";
 "Path" = "Path";
 "Payoff" = "Payoff";
 "Peak" = "Peak";
@@ -750,7 +753,6 @@
 "Pop Subject" = "Pop Subject";
 "Portrait (9:16)" = "Portrait (9:16)";
 "Position" = "Position";
-"Powers Muse Spark in the AI chat and SAM 3.1 subject tracking. Stored in the macOS Keychain." = "Powers Muse Spark in the AI chat and SAM 3.1 subject tracking. Stored in the macOS Keychain.";
 "Preparing" = "Preparing";
 "Preparing…" = "Preparing…";
 "Presence" = "Presence";
@@ -766,6 +768,7 @@
 "Project Settings" = "Project Settings";
 "Projects" = "Projects";
 "Projects Couldn’t Be Deleted" = "Projects Couldn’t Be Deleted";
+"Put every suggested clip on the timeline as one undo step" = "Put every suggested clip on the timeline as one undo step";
 "Queued" = "Queued";
 "Quick" = "Quick";
 "Quick cuts that raise the energy" = "Quick cuts that raise the energy";
@@ -789,7 +792,6 @@
 "Relinked %lld of %lld offline clips." = "Relinked %lld of %lld offline clips.";
 "Relink…" = "Relink…";
 "Remove" = "Remove";
-"Remove API key" = "Remove API key";
 "Remove Dead Air" = "Remove Dead Air";
 "Remove Effect" = "Remove Effect";
 "Remove Marker" = "Remove Marker";
@@ -903,6 +905,7 @@
 "Show in Finder" = "Show in Finder";
 "Show me around" = "Show me around";
 "Show notifications" = "Show notifications";
+"Show or remove the %@ key" = "Show or remove the %@ key";
 "Show reasoning" = "Show reasoning";
 "Side by Side" = "Side by Side";
 "Silence Detection" = "Silence Detection";
@@ -1080,7 +1083,6 @@
 "Use Freeform to edit individual crop insets." = "Use Freeform to edit individual crop insets.";
 "Use It" = "Use It";
 "Use an aspect ratio with two positive numbers, such as 3:2." = "Use an aspect ratio with two positive numbers, such as 3:2.";
-"Use your own API key for AI chat. Stored in the macOS Keychain." = "Use your own API key for AI chat. Stored in the macOS Keychain.";
 "Uses selected clips when available, otherwise all captionable audio. Choose a track to limit captions." = "Uses selected clips when available, otherwise all captionable audio. Choose a track to limit captions.";
 "Vee" = "Vee";
 "Vee Speaks Aloud" = "Vee Speaks Aloud";
