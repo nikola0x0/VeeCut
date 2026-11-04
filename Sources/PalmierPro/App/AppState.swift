@@ -332,15 +332,9 @@ final class AppState {
 
     func openProjectFromPanel() {
         Telemetry.beginOperation("open_panel", data: ["flow": "project_open"])
-        let panel = NSOpenPanel()
-        panel.allowedContentTypes = [Self.projectContentType]
-        panel.canChooseDirectories = false
-        panel.treatsFilePackagesAsDirectories = false
-        panel.allowsMultipleSelection = false
-        panel.title = L10n.string("Open Project")
-        panel.begin { response in
+        ProjectOpenPanel.begin { url in
             Telemetry.endOperation("open_panel")
-            guard response == .OK, let url = panel.url else { return }
+            guard let url else { return }
             AppState.shared.openProject(at: url)
         }
     }

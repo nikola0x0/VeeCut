@@ -180,6 +180,7 @@
 "Check the marker name, position, and duration." = "Check the marker name, position, and duration.";
 "Choose Footage…" = "Choose Footage…";
 "Choose a .cube LUT file" = "Choose a .cube LUT file";
+"Choose a VeeCut project (.veecut)." = "Choose a VeeCut project (.veecut).";
 "Choose a crop aspect" = "Choose a crop aspect";
 "Choose an object" = "Choose an object";
 "Choose animation clip color" = "Choose animation clip color";
