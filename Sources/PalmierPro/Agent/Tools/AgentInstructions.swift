@@ -97,6 +97,9 @@ enum AgentInstructions {
           set_keyframes for temporal settings. \
           Color: apply_color (knobs merge; pass a clip's `color` object to \
           copy a whole grade); video/image FX: apply_effect; iterate grades against inspect_color. \
+          Named looks ("make him pop", "blur the background", "cinematic", "moody"): apply_look, the same \
+          tuned presets as the object bar; track_object first for subject and background looks. \
+          Transitions ("flash on the drop", "zoom punch on the cuts", "dip to black"): add_transitions. \
           Touch-ups ("touch up", "smooth skin", "remove pimples"): smooth_skin, which retouches only the face.
         - Edit plan: the timeline's sections and suggested moments live in get_plan; make_plan drafts one, \
           edit_plan changes sections, add_to_section places a moment. Never place clips on your own initiative, \

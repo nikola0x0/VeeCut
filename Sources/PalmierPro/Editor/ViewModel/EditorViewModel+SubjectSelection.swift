@@ -134,16 +134,18 @@ extension EditorViewModel {
         }
     }
 
-    /// The clip's background matte: its existing background region, else outside every subject on its media.
-    func backgroundMatte(clipId: String) -> EffectMatte? {
+    /// The clip's background matte: its existing background region, else outside every subject on its media;
+    /// `keeping` is always among the subjects it leaves sharp.
+    func backgroundMatte(clipId: String, keeping maskId: String? = nil) -> EffectMatte? {
         guard let clip = clipFor(id: clipId) else { return nil }
-        if let existing = clip.effectRegions?.first(where: { $0.matte.invert }) { return existing.matte }
-        let ids = trackedMasks(forMedia: clip.mediaRef).map(\.id)
-        return ids.isEmpty ? nil : EffectMatte(maskIds: ids, invert: true, feather: Self.subjectFeather)
+        let existing = clip.effectRegions?.first(where: { $0.matte.invert })?.matte
+        var ids = existing?.maskIds ?? trackedMasks(forMedia: clip.mediaRef).map(\.id)
+        if let maskId, !ids.contains(maskId) { ids.append(maskId) }
+        return ids.isEmpty ? nil : EffectMatte(maskIds: ids, invert: true, feather: existing?.feather ?? Self.subjectFeather)
     }
 
     private func lookMatte(outside: Bool, clipId: String, maskId: String) -> EffectMatte? {
-        outside ? backgroundMatte(clipId: clipId) : EffectMatte(maskId: maskId, feather: Self.subjectFeather)
+        outside ? backgroundMatte(clipId: clipId, keeping: maskId) : EffectMatte(maskId: maskId, feather: Self.subjectFeather)
     }
 
     /// Applies a preset look around `maskId`, or to the whole clip when there is no subject.

@@ -14,7 +14,7 @@ extension ToolName {
         .manageMulticam, .changeCam,
         .removeWords, .removeSilence,
         .addTexts, .updateText, .addCaptions,
-        .applyColor, .applyEffect, .followObject, .addSticker, .smoothSkin, .denoiseAudio,
+        .applyColor, .applyEffect, .applyLook, .addTransitions, .followObject, .addSticker, .smoothSkin, .denoiseAudio,
         .makePlan, .editPlan, .addToSection,
     ]
 

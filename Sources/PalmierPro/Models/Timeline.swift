@@ -213,6 +213,9 @@ struct Clip: Codable, Sendable, Equatable, Identifiable {
 
     var planSectionId: String?
 
+    /// The transition on the cut where this clip starts, drawn on the timeline's seam.
+    var cutTransition: CutTransition?
+
     private enum CodingKeys: String, CodingKey {
         case id, mediaRef, mediaType, sourceClipType, startFrame, durationFrames
         case trimStartFrame, trimEndFrame, speed, volume
@@ -221,7 +224,7 @@ struct Clip: Codable, Sendable, Equatable, Identifiable {
         case linkGroupId, captionGroupId, multicamGroupId, textContent, textStyle, textAnimation, wordTimings
         case textFillMode
         case opacityTrack, positionTrack, scaleTrack, rotationTrack, cropTrack, volumeTrack
-        case effects, effectRegions, blendMode, subjectFollow, planSectionId
+        case effects, effectRegions, blendMode, subjectFollow, planSectionId, cutTransition
     }
 
     /// Frame where this clip ends on the timeline
@@ -555,7 +558,8 @@ extension Clip {
             effectRegions: try? c.decode([EffectRegion].self, forKey: .effectRegions),
             blendMode: try? c.decode(BlendMode.self, forKey: .blendMode),
             subjectFollow: try? c.decode(SubjectFollowLink.self, forKey: .subjectFollow),
-            planSectionId: try c.decodeIfPresent(String.self, forKey: .planSectionId)
+            planSectionId: try c.decodeIfPresent(String.self, forKey: .planSectionId),
+            cutTransition: try? c.decode(CutTransition.self, forKey: .cutTransition)
         )
     }
 }

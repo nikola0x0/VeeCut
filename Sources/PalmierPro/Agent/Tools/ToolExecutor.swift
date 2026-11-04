@@ -330,6 +330,8 @@ final class ToolExecutor {
         case .trackObject:   return try await trackObject(editor, args)
         case .followObject:  return try followObject(editor, args)
         case .smoothSkin:    return try await smoothSkin(editor, args)
+        case .applyLook:     return try applyLook(editor, args)
+        case .addTransitions: return try await addTransitions(editor, args)
         case .getPlan:       return try getPlan(editor, args)
         case .makePlan:      return try await makePlan(editor, args)
         case .editPlan:      return try editPlan(editor, args)

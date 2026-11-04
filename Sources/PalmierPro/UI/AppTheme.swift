@@ -553,6 +553,9 @@ enum AppTheme {
         static let timelineBadgePadV: CGFloat = 1
         static let timelineBadgeMinWidth: CGFloat = 16
         static let timelineDotSize: CGFloat = 5
+        /// The seam chip a cut transition draws over the cut.
+        static let timelineTransitionChip: CGFloat = 16
+        static let timelineTransitionGlyph: CGFloat = 10
         static let subjectSideSwatch: CGFloat = 8
         /// Fits a chip of height `IconSize.lgXl` with an even `Spacing.xs` gap around it.
         static let objectThumbnail: CGFloat = IconSize.lgXl - Spacing.xs * 2

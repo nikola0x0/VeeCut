@@ -63,6 +63,8 @@ enum ToolName: String, CaseIterable, Sendable {
     case followObject = "follow_object"
     case addSticker = "add_sticker"
     case smoothSkin = "smooth_skin"
+    case applyLook = "apply_look"
+    case addTransitions = "add_transitions"
 
     // Plan
     case getPlan = "get_plan"
@@ -937,7 +939,7 @@ enum ToolDefinitions {
         ),
         AgentTool(
             name: .applyColor,
-            description: "Author/refine a color grade on video/image clips with named controls — the colorist path, distinct from apply_effect (looks/FX). Returns the clips with their resulting grade as a `color` object — the same object get_timeline shows; pass one back via the `color` parameter to copy a grade between clips (replaces the whole grade). MERGES with the clip's current grade: only the params you pass change, the rest are preserved, so you can nudge one knob at a time (pass reset:true to start from neutral). Applies as live, editable color.* effects; non-color effects untouched. Iterate: apply_color → inspect_color(clipId, reference) → read the gap → adjust → repeat. Undoable. All knobs optional. Color WHEELS use HUE (0–360°, standard) + AMOUNT per tonal zone — to push shadows teal, set shadowsHue 180 and shadowsAmount ~0.15. CURVES (master + per-channel R/G/B) give precise tone shaping — per-channel curves are tone-selective (e.g. pull the blue curve down in the highlights to tame a bright sky). HUE CURVES do secondary/qualified correction — target a source hue and shift its hue/saturation/lightness (e.g. desaturate greens, warm the skin) without a mask; pair with inspect_color's hueHistogram to find which hues are present. LUT applies a .cube film-look pack on top of the grade.",
+            description: "Author/refine a color grade on video/image clips with named controls — the colorist path, distinct from apply_effect (looks/FX). For a named preset look (pop a subject, blur or darken a background, cinematic, moody, vlog pop) use apply_look instead. Returns the clips with their resulting grade as a `color` object — the same object get_timeline shows; pass one back via the `color` parameter to copy a grade between clips (replaces the whole grade). MERGES with the clip's current grade: only the params you pass change, the rest are preserved, so you can nudge one knob at a time (pass reset:true to start from neutral). Applies as live, editable color.* effects; non-color effects untouched. Iterate: apply_color → inspect_color(clipId, reference) → read the gap → adjust → repeat. Undoable. All knobs optional. Color WHEELS use HUE (0–360°, standard) + AMOUNT per tonal zone — to push shadows teal, set shadowsHue 180 and shadowsAmount ~0.15. CURVES (master + per-channel R/G/B) give precise tone shaping — per-channel curves are tone-selective (e.g. pull the blue curve down in the highlights to tame a bright sky). HUE CURVES do secondary/qualified correction — target a source hue and shift its hue/saturation/lightness (e.g. desaturate greens, warm the skin) without a mask; pair with inspect_color's hueHistogram to find which hues are present. LUT applies a .cube film-look pack on top of the grade.",
             inputSchema: objectSchema(
                 properties: [
                     "clipIds": ["type": "array", "items": ["type": "string"], "description": "Clip ids from get_timeline."],
@@ -1110,6 +1112,52 @@ enum ToolDefinitions {
                     "blemishes": ["type": "number", "description": "0–1 pimple and red-spot removal. Default 1."],
                 ],
                 required: ["clipId"]
+            )
+        ),
+        AgentTool(
+            name: .applyLook,
+            description: """
+            Apply one of VeeCut's tuned preset looks — the same one-click looks as the object bar — instead of \
+            hand-picking apply_color numbers. Use it for "make him pop", "blur the background", "darken the \
+            background", "give it a cinematic / moody / vlog look". Subject looks (pop_subject, crisp_subject) \
+            change only the tracked object; background looks (blur_background, darken_background, color_pop) \
+            change the clip's one shared background, which keeps this object and any other subject already kept \
+            sharp on the clip untouched (the result's keptSharp lists them); full looks (vlog_pop, cinematic, moody, golden_hour, teal_orange, noir, \
+            vintage_film, dreamy, crisp) split around the object when maskId is given, or grade the whole clip \
+            without it. Get maskId from track_object first for subject and background looks. Each effect replaces \
+            the same effect already on that side, so re-applying is safe. One undo step.
+            """,
+            inputSchema: objectSchema(
+                properties: [
+                    "clipId": ["type": "string", "description": "Video clip id from get_timeline."],
+                    "look": ["type": "string", "enum": ToolExecutor.lookIds, "description": "The preset look."],
+                    "maskId": ["type": "string", "description": "The tracked object (maskId from track_object). Required for subject and background looks; optional for full looks."],
+                ],
+                required: ["clipId", "look"]
+            )
+        ),
+        AgentTool(
+            name: .addTransitions,
+            description: """
+            Put quick trailer transitions on cuts: zoom_punch (the incoming shot starts 10% bigger and settles), \
+            blur_reveal (it comes in out of focus), whip_blur (a smear across the cut), dip_to_black (a short fade \
+            out and in) or flash (a white flash on a new top track). at "cuts" uses every cut on the track, \
+            filtered by fromSeconds/toSeconds and every (every 2 = every other cut); at "drop" uses the one cut on \
+            the plan's song drop, the moment a trailer hits hardest. Use it for "flash on the drop", "zoom punch on \
+            every cut after the drop", "dip to black before the last part". Cuts are where a clip starts, so they \
+            already sit on the beat when the plan was cut to music. Clips that already have their own motion or blur \
+            keyframes are skipped and listed, never overwritten. Defaults to the plan's track. One undo step.
+            """,
+            inputSchema: objectSchema(
+                properties: [
+                    "transition": ["type": "string", "enum": CutTransition.allCases.map(\.rawValue), "description": "The transition."],
+                    "at": ["type": "string", "enum": ["cuts", "drop"], "description": "Optional. cuts (default) or the song's drop."],
+                    "trackIndex": ["type": "integer", "description": "Optional. The video track to cut on; defaults to the plan's track."],
+                    "fromSeconds": ["type": "number", "description": "Optional. Only cuts at or after this timeline time."],
+                    "toSeconds": ["type": "number", "description": "Optional. Only cuts at or before this timeline time."],
+                    "every": ["type": "integer", "minimum": 1, "description": "Optional. Every Nth cut in range, starting with the first; default 1."],
+                ],
+                required: ["transition"]
             )
         ),
         AgentTool(

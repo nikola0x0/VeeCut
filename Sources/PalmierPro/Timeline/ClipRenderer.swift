@@ -212,6 +212,10 @@ enum ClipRenderer {
             drawKeyframeMarkers(clip: clip, in: rect, context: context)
         }
 
+        if let transition = clip.cutTransition, type != .audio {
+            drawCutTransition(transition, clip: clip, in: rect, fps: fps, context: context)
+        }
+
         if markBeats, type == .audio, clip.sourceClipType != .sequence, let beats = cache?.beatAnalysis(for: clip.mediaRef) {
             drawBeatTicks(analysis: beats, clip: clip, in: rect, fps: fps, context: context)
         }
@@ -219,6 +223,79 @@ enum ClipRenderer {
         if opacity < 1.0 {
             context.restoreGState()
         }
+    }
+
+    // MARK: - Cut transitions
+
+    /// A faint wash over the transition's length, and a chip on the seam whose glyph draws what the transition does.
+    private static func drawCutTransition(_ transition: CutTransition, clip: Clip, in rect: NSRect, fps: Int, context: CGContext) {
+        let accent = AppTheme.Accent.primaryNSColor
+        let framesWide = rect.width / CGFloat(max(clip.durationFrames, 1))
+        let washWidth = min(rect.width, CGFloat(transition.frames(fps: fps)) * framesWide)
+        context.saveGState()
+        context.addPath(CGPath(roundedRect: rect, cornerWidth: Trim.clipCornerRadius, cornerHeight: Trim.clipCornerRadius, transform: nil))
+        context.clip()
+        context.setFillColor(accent.withAlphaComponent(AppTheme.Opacity.faint).cgColor)
+        context.fill(CGRect(x: rect.minX, y: rect.minY, width: washWidth, height: rect.height))
+        context.restoreGState()
+
+        let size = AppTheme.ComponentSize.timelineTransitionChip
+        guard rect.height >= size else { return }
+        let chip = CGRect(x: rect.minX - size / 2, y: rect.midY - size / 2, width: size, height: size)
+        let chipPath = CGPath(roundedRect: chip, cornerWidth: AppTheme.Radius.xs, cornerHeight: AppTheme.Radius.xs, transform: nil)
+        context.setFillColor(AppTheme.Background.raised.cgColor)
+        context.addPath(chipPath)
+        context.fillPath()
+        context.setStrokeColor(accent.cgColor)
+        context.setLineWidth(AppTheme.BorderWidth.thin)
+        context.addPath(chipPath)
+        context.strokePath()
+        let glyph = AppTheme.ComponentSize.timelineTransitionGlyph
+        drawTransitionGlyph(transition, in: CGRect(x: chip.midX - glyph / 2, y: chip.midY - glyph / 2, width: glyph, height: glyph),
+                            color: accent, context: context)
+    }
+
+    private static func drawTransitionGlyph(_ transition: CutTransition, in box: CGRect, color: NSColor, context: CGContext) {
+        context.saveGState()
+        context.setStrokeColor(color.cgColor)
+        context.setFillColor(color.cgColor)
+        context.setLineWidth(AppTheme.BorderWidth.thin)
+        context.setLineCap(.round)
+        switch transition {
+        case .zoomPunch:
+            context.stroke(box.insetBy(dx: AppTheme.BorderWidth.thin / 2, dy: AppTheme.BorderWidth.thin / 2))
+            context.fill(box.insetBy(dx: box.width * 0.3, dy: box.height * 0.3))
+        case .blurReveal:
+            context.fillEllipse(in: box.insetBy(dx: box.width * 0.34, dy: box.height * 0.34))
+            context.setStrokeColor(color.withAlphaComponent(AppTheme.Opacity.prominent).cgColor)
+            context.strokeEllipse(in: box.insetBy(dx: box.width * 0.18, dy: box.height * 0.18))
+            context.setStrokeColor(color.withAlphaComponent(AppTheme.Opacity.medium).cgColor)
+            context.strokeEllipse(in: box.insetBy(dx: AppTheme.BorderWidth.thin / 2, dy: AppTheme.BorderWidth.thin / 2))
+        case .whipBlur:
+            for (index, length) in [1.0, 0.7, 0.45].enumerated() {
+                let y = box.minY + box.height * (0.2 + 0.3 * CGFloat(index))
+                context.move(to: CGPoint(x: box.maxX - box.width * length, y: y))
+                context.addLine(to: CGPoint(x: box.maxX, y: y))
+            }
+            context.strokePath()
+        case .dipToBlack:
+            context.strokeEllipse(in: box.insetBy(dx: AppTheme.BorderWidth.thin / 2, dy: AppTheme.BorderWidth.thin / 2))
+            context.move(to: CGPoint(x: box.midX, y: box.minY))
+            context.addArc(center: CGPoint(x: box.midX, y: box.midY), radius: box.width / 2, startAngle: -.pi / 2, endAngle: .pi / 2, clockwise: true)
+            context.closePath()
+            context.fillPath()
+        case .flash:
+            let center = CGPoint(x: box.midX, y: box.midY), outer = box.width / 2, inner = box.width * 0.14
+            for index in 0..<8 {
+                let angle = CGFloat(index) * .pi / 4 - .pi / 2
+                let radius = index.isMultiple(of: 2) ? outer : inner
+                let point = CGPoint(x: center.x + cos(angle) * radius, y: center.y + sin(angle) * radius)
+                if index == 0 { context.move(to: point) } else { context.addLine(to: point) }
+            }
+            context.closePath()
+            context.fillPath()
+        }
+        context.restoreGState()
     }
 
     // MARK: - Keyframe markers
