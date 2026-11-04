@@ -12,11 +12,10 @@ struct SuggestionLane: View {
         HStack(spacing: 0) {
             HStack(spacing: AppTheme.Spacing.xs) {
                 Button(L10n.string("Keep All")) { editor.keepAllSuggestions() }
-                    .buttonStyle(.borderedProminent)
-                    .controlSize(.small)
+                    .buttonStyle(.capsule(.prominent, size: .small))
+                    .help(L10n.string("Put every suggested clip on the timeline as one undo step"))
                 Button(L10n.string("Hide")) { editor.showsSuggestedTimeline = false }
-                    .buttonStyle(.borderless)
-                    .controlSize(.small)
+                    .buttonStyle(.capsule(.secondary, size: .small))
                 Spacer(minLength: 0)
             }
             .padding(.horizontal, AppTheme.Spacing.sm)

@@ -14,7 +14,15 @@ struct MadePlan: Equatable {
 
 /// The coach session: ask what the user is making, read the footage once, plan with Muse Spark.
 extension EditorViewModel {
+    /// The coach card waits while the tour runs, so the two never overlap.
+    var showsCoachCard: Bool { coach != .hidden && tour.stepIndex == nil }
+
     var hasCoachFootage: Bool { mediaAssets.contains { $0.type == .video && !$0.isGenerating } }
+
+    /// The Plan the Edit tooltip; says what's missing while planning is unavailable.
+    var planTheEditHelp: String {
+        hasCoachFootage ? L10n.string("Plan the Edit") : L10n.string("Import a video clip to plan your edit.")
+    }
 
     /// Asks on a timeline with video media and no plan, unless the user dismissed it there.
     func showCoachIfNeeded() {

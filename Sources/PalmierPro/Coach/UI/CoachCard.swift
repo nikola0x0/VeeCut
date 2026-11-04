@@ -7,7 +7,7 @@ struct CoachOverlay: View {
 
     var body: some View {
         GeometryReader { geometry in
-            if editor.coach != .hidden {
+            if editor.showsCoachCard {
                 CoachCard()
                     .frame(maxWidth: .infinity)
                     .padding(.top, geometry.size.height * AppTheme.Coach.cardTopFraction)
@@ -23,13 +23,13 @@ struct CoachOverlay: View {
                     .padding(.horizontal, AppTheme.Spacing.lg)
                     .padding(.vertical, AppTheme.Spacing.sm)
                     .background(AppTheme.Background.raisedColor, in: Capsule())
-                    .overlay(Capsule().strokeBorder(AppTheme.Accent.primary, lineWidth: AppTheme.BorderWidth.medium))
+                    .overlay(Capsule().strokeBorder(AppTheme.Accent.primary, lineWidth: AppTheme.BorderWidth.focus))
                     .shadow(AppTheme.Shadow.md)
                     .padding(.top, AppTheme.Spacing.xl)
                     .transition(.opacity)
             }
         }
-        .animation(.easeOut(duration: AppTheme.Anim.transition), value: editor.coach == .hidden)
+        .animation(.easeOut(duration: AppTheme.Anim.transition), value: editor.showsCoachCard)
         .animation(.easeOut(duration: AppTheme.Anim.transition), value: editor.coachListening)
     }
 }
@@ -38,6 +38,7 @@ struct CoachOverlay: View {
 struct CoachCard: View {
     @Environment(EditorViewModel.self) private var editor
     @State private var brief = ""
+    @FocusState private var briefFocused: Bool
     @State private var songHasDrop = false
 
     private var pose: VeeIllustration.Name {
@@ -140,11 +141,11 @@ struct CoachCard: View {
                     TextField(L10n.string("Or tell me your own idea: what, how long, what feeling"), text: $brief)
                         .textFieldStyle(.plain)
                         .font(.system(size: AppTheme.FontSize.xl))
+                        .focused($briefFocused)
                         .onSubmit { submit(style: nil) }
                 }
                 .padding(AppTheme.Spacing.md)
-                .background(AppTheme.Background.baseColor, in: RoundedRectangle(cornerRadius: AppTheme.Radius.lg))
-                .overlay(RoundedRectangle(cornerRadius: AppTheme.Radius.lg).strokeBorder(AppTheme.Border.primaryColor, lineWidth: AppTheme.BorderWidth.thin))
+                .veeField(focused: briefFocused)
                 Button {
                     editor.toggleCoachListening()
                 } label: {
@@ -154,19 +155,19 @@ struct CoachCard: View {
                         .padding(.horizontal, AppTheme.Spacing.xs)
                         .frame(minHeight: AppTheme.IconSize.lgXl)
                 }
-                .buttonStyle(.borderedProminent)
-                .controlSize(.large)
+                .buttonStyle(.capsule(.prominent, size: .regular))
             }
             HStack(spacing: AppTheme.Spacing.sm) {
+                Text(L10n.string("Or start from a template:"))
+                    .font(.system(size: AppTheme.FontSize.sm))
+                    .foregroundStyle(AppTheme.Text.tertiaryColor)
                 ForEach(PlanStyle.allCases, id: \.self) { style in
                     Button(style.displayName) { submit(style: style) }
-                        .buttonStyle(.bordered)
-                        .controlSize(.small)
+                        .buttonStyle(.capsule(.secondary, size: .small))
                 }
                 Spacer(minLength: 0)
                 Button(L10n.string("Not Now")) { editor.dismissCoach() }
-                    .buttonStyle(.borderless)
-                    .controlSize(.small)
+                    .buttonStyle(.capsule(.secondary, size: .small))
             }
             Text(L10n.string("I\u{2019}ll lay out a first cut. Nothing goes in until you keep it."))
                 .font(.system(size: AppTheme.FontSize.sm))
@@ -241,10 +242,9 @@ struct CoachCard: View {
                 .fixedSize(horizontal: false, vertical: true)
             Spacer(minLength: 0)
             Button(L10n.string("Try Again")) { editor.askForPlan() }
-                .controlSize(.small)
+                .buttonStyle(.capsule(.prominent, size: .small))
             Button(L10n.string("Close")) { editor.dismissCoach() }
-                .buttonStyle(.borderless)
-                .controlSize(.small)
+                .buttonStyle(.capsule(.secondary, size: .small))
         }
     }
 

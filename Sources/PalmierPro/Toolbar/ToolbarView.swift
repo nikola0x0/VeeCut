@@ -40,7 +40,7 @@ struct ToolbarView: View {
 
             toolbarDivider
 
-            toolbarButton(.sparkle, help: L10n.string("Plan the Edit"), action: editor.askForPlan)
+            toolbarButton(.sparkle, help: editor.planTheEditHelp, action: editor.askForPlan)
                 .disabled(!editor.hasCoachFootage)
 
             Spacer()

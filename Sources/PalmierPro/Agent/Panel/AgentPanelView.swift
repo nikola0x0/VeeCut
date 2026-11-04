@@ -98,7 +98,7 @@ struct AgentPanelView: View {
         .buttonStyle(.plain)
         .focusable(false)
         .disabled(!editor.hasCoachFootage)
-        .help(L10n.string("Plan the Edit"))
+        .help(editor.planTheEditHelp)
     }
 
     private var newTabButton: some View {
@@ -565,7 +565,7 @@ private struct VeeChatGreeting: View {
 
     var body: some View {
         let hasPlan = editor.timeline.plan != nil
-        let cardShown = editor.coach != .hidden
+        let cardShown = editor.showsCoachCard
         VStack(spacing: AppTheme.Spacing.smMd) {
             VeeIllustration(name: .hello, height: AppTheme.Coach.statusPoseHeight)
             Text(hasPlan ? L10n.string("Your edit is on the timeline. Ask me for any change.")
@@ -577,9 +577,15 @@ private struct VeeChatGreeting: View {
                 .fixedSize(horizontal: false, vertical: true)
             if !hasPlan && !cardShown {
                 Button(L10n.string("Plan the Edit"), systemImage: "sparkles") { editor.askForPlan() }
-                    .buttonStyle(.borderedProminent)
-                    .controlSize(.large)
+                    .buttonStyle(.capsule(.prominent, size: .regular))
                     .disabled(!editor.hasCoachFootage)
+                    .help(editor.planTheEditHelp)
+                if !editor.hasCoachFootage {
+                    Text(L10n.string("Import a video clip to plan your edit."))
+                        .font(.system(size: AppTheme.FontSize.sm))
+                        .foregroundStyle(AppTheme.Text.tertiaryColor)
+                        .multilineTextAlignment(.center)
+                }
             }
             Text(hasPlan || cardShown ? L10n.string("Ask me to:") : L10n.string("Or ask me to:"))
                 .font(.system(size: AppTheme.FontSize.smMd, weight: AppTheme.FontWeight.medium))
