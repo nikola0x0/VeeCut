@@ -78,16 +78,27 @@ struct MusicMap: Equatable, Sendable {
                  energy: parts[index].energy, bars: parts[index].bars)
         }
         let beatSeconds = 60 / analysis.bpm
-        let barSeconds = downbeats.count > 1 ? (downbeats.last! - downbeats.first!) / Double(downbeats.count - 1) : beatSeconds * 4
+        // The median gap: the beat model sometimes adds a stray downbeat just after a real one.
+        let gaps = zip(downbeats.dropFirst(), downbeats).map { $0 - $1 }.sorted()
+        let barSeconds = gaps.isEmpty ? beatSeconds * 4 : gaps[gaps.count / 2]
         return MusicMap(duration: duration, beatSeconds: beatSeconds, barSeconds: barSeconds, parts: closed, drop: drop)
     }
 
-    /// The song up to the part end nearest `seconds`, keeping at least the first part.
+    /// The song up to the part end nearest `seconds`, keeping at least the first part. A length past the drop
+    /// never ends on it, and may also end on any phrase after the drop, trimming that part there.
     func cut(nearest seconds: Double) -> MusicMap {
-        guard seconds.isFinite, seconds < duration,
-              let last = parts.indices.min(by: { abs(parts[$0].end - seconds) < abs(parts[$1].end - seconds) }) else { return self }
-        let kept = Array(parts[...last])
-        let end = kept[last].end
+        guard seconds.isFinite, seconds < duration, !parts.isEmpty else { return self }
+        var ends = parts.map(\.end)
+        if let drop, seconds > drop {
+            let phrase = barSeconds * Double(Self.barsPerPhrase)
+            if phrase > 0 { ends += stride(from: drop + phrase, to: duration, by: phrase).map { $0 } }
+            ends = ends.filter { $0 > drop }
+        }
+        guard let end = ends.min(by: { abs($0 - seconds) < abs($1 - seconds) }) else { return self }
+        let kept = parts.filter { $0.start < end }.map { part in
+            part.end <= end ? part
+                : Part(start: part.start, end: end, energy: part.energy, bars: Int(((end - part.start) / barSeconds).rounded()))
+        }
         return MusicMap(duration: end, beatSeconds: beatSeconds, barSeconds: barSeconds, parts: kept, drop: drop.flatMap { $0 < end ? $0 : nil })
     }
 
