@@ -246,7 +246,7 @@ extension MediaTab {
     private func searchSelectionBorder(for assetID: String) -> some View {
         RoundedRectangle(cornerRadius: AppTheme.Radius.sm)
             .strokeBorder(editor.selectedMediaAssetIds.contains(assetID) ? AppTheme.Accent.primary : .clear,
-                          lineWidth: AppTheme.BorderWidth.medium)
+                          lineWidth: AppTheme.BorderWidth.focus)
             .allowsHitTesting(false)
     }
 

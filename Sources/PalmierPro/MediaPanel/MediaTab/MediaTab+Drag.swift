@@ -83,7 +83,7 @@ extension MediaTab {
             .clipShape(RoundedRectangle(cornerRadius: AppTheme.Radius.sm))
             .overlay(
                 RoundedRectangle(cornerRadius: AppTheme.Radius.sm)
-                    .strokeBorder(AppTheme.Accent.primary, lineWidth: AppTheme.BorderWidth.medium)
+                    .strokeBorder(AppTheme.Accent.primary, lineWidth: AppTheme.BorderWidth.focus)
             )
             .shadow(color: AppTheme.MediaOverlay.backgroundColor.opacity(AppTheme.Opacity.medium), radius: 4, y: 2)
 

@@ -14,7 +14,7 @@ struct MarkerColorPicker: View {
                                 selection == preset
                                     ? AppTheme.Text.primaryColor
                                     : .clear,
-                                lineWidth: AppTheme.BorderWidth.medium
+                                lineWidth: AppTheme.BorderWidth.focus
                             )
                         TimelineMarkerShape()
                             .fill(preset.swiftUIColor)

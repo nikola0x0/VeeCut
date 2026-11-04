@@ -58,7 +58,7 @@ private struct CaptionPresetCell: View {
                 RoundedRectangle(cornerRadius: AppTheme.Radius.sm)
                     .strokeBorder(
                         selected ? AppTheme.Accent.timecodeColor : AppTheme.Border.subtleColor,
-                        lineWidth: selected ? AppTheme.BorderWidth.medium : AppTheme.BorderWidth.hairline)
+                        lineWidth: selected ? AppTheme.BorderWidth.focus : AppTheme.BorderWidth.hairline)
             )
             Text(L10n.string(key: preset.displayName))
                 .font(.system(size: AppTheme.FontSize.xxs, weight: selected ? .semibold : .regular))

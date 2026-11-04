@@ -32,12 +32,12 @@ extension View {
     }
 
     /// A text-entry surface: the base fill with a hairline border that turns accent while focused, as on Vee's card.
-    func veeField(focused: Bool) -> some View {
+    func veeField(focused: Bool, tint: Color = AppTheme.Accent.primary) -> some View {
         background(AppTheme.Background.baseColor, in: RoundedRectangle(cornerRadius: AppTheme.Radius.lg, style: .continuous))
             .overlay {
                 RoundedRectangle(cornerRadius: AppTheme.Radius.lg, style: .continuous)
-                    .strokeBorder(focused ? AppTheme.Accent.primary : AppTheme.Border.primaryColor,
-                                  lineWidth: focused ? AppTheme.BorderWidth.medium : AppTheme.BorderWidth.thin)
+                    .strokeBorder(focused ? tint : AppTheme.Border.primaryColor,
+                                  lineWidth: focused ? AppTheme.BorderWidth.focus : AppTheme.BorderWidth.thin)
                     .allowsHitTesting(false)
             }
     }

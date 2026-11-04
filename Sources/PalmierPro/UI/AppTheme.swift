@@ -186,6 +186,8 @@ enum AppTheme {
         static let hairline: CGFloat = 0.5
         static let thin: CGFloat = 1
         static let medium: CGFloat = 1.5
+        /// Box outlines for focus and selection; a whole point, so a 1× display draws every edge alike.
+        static let focus: CGFloat = 2
         static let thick: CGFloat = 2
     }
 
